@@ -1,6 +1,7 @@
+ARG METANC_BASE_IMAGE=optimalcnc/metanc:base
 ARG OROCOS_ROCK_PREFIX=/opt/orocos
 
-FROM optimalcnc/metanc:latest AS builder
+FROM ${METANC_BASE_IMAGE} AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG OROCOS_ROCK_PREFIX
@@ -59,7 +60,7 @@ RUN ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
 RUN ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
 RUN ./tools/validate-install.sh --prefix "$OROCOS_ROCK_PREFIX"
 
-FROM optimalcnc/metanc:latest AS final
+FROM ${METANC_BASE_IMAGE} AS final
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG OROCOS_ROCK_PREFIX
