@@ -44,6 +44,7 @@ jobs:
       - name: Check development environment
         run: |
           docker run --rm --user ubuntu orocos-rock:metanc-latest bash -lc '
+            set -euo pipefail
             test "$(whoami)" = "ubuntu"
             test ! -e /opt/orocos-rock
             source /opt/orocos/dev-env.sh

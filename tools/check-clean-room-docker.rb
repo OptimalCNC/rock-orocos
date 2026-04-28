@@ -73,7 +73,10 @@ if File.file?(workflow)
   errors << "workflow must build docker/orocos-rock/Dockerfile" unless contents.include?("docker/orocos-rock/Dockerfile")
   errors << "workflow must avoid pushing images" unless contents.include?("push: false")
   errors << "workflow must tag the MetaNC-based local image" unless contents.include?("orocos-rock:metanc-latest")
-  errors << "workflow must run the smoke test container as ubuntu" unless contents.include?("docker run --rm --user ubuntu")
+  smoke_test_index = contents.index("docker run --rm --user ubuntu")
+  smoke_test_block = smoke_test_index ? contents[smoke_test_index, 600] : ""
+  errors << "workflow must run the smoke test container as ubuntu" unless smoke_test_index
+  errors << "workflow smoke test must fail on any failed assertion" unless smoke_test_block.include?("set -euo pipefail")
   errors << "workflow must smoke-test deployer-gnulinux" unless contents.include?("command -v deployer-gnulinux")
   errors << "workflow must smoke-test orogen" unless contents.include?("command -v orogen")
   errors << "workflow must smoke-test typegen" unless contents.include?("command -v typegen")
