@@ -1,11 +1,16 @@
-FROM ubuntu:24.04
+FROM optimalcnc/metanc:latest
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG OROCOS_ROCK_PREFIX=/opt/orocos
 
+USER root
+
 ENV LANG=C.UTF-8
 ENV OROCOS_ROCK_PREFIX=${OROCOS_ROCK_PREFIX}
 ENV SHELL=/bin/bash
+# The MetaNC image exports vcpkg's CMake toolchain for MetaNC builds. Keep
+# Orocos/Rock package builds on their own CMake discovery path.
+ENV CMAKE_TOOLCHAIN_FILE=
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -37,9 +42,13 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/orocos-rock
-COPY . .
+COPY --chown=ubuntu:ubuntu . .
+RUN mkdir -p "$OROCOS_ROCK_PREFIX" && \
+    chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_ROCK_PREFIX"
 
 SHELL ["/bin/bash", "-lc"]
+
+USER ubuntu
 
 RUN ./tools/install-autoproj.sh
 RUN ./tools/check-autoproj-policy.rb
