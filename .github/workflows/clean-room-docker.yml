@@ -38,4 +38,15 @@ jobs:
           file: docker/orocos-rock/Dockerfile
           pull: true
           push: false
+          load: true
           tags: orocos-rock:metanc-latest
+
+      - name: Check development environment
+        run: |
+          docker run --rm --user ubuntu orocos-rock:metanc-latest bash -lc '
+            test "$(whoami)" = "ubuntu"
+            source /opt/orocos/dev-env.sh
+            command -v deployer-gnulinux
+            command -v orogen
+            command -v typegen
+          '
