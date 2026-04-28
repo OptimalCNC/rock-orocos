@@ -44,6 +44,12 @@ The normal host prefix is `~/.orocos`. The Docker image uses `/opt/orocos`.
 In Docker builds, root is used only for OS package installation and ownership
 setup. The wrapper scripts run as the `ubuntu` user from the MetaNC base image.
 
+The Docker image is multi-stage. Autoproj, source checkouts, build directories,
+and `/opt/orocos-rock` exist only in the builder stage. The final image copies
+the installed prefix, keeps the OS and Ruby packages needed to use that prefix,
+and validates that `deployer-gnulinux`, `orogen`, and `typegen` work without an
+Autoproj workspace.
+
 ## What Gets Installed Or Changed
 
 | Layer | Installed or generated content | Owner | Notes |
