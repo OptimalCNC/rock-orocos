@@ -21,7 +21,7 @@ on:
 
 jobs:
   build:
-    name: Build Ubuntu 24.04 Toolchain Image
+    name: Build MetaNC-Based Toolchain Image
     runs-on: ubuntu-24.04
 
     steps:
@@ -37,6 +37,6 @@ jobs:
           context: .
           file: docker/orocos-rock/Dockerfile
           push: false
-          tags: orocos-rock:ubuntu-24.04
+          tags: orocos-rock:metanc-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

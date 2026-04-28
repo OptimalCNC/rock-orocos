@@ -22,7 +22,7 @@ can consume as a normal third-party dependency.
 | `tools/install.sh` | Updates forked packages, refreshes source-declared OS dependencies, builds the selected package layout, stages Ruby generator tools, and exports environment scripts | Built packages under the configured prefix plus `env.sh` and `dev-env.sh` |
 | `tools/export-env.sh` | Regenerates prefix environment scripts without rebuilding packages | `PREFIX/env.sh`, `PREFIX/dev-env.sh` |
 | `tools/validate-install.sh` | Sources the exported environments and checks required runtime and generator commands | A pass/fail validation of the installed prefix |
-| `tools/docker-build.sh` | Builds the clean-room Docker image using the tracked Dockerfile | Local Docker image, default tag `orocos-rock:ubuntu-24.04` |
+| `tools/docker-build.sh` | Builds the clean-room Docker image using the tracked Dockerfile | Local Docker image, default tag `orocos-rock:metanc-latest` |
 
 ## Install Sequence
 
@@ -41,6 +41,8 @@ flowchart TD
 ```
 
 The normal host prefix is `~/.orocos`. The Docker image uses `/opt/orocos`.
+In Docker builds, root is used only for OS package installation and ownership
+setup. The wrapper scripts run as the `ubuntu` user from the MetaNC base image.
 
 ## What Gets Installed Or Changed
 

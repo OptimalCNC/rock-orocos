@@ -28,9 +28,20 @@ end
 dockerfile = File.join(root, "docker/orocos-rock/Dockerfile")
 if File.file?(dockerfile)
   contents = File.read(dockerfile)
-  errors << "Dockerfile must start from ubuntu:24.04" unless contents.match?(/^FROM ubuntu:24\.04$/)
+  errors << "Dockerfile must start from MetaNC shared image" unless contents.match?(/^FROM optimalcnc\/metanc:latest$/)
   errors << "Dockerfile must not require an external Dockerfile frontend" if contents.match?(/^#\s*syntax=/)
+  errors << "Dockerfile must switch to root after the MetaNC base image" unless contents.include?("USER root")
+  errors << "Dockerfile must clear MetaNC vcpkg CMake toolchain for Orocos/Rock builds" unless contents.include?("ENV CMAKE_TOOLCHAIN_FILE=")
   errors << "Dockerfile must export SHELL=/bin/bash for Autoproj" unless contents.include?("ENV SHELL=/bin/bash")
+  errors << "Dockerfile must copy the workspace for the ubuntu user" unless contents.include?("COPY --chown=ubuntu:ubuntu . .")
+  errors << "Dockerfile must make the install prefix writable by ubuntu" unless contents.include?('chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_ROCK_PREFIX"')
+  user_ubuntu_index = contents.index("USER ubuntu")
+  install_autoproj_index = contents.index("RUN ./tools/install-autoproj.sh")
+  if user_ubuntu_index.nil?
+    errors << "Dockerfile must switch to ubuntu before running wrapper scripts"
+  elsif install_autoproj_index && user_ubuntu_index > install_autoproj_index
+    errors << "Dockerfile must run wrapper scripts as ubuntu"
+  end
   shell_index = contents.index("SHELL [\"/bin/bash\", \"-lc\"]")
   bootstrap_index = contents.index("RUN ./tools/bootstrap.sh")
   if shell_index.nil?
@@ -50,6 +61,13 @@ if File.file?(workflow)
   contents = File.read(workflow)
   errors << "workflow must build docker/orocos-rock/Dockerfile" unless contents.include?("docker/orocos-rock/Dockerfile")
   errors << "workflow must avoid pushing images" unless contents.include?("push: false")
+  errors << "workflow must tag the MetaNC-based local image" unless contents.include?("orocos-rock:metanc-latest")
+end
+
+docker_build = File.join(root, "tools/docker-build.sh")
+if File.file?(docker_build)
+  contents = File.read(docker_build)
+  errors << "docker-build.sh must default to the MetaNC-based local image tag" unless contents.include?("orocos-rock:metanc-latest")
 end
 
 common = File.join(root, "tools/common.sh")
