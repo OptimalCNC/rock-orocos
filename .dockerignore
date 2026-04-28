@@ -1,0 +1,10 @@
+.autoproj/
+.bundle_env.sh
+.codex
+.git/
+docs/book/
+env.sh
+toolchain/
+tools/metaruby/
+
+*.log

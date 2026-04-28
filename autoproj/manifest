@@ -1,0 +1,15 @@
+package_sets:
+  - type: git
+    url: https://github.com/rock-core/package_set.git
+
+layout:
+  - toolchain:
+    - log4cpp
+    - rtt
+    - ocl
+    - orogen
+    - typelib
+    - utilmm
+    - utilrb
+    - rtt_typelib
+    - stdint_typekit

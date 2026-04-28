@@ -1,0 +1,42 @@
+name: Clean Room Docker Build
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/clean-room-docker.yml"
+      - ".dockerignore"
+      - "autoproj/**"
+      - "docker/**"
+      - "tools/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/clean-room-docker.yml"
+      - ".dockerignore"
+      - "autoproj/**"
+      - "docker/**"
+      - "tools/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Ubuntu 24.04 Toolchain Image
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build clean-room image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/orocos-rock/Dockerfile
+          push: false
+          tags: orocos-rock:ubuntu-24.04
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

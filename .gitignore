@@ -1,0 +1,28 @@
+# Autoproj workspace state
+.autoproj/
+.bundle_env.sh
+env.sh
+autoproj/remotes/
+
+# Autoproj-managed package checkouts and build trees
+toolchain/
+tools/metaruby/
+build/
+install/
+
+# Installed-prefix and build logs
+log/
+logs/
+*.log
+
+# Documentation build output
+docs/book/
+
+# Local tool and editor state
+.codex
+.cache/
+.bundle/
+.idea/
+.vscode/
+*.swp
+*~
