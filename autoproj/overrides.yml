@@ -18,3 +18,8 @@ overrides:
     type: git
     url: https://github.com/OptimalCNC/log4cpp.git
     branch: MetaNC
+
+  - orogen:
+    type: git
+    url: https://github.com/OptimalCNC/tools-orogen.git
+    branch: MetaNC
