@@ -11,6 +11,8 @@ can consume as a normal third-party dependency.
 - Package selection belongs in tracked Autoproj configuration.
 - Fork choices belong in tracked overrides.
 - Wrapper scripts should make the workflow repeatable, not hide new policy.
+- Changes to `rock-orocos` land through pull requests. Do not push directly to
+  `main` during normal maintenance.
 
 ## Script Flow
 
