@@ -277,7 +277,7 @@ git -C toolchain/tools/log4cpp commit -m "Build log4cpp as C++17"
 - Inspect: `toolchain/tools/orogen/lib/orogen/gen/typekit.rb`
 - Modify only if needed after inspection.
 
-- [ ] **Step 1: Confirm current default behavior**
+- [x] **Step 1: Confirm current default behavior**
 
 Run:
 
@@ -287,11 +287,11 @@ rg -n "cxx_standard|@cxx_standard|dsl_attribute :cxx_standard" toolchain/tools/o
 
 Expected: identify whether projects default to no explicit standard.
 
-- [ ] **Step 2: Add default only if no explicit standard is set**
+- [x] **Step 2: Add default only if no explicit standard is set**
 
 If the generator currently leaves `cxx_standard` nil, set the MetaNC-maintained default to `c++17` while preserving explicit `.orogen` values.
 
-- [ ] **Step 3: Build orogen locally**
+- [x] **Step 3: Build orogen locally**
 
 Run:
 
@@ -301,7 +301,7 @@ Run:
 
 Expected: command exits 0.
 
-- [ ] **Step 4: Commit in `tools-orogen`**
+- [x] **Step 4: Commit in `tools-orogen`**
 
 ```bash
 git -C toolchain/tools/orogen add lib/orogen

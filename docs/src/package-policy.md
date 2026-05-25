@@ -24,8 +24,8 @@ Everything else starts excluded unless a concrete MetaNC need appears.
 | `typelib` | generator type support | MetaNC-maintained fork |
 | `utilmm` | generator/runtime support | MetaNC-maintained fork |
 | `utilrb` | autoproj and generator support | Upstream |
-| `rtt_typelib` | RTT and Typelib bridge | Upstream |
-| `stdint_typekit` | likely needed for fixed-width types | Upstream |
+| `rtt_typelib` | RTT and Typelib bridge | MetaNC-maintained fork |
+| `stdint_typekit` | fixed-width integer typekit | MetaNC-maintained fork |
 
 ## Good Candidates
 
@@ -61,13 +61,13 @@ Initial fork set:
 - `orogen`
 - `typelib`
 - `utilmm`
+- `rtt_typelib`
+- `stdint_typekit`
 
 Upstream by default:
 
 - `rtt_geometry`
 - `utilrb`
-- `rtt_typelib`
-- `stdint_typekit`
 
 ## Source Of Truth
 

@@ -11,6 +11,7 @@ export_env_path = File.join(root, "tools", "export-env.sh")
 ruby_tools_path = File.join(root, "tools", "install-ruby-tools.sh")
 common_path = File.join(root, "tools", "common.sh")
 native_ci_check_path = File.join(root, "tools", "check-native-ci.rb")
+cpp17_policy_check_path = File.join(root, "tools", "check-cpp17-policy.rb")
 
 expected_forks = {
   "rtt" => "https://github.com/liufang-robot/rtt.git",
@@ -18,7 +19,9 @@ expected_forks = {
   "log4cpp" => "https://github.com/liufang-robot/log4cpp.git",
   "orogen" => "https://github.com/liufang-robot/tools-orogen.git",
   "typelib" => "https://github.com/liufang-robot/tools-typelib.git",
-  "utilmm" => "https://github.com/liufang-robot/utilmm.git"
+  "utilmm" => "https://github.com/liufang-robot/utilmm.git",
+  "rtt_typelib" => "https://github.com/liufang-robot/tools-rtt_typelib.git",
+  "stdint_typekit" => "https://github.com/liufang-robot/stdint_typekit.git"
 }
 
 overrides = YAML.safe_load_file(overrides_path).fetch("overrides", [])
@@ -97,6 +100,7 @@ else
 end
 
 errors << "tools/check-native-ci.rb: missing native CI policy check" unless File.file?(native_ci_check_path)
+errors << "tools/check-cpp17-policy.rb: missing C++17 policy check" unless File.file?(cpp17_policy_check_path)
 
 unless install_script.include?('"$SCRIPT_DIR/install-ruby-tools.sh" --prefix "$PREFIX"')
   errors << "install.sh: must stage Ruby generator tools into the install prefix"
