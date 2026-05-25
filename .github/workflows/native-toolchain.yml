@@ -1,0 +1,79 @@
+name: Native Toolchain Matrix
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/native-toolchain.yml"
+      - "autoproj/**"
+      - "docs/src/package-policy.md"
+      - "docs/src/modernization-plan.md"
+      - "tools/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/native-toolchain.yml"
+      - "autoproj/**"
+      - "docs/src/package-policy.md"
+      - "docs/src/modernization-plan.md"
+      - "tools/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Ubuntu ${{ matrix.ubuntu-version }} Native Build
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:${{ matrix.ubuntu-version }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version:
+          - "22.04"
+          - "24.04"
+
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      OROCOS_ROCK_PREFIX: /opt/orocos
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Install CI base dependencies
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates \
+            curl \
+            git \
+            ripgrep \
+            ruby \
+            ruby-dev \
+            sudo
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install Autoproj
+        run: ./tools/install-autoproj.sh
+
+      - name: Bootstrap workspace
+        run: ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
+
+      - name: Build and install toolchain
+        run: ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
+
+      - name: Validate installed prefix
+        run: ./tools/validate-install.sh --prefix "$OROCOS_ROCK_PREFIX"
+
+      - name: Check compiler warning budget
+        run: |
+          set -euo pipefail
+          if rg -n "warning:|deprecated|pragma message" "$OROCOS_ROCK_PREFIX"/toolchain/log/*-build.log; then
+            echo "compiler warning budget exceeded" >&2
+            exit 1
+          fi

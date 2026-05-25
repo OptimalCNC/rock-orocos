@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+
+root = File.expand_path("..", __dir__)
+workflow_path = File.join(root, ".github", "workflows", "native-toolchain.yml")
+errors = []
+
+if !File.file?(workflow_path)
+  errors << "missing .github/workflows/native-toolchain.yml"
+else
+  contents = File.read(workflow_path)
+
+  errors << "native CI must run on pull requests" unless contents.include?("pull_request:")
+  errors << "native CI must run on pushes to main" unless contents.include?("push:") && contents.include?("- main")
+  errors << "native CI must define a Ubuntu version matrix" unless contents.include?("matrix:") && contents.include?("ubuntu-version:")
+  %w[22.04 24.04].each do |version|
+    errors << "native CI must cover Ubuntu #{version}" unless contents.include?(%("#{version}"))
+  end
+  errors << "native CI must not require Ubuntu 26.04 yet" if contents.include?(%("26.04"))
+  errors << "native CI must use standard Ubuntu containers" unless contents.include?("image: ubuntu:${{ matrix.ubuntu-version }}")
+  errors << "native CI must install Ruby development headers" unless contents.include?("ruby-dev")
+  errors << "native CI must install ripgrep for warning checks" unless contents.include?("ripgrep")
+  errors << "native CI must install Autoproj through the wrapper" unless contents.include?("./tools/install-autoproj.sh")
+  errors << "native CI must bootstrap through the wrapper" unless contents.include?("./tools/bootstrap.sh --prefix")
+  errors << "native CI must build through the wrapper" unless contents.include?("./tools/install.sh --prefix")
+  errors << "native CI must validate the installed prefix" unless contents.include?("./tools/validate-install.sh --prefix")
+  errors << "native CI must fail on compiler warnings" unless contents.include?("compiler warning budget exceeded")
+  errors << "native CI must scan build logs" unless contents.include?('"$OROCOS_ROCK_PREFIX"/toolchain/log/*-build.log')
+end
+
+if errors.any?
+  warn errors.join("\n")
+  exit 1
+end

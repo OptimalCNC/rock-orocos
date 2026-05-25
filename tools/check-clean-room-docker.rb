@@ -69,9 +69,10 @@ if File.file?(workflow)
   contents = File.read(workflow)
   errors << "workflow must use the Blacksmith x64 runner for Docker builds" unless contents.include?("runs-on: blacksmith-4vcpu-ubuntu-2404")
   errors << "workflow must define a Ubuntu version matrix" unless contents.include?("matrix:") && contents.include?("ubuntu-version:")
-  %w[22.04 24.04 26.04].each do |version|
+  %w[22.04 24.04].each do |version|
     errors << "workflow must build Ubuntu #{version}" unless contents.include?(version)
   end
+  errors << "workflow must not require Ubuntu 26.04 yet" if contents.include?(%("26.04"))
   errors << "workflow must use Blacksmith Docker builder setup" unless contents.include?("useblacksmith/setup-docker-builder@v1")
   errors << "workflow must use Blacksmith build-push action" unless contents.include?("useblacksmith/build-push-action@v2")
   errors << "workflow must pass UBUNTU_VERSION to Docker builds" unless contents.include?("UBUNTU_VERSION=${{ matrix.ubuntu-version }}")

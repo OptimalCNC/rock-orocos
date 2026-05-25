@@ -1,22 +1,6 @@
 name: Clean Room Docker Build
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/clean-room-docker.yml"
-      - ".dockerignore"
-      - "autoproj/**"
-      - "docker/**"
-      - "tools/**"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/clean-room-docker.yml"
-      - ".dockerignore"
-      - "autoproj/**"
-      - "docker/**"
-      - "tools/**"
   workflow_dispatch:
 
 jobs:
@@ -29,7 +13,6 @@ jobs:
         ubuntu-version:
           - "22.04"
           - "24.04"
-          - "26.04"
 
     steps:
       - name: Check out repository

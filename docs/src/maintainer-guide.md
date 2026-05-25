@@ -44,8 +44,13 @@ The normal host prefix is `~/.orocos`. The Docker image uses `/opt/orocos`.
 In Docker builds, root is used only for OS package installation, `ubuntu` user
 creation, and ownership setup. The wrapper scripts run as the `ubuntu` user.
 
-The clean-room Docker workflow builds from standard Ubuntu images. The CI matrix
-currently covers Ubuntu 22.04, 24.04, and 26.04.
+The native CI workflow runs the wrapper scripts in standard Ubuntu containers.
+The required CI matrix currently covers Ubuntu 22.04 and 24.04. Ubuntu 26.04 is
+tracked as the next compatibility target once the CI runtime is available and
+validated.
+
+The clean-room Docker workflow is manual-only. It remains useful for local image
+validation and release-style smoke tests, but it is not the primary PR gate.
 
 The Docker image is multi-stage. Autoproj, source checkouts, build directories,
 and `/opt/orocos-rock` exist only in the builder stage. The final image copies
@@ -96,6 +101,12 @@ ruby tools/check-autoproj-policy.rb
 ruby tools/check-clean-room-docker.rb
 bash -n tools/common.sh tools/bootstrap.sh tools/install.sh tools/export-env.sh tools/validate-install.sh
 bash -n tools/setup.sh tools/docker-build.sh
+```
+
+After changing CI policy, run:
+
+```bash
+ruby tools/check-native-ci.rb
 ```
 
 After a real install, run:

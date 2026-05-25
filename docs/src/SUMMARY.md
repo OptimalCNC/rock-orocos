@@ -8,3 +8,4 @@
   - [Package Policy](./package-policy.md)
   - [Install Contract](./install-contract.md)
   - [Bootstrap Workflow](./bootstrap-workflow.md)
+  - [Modernization Plan](./modernization-plan.md)

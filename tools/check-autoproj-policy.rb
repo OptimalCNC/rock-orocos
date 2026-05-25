@@ -10,6 +10,7 @@ rtt_manifest_path = File.join(root, "autoproj", "manifests", "rtt.xml")
 export_env_path = File.join(root, "tools", "export-env.sh")
 ruby_tools_path = File.join(root, "tools", "install-ruby-tools.sh")
 common_path = File.join(root, "tools", "common.sh")
+native_ci_check_path = File.join(root, "tools", "check-native-ci.rb")
 
 expected_forks = {
   "rtt" => "https://github.com/liufang-robot/rtt.git",
@@ -94,6 +95,8 @@ else
   errors << "tools/install-ruby-tools.sh: must stage metaruby" unless ruby_tools_script.include?("tools/metaruby")
   errors << "tools/install-ruby-tools.sh: must stage orogen" unless ruby_tools_script.include?("toolchain/tools/orogen")
 end
+
+errors << "tools/check-native-ci.rb: missing native CI policy check" unless File.file?(native_ci_check_path)
 
 unless install_script.include?('"$SCRIPT_DIR/install-ruby-tools.sh" --prefix "$PREFIX"')
   errors << "install.sh: must stage Ruby generator tools into the install prefix"
