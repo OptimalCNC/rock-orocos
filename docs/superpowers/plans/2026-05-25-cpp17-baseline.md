@@ -35,7 +35,7 @@
 **Files:**
 - Modify: `toolchain/tools/typelib/CMakeLists.txt`
 
-- [ ] **Step 1: Edit the standard declaration**
+- [x] **Step 1: Edit the standard declaration**
 
 Change:
 
@@ -52,7 +52,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 ```
 
-- [ ] **Step 2: Build Typelib locally**
+- [x] **Step 2: Build Typelib locally**
 
 Run:
 
@@ -62,7 +62,7 @@ Run:
 
 Expected: command exits 0.
 
-- [ ] **Step 3: Check warning budget**
+- [x] **Step 3: Check warning budget**
 
 Run:
 
@@ -72,7 +72,7 @@ rg -n "warning:|deprecated|pragma message" ~/.orocos/toolchain/log/typelib-build
 
 Expected: no matches.
 
-- [ ] **Step 4: Commit in `tools-typelib`**
+- [x] **Step 4: Commit in `tools-typelib`**
 
 ```bash
 git -C toolchain/tools/typelib add CMakeLists.txt
@@ -84,7 +84,7 @@ git -C toolchain/tools/typelib commit -m "Build Typelib as C++17"
 **Files:**
 - Modify: `toolchain/tools/utilmm/CMakeLists.txt`
 
-- [ ] **Step 1: Add standard declaration after `project(Util--)`**
+- [x] **Step 1: Add standard declaration after `project(Util--)`**
 
 ```cmake
 set(CMAKE_CXX_STANDARD 17)
@@ -92,7 +92,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 ```
 
-- [ ] **Step 2: Build utilmm locally**
+- [x] **Step 2: Build utilmm locally**
 
 Run:
 
@@ -102,7 +102,7 @@ Run:
 
 Expected: command exits 0.
 
-- [ ] **Step 3: Check warning budget**
+- [x] **Step 3: Check warning budget**
 
 Run:
 
@@ -112,7 +112,7 @@ rg -n "warning:|deprecated|pragma message" ~/.orocos/toolchain/log/utilmm-build.
 
 Expected: no matches.
 
-- [ ] **Step 4: Commit in `utilmm`**
+- [x] **Step 4: Commit in `utilmm`**
 
 ```bash
 git -C toolchain/tools/utilmm add CMakeLists.txt
@@ -126,7 +126,7 @@ git -C toolchain/tools/utilmm commit -m "Build utilmm as C++17"
 **Files:**
 - Modify: `toolchain/tools/rtt/CMakeLists.txt`
 
-- [ ] **Step 1: Add standard declaration after `PROJECT(orocos-rtt)`**
+- [x] **Step 1: Add standard declaration after `PROJECT(orocos-rtt)`**
 
 ```cmake
 set(CMAKE_CXX_STANDARD 17)
@@ -134,7 +134,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 ```
 
-- [ ] **Step 2: Build RTT and dependent bridges locally**
+- [x] **Step 2: Build RTT and dependent bridges locally**
 
 Run:
 
@@ -144,7 +144,7 @@ Run:
 
 Expected: command exits 0.
 
-- [ ] **Step 3: Check warning budget**
+- [x] **Step 3: Check warning budget**
 
 Run:
 
@@ -154,7 +154,7 @@ rg -n "warning:|deprecated|pragma message" ~/.orocos/toolchain/log/rtt-build.log
 
 Expected: no matches.
 
-- [ ] **Step 4: Commit in `rtt`**
+- [x] **Step 4: Commit in `rtt`**
 
 ```bash
 git -C toolchain/tools/rtt add CMakeLists.txt
@@ -166,7 +166,7 @@ git -C toolchain/tools/rtt commit -m "Build RTT as C++17"
 **Files:**
 - Modify: `toolchain/tools/ocl/CMakeLists.txt`
 
-- [ ] **Step 1: Add standard declaration after `PROJECT(ocl)`**
+- [x] **Step 1: Add standard declaration after `PROJECT(ocl)`**
 
 ```cmake
 set(CMAKE_CXX_STANDARD 17)
@@ -174,7 +174,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 ```
 
-- [ ] **Step 2: Build OCL locally**
+- [x] **Step 2: Build OCL locally**
 
 Run:
 
@@ -184,7 +184,7 @@ Run:
 
 Expected: command exits 0.
 
-- [ ] **Step 3: Check warning budget**
+- [x] **Step 3: Check warning budget**
 
 Run:
 
@@ -194,7 +194,7 @@ rg -n "warning:|deprecated|pragma message" ~/.orocos/toolchain/log/ocl-build.log
 
 Expected: no matches.
 
-- [ ] **Step 4: Commit in `ocl`**
+- [x] **Step 4: Commit in `ocl`**
 
 ```bash
 git -C toolchain/tools/ocl add CMakeLists.txt
