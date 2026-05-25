@@ -36,6 +36,7 @@ jobs:
     env:
       DEBIAN_FRONTEND: noninteractive
       OROCOS_ROCK_PREFIX: /opt/orocos
+      SHELL: /bin/bash
 
     defaults:
       run:
@@ -47,9 +48,12 @@ jobs:
           set -euo pipefail
           apt-get update
           apt-get install -y --no-install-recommends \
+            build-essential \
             ca-certificates \
+            cmake \
             curl \
             git \
+            libffi-dev \
             ripgrep \
             ruby \
             ruby-dev \

@@ -17,6 +17,10 @@ else
   end
   errors << "native CI must not require Ubuntu 26.04 yet" if contents.include?(%("26.04"))
   errors << "native CI must use standard Ubuntu containers" unless contents.include?("image: ubuntu:${{ matrix.ubuntu-version }}")
+  errors << "native CI must export SHELL for Autoproj" unless contents.include?("SHELL: /bin/bash")
+  errors << "native CI must install build-essential for native Ruby gems and package builds" unless contents.include?("build-essential")
+  errors << "native CI must install cmake before Autoproj build" unless contents.include?("cmake")
+  errors << "native CI must install libffi headers for the ffi Ruby gem" unless contents.include?("libffi-dev")
   errors << "native CI must install Ruby development headers" unless contents.include?("ruby-dev")
   errors << "native CI must install ripgrep for warning checks" unless contents.include?("ripgrep")
   errors << "native CI must install Autoproj through the wrapper" unless contents.include?("./tools/install-autoproj.sh")
