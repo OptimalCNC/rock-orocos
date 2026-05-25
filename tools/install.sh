@@ -65,6 +65,9 @@ cd "$OROCOS_ROCK_ROOT"
 orocos_rock_info "Updating Autoproj sources"
 orocos_rock_autoproj update --no-interactive --no-osdeps --no-config --no-bundler --no-autoproj "${FORKED_PACKAGES[@]}"
 
+orocos_rock_info "Checking C++17 package policy"
+ruby "$SCRIPT_DIR/check-cpp17-policy.rb"
+
 orocos_rock_info "Installing source-declared operating-system dependencies"
 orocos_rock_autoproj osdeps --no-interactive
 

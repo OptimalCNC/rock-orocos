@@ -64,6 +64,15 @@ elsif build && source_update > build
   errors << "install.sh: Autoproj source update must run before build"
 end
 
+cpp17_check = install_script.index('ruby "$SCRIPT_DIR/check-cpp17-policy.rb"')
+if cpp17_check.nil?
+  errors << "install.sh: missing C++17 package policy check after source update"
+elsif source_update && cpp17_check < source_update
+  errors << "install.sh: C++17 package policy check must run after Autoproj source update"
+elsif build && cpp17_check > build
+  errors << "install.sh: C++17 package policy check must run before build"
+end
+
 if osdeps.nil?
   errors << "install.sh: missing Autoproj osdeps refresh after source update"
 elsif source_update && osdeps < source_update
