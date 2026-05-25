@@ -211,7 +211,7 @@ git -C toolchain/tools/ocl commit -m "Build OCL as C++17"
 - Modify: `toolchain/tools/log4cpp/src/*Factory.cpp`
 - Modify: log4cpp appender/layout factory source files that return `std::auto_ptr`
 
-- [ ] **Step 1: Audit public `std::auto_ptr` usage**
+- [x] **Step 1: Audit public `std::auto_ptr` usage**
 
 Run:
 
@@ -221,7 +221,7 @@ rg -n "std::auto_ptr" toolchain/tools/log4cpp/include toolchain/tools/log4cpp/sr
 
 Expected: current ownership API locations are listed.
 
-- [ ] **Step 2: Decide compatibility policy**
+- [x] **Step 2: Decide compatibility policy**
 
 Use `std::unique_ptr` internally. For public API, either:
 
@@ -230,7 +230,7 @@ Use `std::unique_ptr` internally. For public API, either:
 
 Do not mix both approaches in one commit.
 
-- [ ] **Step 3: Build log4cpp locally**
+- [x] **Step 3: Build log4cpp locally**
 
 Run:
 
@@ -240,7 +240,7 @@ Run:
 
 Expected: command exits 0.
 
-- [ ] **Step 4: Add C++17 standard declaration**
+- [x] **Step 4: Add C++17 standard declaration**
 
 Modify `toolchain/tools/log4cpp/CMakeLists.txt` after `PROJECT ( LOG4CPP )`:
 
@@ -250,7 +250,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 ```
 
-- [ ] **Step 5: Rebuild and check warning budget**
+- [x] **Step 5: Rebuild and check warning budget**
 
 Run:
 
@@ -261,7 +261,7 @@ rg -n "warning:|deprecated|pragma message" ~/.orocos/toolchain/log/log4cpp-build
 
 Expected: no matches.
 
-- [ ] **Step 6: Commit in `log4cpp`**
+- [x] **Step 6: Commit in `log4cpp`**
 
 ```bash
 git -C toolchain/tools/log4cpp add CMakeLists.txt include src
