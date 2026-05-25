@@ -34,6 +34,9 @@ else
   errors << "native CI must validate the installed prefix" unless contents.include?("./tools/validate-install.sh --prefix")
   errors << "native CI must fail on compiler warnings" unless contents.include?("compiler warning budget exceeded")
   errors << "native CI must scan build logs" unless contents.include?('"$OROCOS_ROCK_PREFIX"/toolchain/log/*-build.log')
+  errors << "native CI must upload diagnostic logs on failure" unless contents.include?("actions/upload-artifact@v6") && contents.include?("if: failure()")
+  errors << "native CI must upload package build logs" unless contents.include?("toolchain/log/*.log")
+  errors << "native CI must upload Autoproj configuration/log context" unless contents.include?(".autoproj/config.yml") && contents.include?(".autoproj/remotes/**/*.autobuild")
 end
 
 if errors.any?

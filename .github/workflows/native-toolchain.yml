@@ -105,3 +105,18 @@ jobs:
             echo "compiler warning budget exceeded" >&2
             exit 1
           fi
+
+      - name: Upload Autoproj and package logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-toolchain-logs-ubuntu-${{ matrix.ubuntu-version }}
+          if-no-files-found: ignore
+          path: |
+            .autoproj/config.yml
+            .autoproj/env.yml
+            .autoproj/installation-manifest
+            .autoproj/remotes/**/*.autobuild
+            .autoproj/remotes/**/*.osdeps
+            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*.log
+            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*-stamp

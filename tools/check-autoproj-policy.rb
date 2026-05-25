@@ -8,6 +8,7 @@ install_path = File.join(root, "tools", "install.sh")
 setup_path = File.join(root, "tools", "setup.sh")
 rtt_manifest_path = File.join(root, "autoproj", "manifests", "rtt.xml")
 export_env_path = File.join(root, "tools", "export-env.sh")
+validate_install_path = File.join(root, "tools", "validate-install.sh")
 ruby_tools_path = File.join(root, "tools", "install-ruby-tools.sh")
 common_path = File.join(root, "tools", "common.sh")
 native_ci_check_path = File.join(root, "tools", "check-native-ci.rb")
@@ -47,6 +48,7 @@ setup_script = File.file?(setup_path) ? File.read(setup_path) : nil
 common_script = File.read(common_path)
 overrides_script = File.read(File.join(root, "autoproj", "overrides.rb"))
 export_env_script = File.read(export_env_path)
+validate_install_script = File.read(validate_install_path)
 
 expected_forks.each_key do |package|
   refreshes_package = install_script.include?("FORKED_PACKAGES=(") &&
@@ -97,6 +99,19 @@ end
 unless export_env_script.include?('GEM_HOME="\${GEM_HOME:-') &&
        export_env_script.include?('toolchain/gems')
   errors << "tools/export-env.sh: dev-env.sh must activate the installed Ruby gem home"
+end
+
+unless validate_install_script.include?("deployer-gnulinux --version") &&
+       validate_install_script.include?("OROCOS Toolchain version")
+  errors << "tools/validate-install.sh: must smoke-test deployer-gnulinux"
+end
+
+unless validate_install_script.include?("orogen --help")
+  errors << "tools/validate-install.sh: must smoke-test orogen"
+end
+
+unless validate_install_script.include?("typegen --help")
+  errors << "tools/validate-install.sh: must smoke-test typegen"
 end
 
 unless File.file?(ruby_tools_path)
