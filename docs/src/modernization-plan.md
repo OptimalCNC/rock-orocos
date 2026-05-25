@@ -21,6 +21,7 @@ baseline.
 Work items:
 
 - declare C++17 consistently in maintained CMake packages
+- default generated oroGen projects and typekits to `c++17`
 - remove C++03/C++11 compatibility code only after CI proves it is unused
 - replace removed or deprecated standard library APIs such as `std::auto_ptr`
 - prefer standard library facilities over Boost when C++17 has a direct match
@@ -29,6 +30,8 @@ Work items:
 Gate:
 
 - maintained packages build on Ubuntu 22.04 and 24.04
+- `tools/check-cpp17-policy.rb` verifies maintained package CMake files and
+  oroGen defaults
 - C++ compiler logs have no warning/deprecation matches
 - installed `env.sh` and `dev-env.sh` remain backward compatible
 

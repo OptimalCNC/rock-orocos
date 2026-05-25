@@ -33,3 +33,13 @@ overrides:
     type: git
     url: https://github.com/liufang-robot/utilmm.git
     branch: MetaNC
+
+  - rtt_typelib:
+    type: git
+    url: https://github.com/liufang-robot/tools-rtt_typelib.git
+    branch: MetaNC
+
+  - stdint_typekit:
+    type: git
+    url: https://github.com/liufang-robot/stdint_typekit.git
+    branch: MetaNC

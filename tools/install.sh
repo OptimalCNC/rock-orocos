@@ -25,7 +25,7 @@ USAGE
 PREFIX="$OROCOS_ROCK_DEFAULT_PREFIX"
 EXPORT_ENV=1
 BUILD_ARGS=()
-FORKED_PACKAGES=(rtt ocl log4cpp orogen typelib utilmm)
+FORKED_PACKAGES=(rtt ocl log4cpp orogen typelib utilmm rtt_typelib stdint_typekit)
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -64,6 +64,9 @@ cd "$OROCOS_ROCK_ROOT"
 
 orocos_rock_info "Updating Autoproj sources"
 orocos_rock_autoproj update --no-interactive --no-osdeps --no-config --no-bundler --no-autoproj "${FORKED_PACKAGES[@]}"
+
+orocos_rock_info "Checking C++17 package policy"
+ruby "$SCRIPT_DIR/check-cpp17-policy.rb"
 
 orocos_rock_info "Installing source-declared operating-system dependencies"
 orocos_rock_autoproj osdeps --no-interactive
