@@ -21,8 +21,15 @@ on:
 
 jobs:
   build:
-    name: Build MetaNC-Based Toolchain Image
+    name: Build Ubuntu ${{ matrix.ubuntu-version }} Toolchain Image
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version:
+          - "22.04"
+          - "24.04"
+          - "26.04"
 
     steps:
       - name: Check out repository
@@ -36,14 +43,16 @@ jobs:
         with:
           context: .
           file: docker/orocos-rock/Dockerfile
+          build-args: |
+            UBUNTU_VERSION=${{ matrix.ubuntu-version }}
           pull: true
           push: false
           load: true
-          tags: orocos-rock:metanc-latest
+          tags: orocos-rock:ubuntu-${{ matrix.ubuntu-version }}
 
       - name: Check development environment
         run: |
-          docker run --rm --user ubuntu orocos-rock:metanc-latest bash -lc '
+          docker run --rm --user ubuntu orocos-rock:ubuntu-${{ matrix.ubuntu-version }} bash -lc '
             set -euo pipefail
             test "$(whoami)" = "ubuntu"
             test ! -e /opt/orocos-rock

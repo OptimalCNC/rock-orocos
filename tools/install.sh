@@ -25,7 +25,7 @@ USAGE
 PREFIX="$OROCOS_ROCK_DEFAULT_PREFIX"
 EXPORT_ENV=1
 BUILD_ARGS=()
-FORKED_PACKAGES=(rtt ocl log4cpp)
+FORKED_PACKAGES=(rtt ocl log4cpp orogen typelib utilmm)
 
 while [ "$#" -gt 0 ]; do
     case "$1" in

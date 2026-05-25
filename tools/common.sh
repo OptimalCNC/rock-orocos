@@ -126,7 +126,8 @@ orocos_rock_autoproj() {
         *:"$user_gem_home":*) ;;
         *) export GEM_PATH="$user_gem_home:$GEM_PATH" ;;
     esac
-    ruby -e 'gem "facets", "< 3.2"; load Gem.bin_path("autoproj", "autoproj")' -- "$@"
+    BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$OROCOS_ROCK_ROOT/.autoproj/Gemfile}" \
+        ruby -e 'gem "facets", "< 3.2"; load Gem.bin_path("autoproj", "autoproj")' -- "$@"
 }
 
 orocos_rock_source_workspace_env() {

@@ -1,19 +1,14 @@
-ARG METANC_BASE_IMAGE=optimalcnc/metanc:base
+ARG UBUNTU_VERSION=24.04
 ARG OROCOS_ROCK_PREFIX=/opt/orocos
 
-FROM ${METANC_BASE_IMAGE} AS builder
+FROM ubuntu:${UBUNTU_VERSION} AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG OROCOS_ROCK_PREFIX
 
-USER root
-
 ENV LANG=C.UTF-8
 ENV OROCOS_ROCK_PREFIX=${OROCOS_ROCK_PREFIX}
 ENV SHELL=/bin/bash
-# The MetaNC image exports vcpkg's CMake toolchain for MetaNC builds. Keep
-# Orocos/Rock package builds on their own CMake discovery path.
-ENV CMAKE_TOOLCHAIN_FILE=
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -42,8 +37,13 @@ RUN apt-get update && \
         python3-pip \
         ruby \
         ruby-dev \
+        sudo \
         xz-utils && \
     rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/bash ubuntu && \
+    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
+    chmod 0440 /etc/sudoers.d/ubuntu
 
 WORKDIR /opt/orocos-rock
 COPY --chown=ubuntu:ubuntu . .
@@ -60,12 +60,10 @@ RUN ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
 RUN ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
 RUN ./tools/validate-install.sh --prefix "$OROCOS_ROCK_PREFIX"
 
-FROM ${METANC_BASE_IMAGE} AS final
+FROM ubuntu:${UBUNTU_VERSION} AS final
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG OROCOS_ROCK_PREFIX
-
-USER root
 
 ENV LANG=C.UTF-8
 ENV OROCOS_ROCK_PREFIX=${OROCOS_ROCK_PREFIX}
@@ -96,6 +94,8 @@ RUN apt-get update && \
         ruby \
         ruby-dev && \
     rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/bash ubuntu
 
 COPY --from=builder --chown=ubuntu:ubuntu ${OROCOS_ROCK_PREFIX} ${OROCOS_ROCK_PREFIX}
 

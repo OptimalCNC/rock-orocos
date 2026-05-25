@@ -12,9 +12,12 @@ ruby_tools_path = File.join(root, "tools", "install-ruby-tools.sh")
 common_path = File.join(root, "tools", "common.sh")
 
 expected_forks = {
-  "rtt" => "https://github.com/OptimalCNC/rtt.git",
-  "ocl" => "https://github.com/OptimalCNC/ocl.git",
-  "log4cpp" => "https://github.com/OptimalCNC/log4cpp.git"
+  "rtt" => "https://github.com/liufang-robot/rtt.git",
+  "ocl" => "https://github.com/liufang-robot/ocl.git",
+  "log4cpp" => "https://github.com/liufang-robot/log4cpp.git",
+  "orogen" => "https://github.com/liufang-robot/tools-orogen.git",
+  "typelib" => "https://github.com/liufang-robot/tools-typelib.git",
+  "utilmm" => "https://github.com/liufang-robot/utilmm.git"
 }
 
 overrides = YAML.safe_load_file(overrides_path).fetch("overrides", [])
@@ -40,6 +43,13 @@ setup_script = File.file?(setup_path) ? File.read(setup_path) : nil
 common_script = File.read(common_path)
 overrides_script = File.read(File.join(root, "autoproj", "overrides.rb"))
 export_env_script = File.read(export_env_path)
+
+expected_forks.each_key do |package|
+  refreshes_package = install_script.include?("FORKED_PACKAGES=(") &&
+                      install_script.match?(/FORKED_PACKAGES=\([^)]*\b#{Regexp.escape(package)}\b[^)]*\)/m)
+  errors << "install.sh: must refresh maintained fork #{package}" unless refreshes_package
+end
+
 source_update = install_script.index("orocos_rock_autoproj update")
 osdeps = install_script.index("orocos_rock_autoproj osdeps")
 build = install_script.index("orocos_rock_autoproj build")
@@ -106,6 +116,10 @@ end
 unless common_script.include?('.autoproj/Gemfile') &&
        common_script.include?('gem "autoproj", ">= 2.18.0"')
   errors << "tools/common.sh: must create .autoproj/Gemfile for Autoproj bundler osdeps"
+end
+
+unless common_script.include?('BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$OROCOS_ROCK_ROOT/.autoproj/Gemfile}"')
+  errors << "tools/common.sh: must provide BUNDLE_GEMFILE while invoking Autoproj"
 end
 
 unless common_script.include?('.autoproj/bin/bundle') &&

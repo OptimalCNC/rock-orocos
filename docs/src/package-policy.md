@@ -20,9 +20,9 @@ Everything else starts excluded unless a concrete MetaNC need appears.
 | `rtt` | Orocos runtime | MetaNC-maintained fork |
 | `ocl` | deployer and OCL compatibility | MetaNC-maintained fork |
 | `log4cpp` | runtime dependency used by the stack | MetaNC-maintained fork |
-| `orogen` | component and typekit generation | Upstream by default, fork only when needed |
-| `typelib` | generator type support | Upstream |
-| `utilmm` | generator/runtime support | Upstream |
+| `orogen` | component and typekit generation | MetaNC-maintained fork |
+| `typelib` | generator type support | MetaNC-maintained fork |
+| `utilmm` | generator/runtime support | MetaNC-maintained fork |
 | `utilrb` | autoproj and generator support | Upstream |
 | `rtt_typelib` | RTT and Typelib bridge | Upstream |
 | `stdint_typekit` | likely needed for fixed-width types | Upstream |
@@ -58,16 +58,13 @@ Initial fork set:
 - `rtt`
 - `ocl`
 - `log4cpp`
-
-Conditional fork:
-
-- `orogen` only if MetaNC carries patches that upstream cannot currently replace
+- `orogen`
+- `typelib`
+- `utilmm`
 
 Upstream by default:
 
 - `rtt_geometry`
-- `typelib`
-- `utilmm`
 - `utilrb`
 - `rtt_typelib`
 - `stdint_typekit`

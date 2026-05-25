@@ -6,20 +6,30 @@
 overrides:
   - rtt:
     type: git
-    url: https://github.com/OptimalCNC/rtt.git
+    url: https://github.com/liufang-robot/rtt.git
     branch: MetaNC
 
   - ocl:
     type: git
-    url: https://github.com/OptimalCNC/ocl.git
+    url: https://github.com/liufang-robot/ocl.git
     branch: MetaNC
 
   - log4cpp:
     type: git
-    url: https://github.com/OptimalCNC/log4cpp.git
+    url: https://github.com/liufang-robot/log4cpp.git
     branch: MetaNC
 
   - orogen:
     type: git
-    url: https://github.com/OptimalCNC/tools-orogen.git
+    url: https://github.com/liufang-robot/tools-orogen.git
+    branch: MetaNC
+
+  - typelib:
+    type: git
+    url: https://github.com/liufang-robot/tools-typelib.git
+    branch: MetaNC
+
+  - utilmm:
+    type: git
+    url: https://github.com/liufang-robot/utilmm.git
     branch: MetaNC
