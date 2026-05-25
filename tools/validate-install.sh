@@ -45,6 +45,10 @@ orocos_rock_require_file "$PREFIX/dev-env.sh"
     # shellcheck disable=SC1090
     . "$PREFIX/env.sh"
     orocos_rock_require_command deployer-gnulinux
+    deployer_version_output="$(deployer-gnulinux --version 2>&1 || true)"
+    if ! grep -q "OROCOS Toolchain version" <<<"$deployer_version_output"; then
+        orocos_rock_die "deployer-gnulinux smoke check failed"
+    fi
 )
 
 (
@@ -52,6 +56,8 @@ orocos_rock_require_file "$PREFIX/dev-env.sh"
     . "$PREFIX/dev-env.sh"
     orocos_rock_require_command orogen
     orocos_rock_require_command typegen
+    orogen --help >/dev/null
+    typegen --help >/dev/null
 )
 
 orocos_rock_info "Validated Orocos/Rock install prefix: $PREFIX"

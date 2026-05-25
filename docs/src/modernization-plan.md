@@ -92,6 +92,22 @@ Gate:
   pass in CI
 - warning scan passes for `*-build.log`
 - policy checks pass before install work starts
+- failure logs from Autoproj and package builds are uploaded as CI artifacts
+- installed runtime smoke checks prove `deployer-gnulinux`, `orogen`, and
+  `typegen` are launchable from the exported environments
+
+Package unit-test policy:
+
+- keep the native install matrix focused on build, install, smoke, and warning
+  gates
+- add package unit tests in a separate workflow first, with log artifacts and
+  non-required status until the legacy test behavior is understood
+- start with lower-risk CTest packages such as `utilmm`, `log4cpp`, and
+  Typelib C++ tests
+- add `rtt` and `ocl` tests after separating core tests from CORBA, mqueue, and
+  runtime-sensitive tests
+- run oroGen Ruby tests only after its test dependencies, including
+  `flexmock/minitest`, are explicitly staged in CI
 
 ## 5. Memory Issues
 
