@@ -31,6 +31,11 @@ else
   errors << "native CI must run Autoproj policy check" unless contents.include?("ruby tools/check-autoproj-policy.rb")
   errors << "native CI must run C++17 policy check" unless contents.include?("ruby tools/check-cpp17-policy.rb")
   errors << "native CI must bootstrap through the wrapper" unless contents.include?("./tools/bootstrap.sh --prefix")
+  policy_index = contents.index("ruby tools/check-cpp17-policy.rb")
+  bootstrap_index = contents.index("./tools/bootstrap.sh --prefix")
+  if policy_index && bootstrap_index && policy_index < bootstrap_index
+    errors << "native CI must run C++17 policy check after bootstrap creates package checkouts"
+  end
   errors << "native CI must build through the wrapper" unless contents.include?("./tools/install.sh --prefix")
   errors << "native CI must validate the installed prefix" unless contents.include?("./tools/validate-install.sh --prefix")
   errors << "native CI must fail on compiler warnings" unless contents.include?("compiler warning budget exceeded")

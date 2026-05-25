@@ -87,12 +87,13 @@ jobs:
         run: ./tools/install-autoproj.sh
 
       - name: Check repository policy
-        run: |
-          ruby tools/check-autoproj-policy.rb
-          ruby tools/check-cpp17-policy.rb
+        run: ruby tools/check-autoproj-policy.rb
 
       - name: Bootstrap workspace
         run: ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
+
+      - name: Check C++17 package policy
+        run: ruby tools/check-cpp17-policy.rb
 
       - name: Build and install toolchain
         run: ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
