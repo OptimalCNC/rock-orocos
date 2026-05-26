@@ -58,13 +58,23 @@ ignored_source_files = %w[
   orocos.log
 ]
 
-Find.find(root).each do |path|
-  relative = path.delete_prefix("#{root}/")
-  if File.directory?(path) && ignored_source_dirs.include?(relative)
-    Find.prune
-    next
-  end
+if File.directory?(File.join(root, ".git"))
+  source_files = `git -C "#{root}" ls-files --cached --others --exclude-standard`.split("\n")
+else
+  source_files = []
+  Find.find(root) do |path|
+    relative = path.delete_prefix("#{root}/")
+    if File.directory?(path) && ignored_source_dirs.include?(relative)
+      Find.prune
+      next
+    end
 
+    source_files << relative if File.file?(path)
+  end
+end
+
+source_files.each do |relative|
+  path = File.join(root, relative)
   next unless File.file?(path)
   next if ignored_source_files.include?(relative)
   next if relative.end_with?(".log")
@@ -73,7 +83,7 @@ Find.find(root).each do |path|
     errors << "#{relative}: private project name must not appear in public source path"
   end
 
-  File.readlines(path).each_with_index do |line, index|
+  File.readlines(path, encoding: "UTF-8", invalid: :replace, undef: :replace).each_with_index do |line, index|
     errors << "#{relative}:#{index + 1}: private project reference must not appear in public source" if line.match?(private_reference_pattern)
   end
 end
