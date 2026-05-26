@@ -20,7 +20,7 @@ Package tests:
   rtt-core    Build and run stable RTT core/task CTest cases
   ocl-basic   Build and run OCL timer/taskbrowser CTest cases
   ocl-integration
-               Build and run stable OCL logging/reporting CTest cases
+               Build and run stable OCL logging/reporting/state-machine CTest cases
 
 Options:
   --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_ROCK_PREFIX or ~/.orocos
@@ -167,15 +167,15 @@ case "$PACKAGE_TEST" in
         orocos_rock_info "Configuring OCL integration tests"
         reconfigure toolchain/tools/ocl toolchain/tools/ocl/build \
             -DBUILD_TESTS=ON \
-            -DBUILD_TIMER_TEST=OFF \
+            -DBUILD_TIMER_TEST=ON \
             -DBUILD_TASKBROWSER_TEST=OFF \
             -DBUILD_DEPLOYMENT_TEST=OFF \
             -DBUILD_LOGGING_TEST=ON \
             -DBUILD_REPORTING_TEST=ON
         orocos_rock_info "Building OCL integration tests"
-        build_targets toolchain/tools/ocl/build testlogging tcpreport ncreport
+        build_targets toolchain/tools/ocl/build testlogging report tcpreport ncreport testWithStateMachine
         orocos_rock_info "Running OCL integration CTest subset"
-        run_ctest toolchain/tools/ocl/build '^(testlogging|tcpreport|ncreport)$'
+        run_ctest toolchain/tools/ocl/build '^(testlogging|report|tcpreport|ncreport|testWithStateMachine)$'
         ;;
     *)
         usage >&2
