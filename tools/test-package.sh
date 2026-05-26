@@ -17,7 +17,7 @@ Package tests:
   utilmm       Build utilmm_testsuite and run CTest Suite
   log4cpp     Build and run log4cpp CTest cases
   typelib-cxx Build typelib_testsuite and run C++ CTest cases only
-  rtt-core    Build and run stable RTT core/task CTest cases
+  rtt-core    Build and run stable RTT core CTest cases and task Boost cases
   ocl-basic   Build and run OCL timer/taskbrowser CTest cases
 
 Options:
@@ -97,6 +97,15 @@ run_ctest() {
     )
 }
 
+run_boost_test_case() {
+    executable="$1"
+    test_case="$2"
+
+    timeout "$PACKAGE_TEST_TIMEOUT" "$executable" \
+        --run_test="$test_case" \
+        --catch_system_errors=no
+}
+
 source_installed_env
 cd "$OROCOS_ROCK_ROOT"
 
@@ -145,7 +154,11 @@ case "$PACKAGE_TEST" in
         orocos_rock_info "Building RTT core tests"
         build_targets toolchain/tools/rtt/build main-test list-test core-test task-test
         orocos_rock_info "Running RTT core CTest subset"
-        run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test|task-test)$'
+        run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test)$'
+        orocos_rock_info "Running RTT stable task Boost test subset"
+        run_boost_test_case toolchain/tools/rtt/build/tests/task-test 'ActivitiesTestSuite/testDefaultWaitPeriodPolicy'
+        run_boost_test_case toolchain/tools/rtt/build/tests/task-test 'ActivitiesTestSuite/testAbsoluteWaitPeriodPolicy'
+        run_boost_test_case toolchain/tools/rtt/build/tests/task-test 'ActivitiesTestSuite/testRelativeWaitPeriodPolicy'
         ;;
     ocl-basic)
         orocos_rock_info "Configuring OCL basic tests"
