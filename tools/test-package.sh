@@ -169,13 +169,13 @@ case "$PACKAGE_TEST" in
             -DBUILD_TESTS=ON \
             -DBUILD_TIMER_TEST=ON \
             -DBUILD_TASKBROWSER_TEST=OFF \
-            -DBUILD_DEPLOYMENT_TEST=OFF \
+            -DBUILD_DEPLOYMENT_TEST=ON \
             -DBUILD_LOGGING_TEST=ON \
             -DBUILD_REPORTING_TEST=ON
         orocos_rock_info "Building OCL integration tests"
-        build_targets toolchain/tools/ocl/build testlogging report tcpreport ncreport testWithStateMachine
+        build_targets toolchain/tools/ocl/build deploy testlogging report tcpreport ncreport testWithStateMachine
         orocos_rock_info "Running OCL integration CTest subset"
-        run_ctest toolchain/tools/ocl/build '^(testlogging|report|tcpreport|ncreport|testWithStateMachine)$'
+        run_ctest toolchain/tools/ocl/build '^(deploy|testlogging|report|tcpreport|ncreport|testWithStateMachine)$'
         ;;
     *)
         usage >&2
