@@ -15,7 +15,7 @@ else
   errors << "package tests must start on Ubuntu 22.04 only" unless contents.include?("image: ubuntu:22.04")
   errors << "package tests must be non-required while experimental" unless contents.include?("continue-on-error: true")
   errors << "package tests must define a package-test matrix" unless contents.include?("package-test:")
-  %w[utilmm log4cpp typelib-cxx rtt-core ocl-basic].each do |package_test|
+  %w[utilmm log4cpp typelib-cxx rtt-core ocl-basic ocl-integration].each do |package_test|
     errors << "package tests must include #{package_test}" unless contents.include?("- #{package_test}")
   end
   errors << "package tests must run the shared package test wrapper" unless contents.include?("./tools/test-package.sh")

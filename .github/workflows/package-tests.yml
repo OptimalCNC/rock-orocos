@@ -25,6 +25,7 @@ jobs:
           - typelib-cxx
           - rtt-core
           - ocl-basic
+          - ocl-integration
 
     env:
       DEBIAN_FRONTEND: noninteractive
