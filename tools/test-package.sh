@@ -17,7 +17,7 @@ Package tests:
   utilmm       Build utilmm_testsuite and run CTest Suite
   log4cpp     Build and run log4cpp CTest cases
   typelib-cxx Build typelib_testsuite and run C++ CTest cases only
-  rtt-core    Build and run stable RTT core CTest cases
+  rtt-core    Build and run stable RTT core/task CTest cases
   ocl-basic   Build and run OCL timer/taskbrowser CTest cases
 
 Options:
@@ -143,9 +143,9 @@ case "$PACKAGE_TEST" in
         orocos_rock_info "Configuring RTT core tests"
         reconfigure toolchain/tools/rtt toolchain/tools/rtt/build -DENABLE_TESTS=ON -DBUILD_TESTING=ON
         orocos_rock_info "Building RTT core tests"
-        build_targets toolchain/tools/rtt/build main-test list-test core-test
+        build_targets toolchain/tools/rtt/build main-test list-test core-test task-test
         orocos_rock_info "Running RTT core CTest subset"
-        run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test)$'
+        run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test|task-test)$'
         ;;
     ocl-basic)
         orocos_rock_info "Configuring OCL basic tests"
