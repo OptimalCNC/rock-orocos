@@ -59,6 +59,7 @@ jobs:
             libcppunit-dev \
             libffi-dev \
             libncurses5-dev \
+            libnetcdf-dev \
             libomniorb4-dev \
             libreadline-dev \
             libxml2-dev \
