@@ -14,6 +14,7 @@ Package test steps now return their real exit status.
 | `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Passes locally: 2/2 CTest cases. |
 | `rtt-core` | `main-test`, `list-test`, `core-test`, and full `task-test` | Passes locally after making RTT task thread tests scheduler-capability aware in `liufang-robot/rtt` `MetaNC` merge commit `6ffd923`: 4/4 selected CTest cases. CORBA and mqueue tests stay out of this subset. |
 | `ocl-basic` | `timer` and `taskb` | Passes locally after restoring OCL standalone CTest macros in `liufang-robot/ocl` `MetaNC` commit `a1d2b78`: 2/2 CTest cases. Deployment, reporting, and logging tests stay out of this subset. |
+| `ocl-integration` | `testlogging`, `tcpreport`, and `ncreport` | Passes locally: 3/3 CTest cases. The interactive console `report`, deployment `deploy`, and timer state-machine `testWithStateMachine` tests stay out of this subset pending service/plugin loading and deployment fixture fixes. |
 
 Deferred test groups:
 
@@ -21,5 +22,5 @@ Deferred test groups:
   are explicitly staged.
 - RTT CORBA, mqueue, and transport-sensitive tests, until their runtime
   assumptions are documented.
-- Broader OCL integration tests, until their external dependency and runtime
-  assumptions are documented.
+- OCL `deploy`, `report`, and `testWithStateMachine`, until their service/plugin
+  loading and deployment fixture assumptions are fixed or documented.
