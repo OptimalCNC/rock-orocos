@@ -71,6 +71,18 @@ unless export_env_script.include?('CMAKE_PREFIX_PATH "\$OROCOS_ROCK_PREFIX/toolc
   errors << "tools/export-env.sh: env.sh must prepend the installed toolchain prefix"
 end
 
+root_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_ROCK_PREFIX/lib"')
+toolchain_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_ROCK_PREFIX/toolchain/lib"')
+if root_lib && toolchain_lib && root_lib > toolchain_lib
+  errors << "tools/export-env.sh: toolchain libraries must take precedence over root prefix libraries"
+end
+
+root_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_ROCK_PREFIX/lib/pkgconfig"')
+toolchain_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_ROCK_PREFIX/toolchain/lib/pkgconfig"')
+if root_pkg_config && toolchain_pkg_config && root_pkg_config > toolchain_pkg_config
+  errors << "tools/export-env.sh: toolchain pkg-config metadata must take precedence over root prefix metadata"
+end
+
 unless export_env_script.include?('GEM_HOME="\${GEM_HOME:-') &&
        export_env_script.include?('toolchain/gems')
   errors << "tools/export-env.sh: dev-env.sh must activate the installed Ruby gem home"
