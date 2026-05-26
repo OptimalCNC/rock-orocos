@@ -65,7 +65,7 @@ Autoproj workspace.
 
 | Script | Purpose | Variables it sets or prepends |
 |---|---|---|
-| `env.sh` | Runtime environment for deployer and installed components | `OROCOS_ROCK_PREFIX`, `PATH`, `LD_LIBRARY_PATH`, `CMAKE_PREFIX_PATH`, `PKG_CONFIG_PATH`, `RTT_COMPONENT_PATH`, `OROCOS_TARGET` |
+| `env.sh` | Runtime environment for deployer and installed components | `OROCOS_PREFIX`, `PATH`, `LD_LIBRARY_PATH`, `CMAKE_PREFIX_PATH`, `PKG_CONFIG_PATH`, `RTT_COMPONENT_PATH`, `OROCOS_TARGET` |
 | `dev-env.sh` | Development environment for MetaNC builds and generators | Sources `env.sh`, then sets `GEM_HOME`, `GEM_PATH`, and `RUBYLIB` for installed Ruby generator tooling |
 
 `env.sh` and `dev-env.sh` prepend paths only when the target directory exists.

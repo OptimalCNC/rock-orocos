@@ -14,7 +14,7 @@ Update and build the selected Autoproj package layout for the MetaNC
 Orocos/Rock toolchain dependency, then refresh the exported environment scripts.
 
 Options:
-  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_ROCK_PREFIX or ~/.orocos
+  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_PREFIX or ~/.orocos
   --no-export-env  Do not regenerate PREFIX/env.sh and PREFIX/dev-env.sh after build
   -h, --help       Show this help
 

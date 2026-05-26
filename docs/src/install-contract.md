@@ -86,6 +86,7 @@ The internal autoproj workspace is not.
 That means:
 
 - the prefix layout should change rarely
+- `OROCOS_PREFIX` is the public environment variable for the installed prefix
 - `env.sh` and `dev-env.sh` should remain the stable entrypoints
 - downstream builds should avoid depending on workspace-internal paths
 

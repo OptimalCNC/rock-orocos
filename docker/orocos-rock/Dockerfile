@@ -1,15 +1,15 @@
 ARG METANC_BASE_IMAGE=optimalcnc/metanc:base
-ARG OROCOS_ROCK_PREFIX=/opt/orocos
+ARG OROCOS_PREFIX=/opt/orocos
 
 FROM ${METANC_BASE_IMAGE} AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG OROCOS_ROCK_PREFIX
+ARG OROCOS_PREFIX
 
 USER root
 
 ENV LANG=C.UTF-8
-ENV OROCOS_ROCK_PREFIX=${OROCOS_ROCK_PREFIX}
+ENV OROCOS_PREFIX=${OROCOS_PREFIX}
 ENV SHELL=/bin/bash
 # The MetaNC image exports vcpkg's CMake toolchain for MetaNC builds. Keep
 # Orocos/Rock package builds on their own CMake discovery path.
@@ -47,8 +47,8 @@ RUN apt-get update && \
 
 WORKDIR /opt/orocos-rock
 COPY --chown=ubuntu:ubuntu . .
-RUN mkdir -p "$OROCOS_ROCK_PREFIX" && \
-    chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_ROCK_PREFIX"
+RUN mkdir -p "$OROCOS_PREFIX" && \
+    chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_PREFIX"
 
 SHELL ["/bin/bash", "-lc"]
 
@@ -56,19 +56,19 @@ USER ubuntu
 
 RUN ./tools/install-autoproj.sh
 RUN ./tools/check-autoproj-policy.rb
-RUN ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
-RUN ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
-RUN ./tools/validate-install.sh --prefix "$OROCOS_ROCK_PREFIX"
+RUN ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
+RUN ./tools/install.sh --prefix "$OROCOS_PREFIX"
+RUN ./tools/validate-install.sh --prefix "$OROCOS_PREFIX"
 
 FROM ${METANC_BASE_IMAGE} AS final
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG OROCOS_ROCK_PREFIX
+ARG OROCOS_PREFIX
 
 USER root
 
 ENV LANG=C.UTF-8
-ENV OROCOS_ROCK_PREFIX=${OROCOS_ROCK_PREFIX}
+ENV OROCOS_PREFIX=${OROCOS_PREFIX}
 ENV SHELL=/bin/bash
 
 RUN apt-get update && \
@@ -97,7 +97,7 @@ RUN apt-get update && \
         ruby-dev && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder --chown=ubuntu:ubuntu ${OROCOS_ROCK_PREFIX} ${OROCOS_ROCK_PREFIX}
+COPY --from=builder --chown=ubuntu:ubuntu ${OROCOS_PREFIX} ${OROCOS_PREFIX}
 
 SHELL ["/bin/bash", "-lc"]
 
@@ -105,10 +105,10 @@ USER ubuntu
 WORKDIR /home/ubuntu
 
 RUN test ! -e /opt/orocos-rock && \
-    source "$OROCOS_ROCK_PREFIX/dev-env.sh" && \
+    source "$OROCOS_PREFIX/dev-env.sh" && \
     ! command -v autoproj && \
     command -v deployer-gnulinux && \
     command -v orogen && \
     command -v typegen
 
-CMD ["bash", "-lc", "source \"$OROCOS_ROCK_PREFIX/dev-env.sh\" && exec bash"]
+CMD ["bash", "-lc", "source \"$OROCOS_PREFIX/dev-env.sh\" && exec bash"]

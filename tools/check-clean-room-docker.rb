@@ -37,7 +37,7 @@ if File.file?(dockerfile)
   errors << "Dockerfile must clear MetaNC vcpkg CMake toolchain for Orocos/Rock builds" unless contents.include?("ENV CMAKE_TOOLCHAIN_FILE=")
   errors << "Dockerfile must export SHELL=/bin/bash for Autoproj" unless contents.include?("ENV SHELL=/bin/bash")
   errors << "Dockerfile must copy the workspace for the ubuntu user" unless contents.include?("COPY --chown=ubuntu:ubuntu . .")
-  errors << "Dockerfile must make the install prefix writable by ubuntu" unless contents.include?('chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_ROCK_PREFIX"')
+  errors << "Dockerfile must make the install prefix writable by ubuntu" unless contents.include?('chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_PREFIX"')
   final_stage = contents.split(/^FROM \$\{METANC_BASE_IMAGE\} AS final$/).last || ""
   errors << "Dockerfile final image must copy only the installed prefix from builder" unless final_stage.include?("COPY --from=builder --chown=ubuntu:ubuntu")
   errors << "Dockerfile final image must not copy or use the orocos-rock workspace" if final_stage.match?(/COPY .*\/opt\/orocos-rock/) || final_stage.include?("WORKDIR /opt/orocos-rock")
@@ -60,8 +60,8 @@ if File.file?(dockerfile)
   errors << "Dockerfile must run tools/bootstrap.sh" unless contents.include?("./tools/bootstrap.sh")
   errors << "Dockerfile must run tools/install.sh" unless contents.include?("./tools/install.sh")
   errors << "Dockerfile must run tools/validate-install.sh" unless contents.include?("./tools/validate-install.sh")
-  expected_cmd = 'CMD ["bash", "-lc", "source \"$OROCOS_ROCK_PREFIX/dev-env.sh\" && exec bash"]'
-  errors << "Dockerfile CMD must source dev-env.sh through OROCOS_ROCK_PREFIX" unless contents.include?(expected_cmd)
+  expected_cmd = 'CMD ["bash", "-lc", "source \"$OROCOS_PREFIX/dev-env.sh\" && exec bash"]'
+  errors << "Dockerfile CMD must source dev-env.sh through OROCOS_PREFIX" unless contents.include?(expected_cmd)
 end
 
 workflow = File.join(root, ".github/workflows/clean-room-docker.yml")
