@@ -10,15 +10,25 @@ on:
 
 jobs:
   package-test:
-    name: Ubuntu 22.04 ${{ matrix.package-test }}
+    name: ${{ matrix.os.name }} ${{ matrix.package-test }}
     runs-on: ubuntu-24.04
     container:
-      image: ubuntu:22.04
+      image: ${{ matrix.os.image }}
     continue-on-error: true
 
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - name: Ubuntu 22.04
+            artifact: ubuntu-22.04
+            image: ubuntu:22.04
+          - name: Ubuntu 24.04
+            artifact: ubuntu-24.04
+            image: ubuntu:24.04
+          - name: Debian 13
+            artifact: debian-13
+            image: debian:trixie
         package-test:
           - utilmm
           - log4cpp
@@ -95,7 +105,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: package-test-logs-ubuntu-22.04-${{ matrix.package-test }}
+          name: package-test-logs-${{ matrix.os.artifact }}-${{ matrix.package-test }}
           if-no-files-found: ignore
           path: |
             package-test-${{ matrix.package-test }}.log

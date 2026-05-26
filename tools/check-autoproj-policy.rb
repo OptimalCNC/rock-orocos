@@ -7,6 +7,7 @@ overrides_path = File.join(root, "autoproj", "overrides.yml")
 install_path = File.join(root, "tools", "install.sh")
 setup_path = File.join(root, "tools", "setup.sh")
 rtt_manifest_path = File.join(root, "autoproj", "manifests", "rtt.xml")
+local_osdeps_path = File.join(root, "autoproj", "orocos-rock.osdeps")
 export_env_path = File.join(root, "tools", "export-env.sh")
 validate_install_path = File.join(root, "tools", "validate-install.sh")
 ruby_tools_path = File.join(root, "tools", "install-ruby-tools.sh")
@@ -48,6 +49,7 @@ install_script = File.read(install_path)
 setup_script = File.file?(setup_path) ? File.read(setup_path) : nil
 common_script = File.read(common_path)
 overrides_script = File.read(File.join(root, "autoproj", "overrides.rb"))
+local_osdeps = File.file?(local_osdeps_path) ? File.read(local_osdeps_path) : ""
 export_env_script = File.read(export_env_path)
 validate_install_script = File.read(validate_install_path)
 
@@ -179,6 +181,16 @@ else
   errors << "autoproj/manifests/rtt.xml: must declare boost as a package dependency" unless rtt_manifest.include?('<depend package="boost" />')
   errors << "autoproj/manifests/rtt.xml: must declare omniorb as a package dependency" unless rtt_manifest.include?('<depend package="omniorb" />')
   errors << "autoproj/manifests/rtt.xml: must declare xpath-perl as a package dependency" unless rtt_manifest.include?('<depend package="xpath-perl" />')
+end
+
+unless local_osdeps.include?("ruby:") &&
+       local_osdeps.include?("debian,ubuntu: ruby")
+  errors << "autoproj/orocos-rock.osdeps: must define ruby for Debian/Ubuntu package-set compatibility"
+end
+
+unless local_osdeps.include?("ruby-dev:") &&
+       local_osdeps.include?("debian,ubuntu: ruby-dev")
+  errors << "autoproj/orocos-rock.osdeps: must define ruby-dev for Debian/Ubuntu package-set compatibility"
 end
 
 if errors.any?

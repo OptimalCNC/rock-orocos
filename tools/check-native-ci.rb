@@ -12,12 +12,16 @@ else
   errors << "native CI must run on pull requests" unless contents.include?("pull_request:")
   errors << "native CI must run on pushes to main" unless contents.include?("push:") && contents.include?("- main")
   errors << "native CI must not run for docs-only changes" if contents.match?(/docs\//)
-  errors << "native CI must define a Ubuntu version matrix" unless contents.include?("matrix:") && contents.include?("ubuntu-version:")
-  %w[22.04 24.04].each do |version|
-    errors << "native CI must cover Ubuntu #{version}" unless contents.include?(%("#{version}"))
+  errors << "native CI must define an OS matrix" unless contents.include?("matrix:") && contents.include?("os:")
+  {
+    "Ubuntu 22.04" => "ubuntu:22.04",
+    "Ubuntu 24.04" => "ubuntu:24.04",
+    "Debian 13" => "debian:trixie"
+  }.each do |name, image|
+    errors << "native CI must cover #{name}" unless contents.include?("name: #{name}") && contents.include?("image: #{image}")
   end
   errors << "native CI must not require Ubuntu 26.04 yet" if contents.include?(%("26.04"))
-  errors << "native CI must use standard Ubuntu containers" unless contents.include?("image: ubuntu:${{ matrix.ubuntu-version }}")
+  errors << "native CI must use matrix-selected containers" unless contents.include?("image: ${{ matrix.os.image }}")
   errors << "native CI must export SHELL for Autoproj" unless contents.include?("SHELL: /bin/bash")
   errors << "native CI must install build-essential for native Ruby gems and package builds" unless contents.include?("build-essential")
   errors << "native CI must install cmake before Autoproj build" unless contents.include?("cmake")

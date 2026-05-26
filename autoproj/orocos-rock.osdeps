@@ -1,0 +1,5 @@
+ruby:
+  debian,ubuntu: ruby
+
+ruby-dev:
+  debian,ubuntu: ruby-dev

@@ -3,9 +3,10 @@
 This page records the package-level test status while the workflow is
 experimental and non-required.
 
-The first package-test workflow runs on Ubuntu 22.04 only and keeps
-`continue-on-error: true` while legacy package tests are being classified.
-Package test steps now return their real exit status.
+The package-test workflow runs on Ubuntu 22.04, Ubuntu 24.04, and Debian
+13/Trixie. It keeps `continue-on-error: true` while cross-distribution legacy
+package test behavior is being classified. Package test steps return their real
+exit status.
 
 | Package test | Initial subset | Current status |
 |---|---|---|

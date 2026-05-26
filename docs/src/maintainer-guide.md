@@ -46,10 +46,10 @@ The normal host prefix is `~/.orocos`. The Docker image uses `/opt/orocos`.
 In Docker builds, root is used only for OS package installation, `ubuntu` user
 creation, and ownership setup. The wrapper scripts run as the `ubuntu` user.
 
-The native CI workflow runs the wrapper scripts in standard Ubuntu containers.
-The required CI matrix currently covers Ubuntu 22.04 and 24.04. Ubuntu 26.04 is
-tracked as the next compatibility target once the CI runtime is available and
-validated.
+The native CI workflow runs the wrapper scripts in standard Linux containers.
+The required CI matrix currently covers Ubuntu 22.04, Ubuntu 24.04, and Debian
+13/Trixie. Ubuntu 26.04 is tracked as the next compatibility target once the CI
+runtime is available and validated.
 
 The clean-room Docker workflow is manual-only. It remains useful for local image
 validation and release-style smoke tests, but it is not the primary PR gate.
@@ -109,6 +109,7 @@ After changing CI policy, run:
 
 ```bash
 ruby tools/check-native-ci.rb
+ruby tools/check-package-tests-ci.rb
 ```
 
 After a real install, run:

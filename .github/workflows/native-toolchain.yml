@@ -19,17 +19,24 @@ on:
 
 jobs:
   build:
-    name: Ubuntu ${{ matrix.ubuntu-version }} Native Build
+    name: ${{ matrix.os.name }} Native Build
     runs-on: ubuntu-24.04
     container:
-      image: ubuntu:${{ matrix.ubuntu-version }}
+      image: ${{ matrix.os.image }}
 
     strategy:
       fail-fast: false
       matrix:
-        ubuntu-version:
-          - "22.04"
-          - "24.04"
+        os:
+          - name: Ubuntu 22.04
+            artifact: ubuntu-22.04
+            image: ubuntu:22.04
+          - name: Ubuntu 24.04
+            artifact: ubuntu-24.04
+            image: ubuntu:24.04
+          - name: Debian 13
+            artifact: debian-13
+            image: debian:trixie
 
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -108,7 +115,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: native-toolchain-logs-ubuntu-${{ matrix.ubuntu-version }}
+          name: native-toolchain-logs-${{ matrix.os.artifact }}
           if-no-files-found: ignore
           path: |
             .autoproj/config.yml
