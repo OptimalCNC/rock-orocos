@@ -21,7 +21,7 @@ on:
 
 jobs:
   build:
-    name: Build MetaNC-Based Toolchain Image
+    name: Build Standalone Toolchain Image
     runs-on: blacksmith-4vcpu-ubuntu-2404
 
     steps:
@@ -39,11 +39,11 @@ jobs:
           pull: true
           push: false
           load: true
-          tags: orocos-rock:metanc-latest
+          tags: orocos-rock:latest
 
       - name: Check development environment
         run: |
-          docker run --rm --user ubuntu orocos-rock:metanc-latest bash -lc '
+          docker run --rm --user ubuntu orocos-rock:latest bash -lc '
             set -euo pipefail
             test "$(whoami)" = "ubuntu"
             test ! -e /opt/orocos-rock

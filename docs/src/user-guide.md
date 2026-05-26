@@ -1,7 +1,7 @@
 # User Guide
 
-This page is for a MetaNC developer who only needs to install and consume the
-Orocos/Rock toolchain.
+This page is for users who need to install and consume the Orocos/Rock
+toolchain.
 
 The normal local install prefix is:
 
@@ -10,8 +10,8 @@ The normal local install prefix is:
 ```
 
 > [!IMPORTANT]
-> MetaNC should use the installed prefix. It should not depend on checkout paths
-> inside the `orocos-rock` workspace.
+> Downstream projects should use the installed prefix. They should not depend
+> on checkout paths inside the `orocos-rock` workspace.
 
 ## Install In Simple Steps
 
@@ -29,13 +29,13 @@ declared by the selected Orocos/Rock packages.
 
 ## Use The Installed Toolchain
 
-For MetaNC development, source the development environment before configuring or
-building MetaNC:
+For development, source the development environment before configuring or
+building downstream Orocos packages:
 
 ```bash
 source ~/.orocos/dev-env.sh
-cmake --preset dev
-cmake --build --preset dev
+cmake -S . -B build
+cmake --build build
 ```
 
 For runtime-only use, source:

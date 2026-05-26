@@ -7,19 +7,19 @@ overrides:
   - rtt:
     type: git
     url: https://github.com/OptimalCNC/rtt.git
-    branch: MetaNC
+    branch: dev
 
   - ocl:
     type: git
     url: https://github.com/OptimalCNC/ocl.git
-    branch: MetaNC
+    branch: dev
 
   - log4cpp:
     type: git
     url: https://github.com/OptimalCNC/log4cpp.git
-    branch: MetaNC
+    branch: dev
 
   - orogen:
     type: git
     url: https://github.com/OptimalCNC/tools-orogen.git
-    branch: MetaNC
+    branch: dev

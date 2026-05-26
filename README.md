@@ -1,6 +1,7 @@
 # orocos-rock
 
-MetaNC-specific Orocos/Rock toolchain workspace.
+Standalone Orocos/Rock toolchain workspace for rebuilding the Orocos runtime and
+generator stack on current Linux distributions.
 
 Target CLI:
 
@@ -8,20 +9,19 @@ Target CLI:
 ./tools/setup.sh --prefix ~/.orocos
 ```
 
-This repository owns the third-party toolchain contract for MetaNC:
+This repository focuses on:
 
-- package selection
-- source overrides to maintained forks
+- package selection for a small Orocos/Rock toolchain
+- source overrides to public maintenance branches
+- fixes for newer Linux distributions and newer compilers
+- reduced compile warnings and compatibility issues
 - autoproj configuration
 - OCL and RTT scripting enablement
 - install and environment export policy
 
-This repository does not own:
-
-- MetaNC `Core`
-- MetaNC Orocos packages such as `meta_nc_core_types` and `meta_nc_axis`
-- MetaNC `.ops` deployment scripts
-- MetaNC top-level CMake build and tests
+This repository does not own downstream application code, component models, or
+deployment scripts. Downstream projects should consume only the installed
+prefix and the generated environment scripts.
 
 ## Repository Boundary
 
@@ -30,9 +30,9 @@ orocos-rock
   -> builds and installs Orocos/Rock toolchain dependencies
   -> exports runtime and development environments
 
-MetaNC
-  -> builds MetaNC code against the installed toolchain
-  -> owns CNC semantics, adapters, components, and deployment scripts
+downstream Orocos projects
+  -> source the installed prefix
+  -> build their own typekits, components, and deployment scripts
 ```
 
 ## Document Map
@@ -59,7 +59,6 @@ orocos-rock/
 │       ├── maintainer-guide.md
 │       ├── reference.md
 │       ├── for-maintainers.md
-│       ├── for-metanc-developers.md
 │       ├── architecture.md
 │       ├── bootstrap-workflow.md
 │       ├── install-contract.md

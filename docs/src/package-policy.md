@@ -6,21 +6,22 @@ This page defines which packages belong in the first `orocos-rock` workspace.
 
 The initial workspace should include only packages that are required to:
 
-- build the Orocos runtime used by MetaNC
-- build the generator stack used by MetaNC
-- preserve deployer, OCL, and RTT scripting
+- build the Orocos RTT runtime
+- build the OCL deployer and scripting support
+- build the generator stack used for typekits and components
+- preserve deployer, OCL, and RTT scripting on current Linux distributions
 
-Everything else starts excluded unless a concrete MetaNC need appears.
+Everything else starts excluded unless a concrete toolchain need appears.
 
 ## Must Use
 
 | Package | Why it is required | Source policy |
 |---|---|---|
-| `orocos_toolchain` | root toolchain integration | MetaNC-maintained fork |
-| `rtt` | Orocos runtime | MetaNC-maintained fork |
-| `ocl` | deployer and OCL compatibility | MetaNC-maintained fork |
-| `log4cpp` | runtime dependency used by the stack | MetaNC-maintained fork |
-| `orogen` | component and typekit generation | Upstream by default, fork only when needed |
+| `orocos_toolchain` | root toolchain integration | Public maintenance fork when needed |
+| `rtt` | Orocos runtime | Public maintenance fork |
+| `ocl` | deployer and OCL compatibility | Public maintenance fork |
+| `log4cpp` | runtime dependency used by the stack | Public maintenance fork |
+| `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
 | `typelib` | generator type support | Upstream |
 | `utilmm` | generator/runtime support | Upstream |
 | `utilrb` | autoproj and generator support | Upstream |
@@ -33,14 +34,14 @@ Everything else starts excluded unless a concrete MetaNC need appears.
 |---|---|---|
 | `rtt_geometry` | useful geometry helpers without changing the runtime model | Upstream |
 | `base/cmake` | build helper layer if a package truly needs it | Upstream |
-| selected plain C++ Rock libraries | only when they solve a concrete MetaNC problem | Prefer upstream |
+| selected plain C++ Rock libraries | only when they solve a concrete toolchain problem | Prefer upstream |
 
 ## Avoid For Now
 
 | Package Area | Why it is avoided initially |
 |---|---|
 | `syskit` | changes the operational model toward Rock orchestration |
-| `roby` | not needed for MetaNC's current deployment model |
+| `roby` | not needed for the focused RTT/OCL/generator rebuild goal |
 | `tools/orocos.rb` as runtime control plane | not needed if deployment stays on deployer plus `.ops` |
 | Vizkit and GUI tooling | not required for the first toolchain goal |
 | broad Rock package groups | increases maintenance and build time without solving the current blocker |
@@ -49,19 +50,23 @@ Everything else starts excluded unless a concrete MetaNC need appears.
 
 The default rule is:
 
-- fork only packages that MetaNC actively patches
+- fork only packages that need current Linux or compiler compatibility fixes
+- keep those changes on public `dev` branches
 - use upstream for everything else
 
-Initial fork set:
+Initial public maintenance fork set:
 
-- `orocos_toolchain`
 - `rtt`
 - `ocl`
 - `log4cpp`
+- `orogen`
 
-Conditional fork:
+Forks should carry focused portability work:
 
-- `orogen` only if MetaNC carries patches that upstream cannot currently replace
+- newer compiler warning cleanup
+- build-system fixes
+- dependency discovery fixes
+- distribution compatibility patches
 
 Upstream by default:
 
@@ -77,14 +82,14 @@ Upstream by default:
 Forked package policy should be documented here first and then encoded in the
 workspace overrides.
 
-MetaNC product repositories should not silently redefine third-party source
-policy on their own.
+Downstream repositories should not silently redefine third-party source policy
+on their own.
 
 ## Review Rule
 
 Before adding a new package, answer these questions:
 
-1. Does MetaNC need it to build or run?
+1. Does the focused RTT/OCL/generator toolchain need it to build or run?
 2. Does it preserve the Orocos deployment model?
 3. Can upstream be used directly?
 4. Does it create a new long-term maintenance burden?

@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require "yaml"
+require "find"
 
 root = File.expand_path("..", __dir__)
 overrides_path = File.join(root, "autoproj", "overrides.yml")
@@ -14,7 +15,8 @@ common_path = File.join(root, "tools", "common.sh")
 expected_forks = {
   "rtt" => "https://github.com/OptimalCNC/rtt.git",
   "ocl" => "https://github.com/OptimalCNC/ocl.git",
-  "log4cpp" => "https://github.com/OptimalCNC/log4cpp.git"
+  "log4cpp" => "https://github.com/OptimalCNC/log4cpp.git",
+  "orogen" => "https://github.com/OptimalCNC/tools-orogen.git"
 }
 
 overrides = YAML.safe_load_file(overrides_path).fetch("overrides", [])
@@ -32,7 +34,48 @@ expected_forks.each do |package, url|
   actual_branch = override["branch"]
 
   errors << "#{package}: expected url #{url}, got #{actual_url.inspect}" unless actual_url == url
-  errors << "#{package}: expected branch MetaNC, got #{actual_branch.inspect}" unless actual_branch == "MetaNC"
+  errors << "#{package}: expected branch dev, got #{actual_branch.inspect}" unless actual_branch == "dev"
+end
+
+private_reference_pattern = /meta[_-]?#{'nc'}/i
+ignored_source_dirs = %w[
+  .autoproj
+  .bundle
+  .cache
+  .codex
+  .git
+  build
+  docs/book
+  install
+  log
+  logs
+  toolchain
+  tools/metaruby
+]
+ignored_source_files = %w[
+  .bundle_env.sh
+  env.sh
+  orocos.log
+]
+
+Find.find(root).each do |path|
+  relative = path.delete_prefix("#{root}/")
+  if File.directory?(path) && ignored_source_dirs.include?(relative)
+    Find.prune
+    next
+  end
+
+  next unless File.file?(path)
+  next if ignored_source_files.include?(relative)
+  next if relative.end_with?(".log")
+
+  if relative.match?(private_reference_pattern)
+    errors << "#{relative}: private project name must not appear in public source path"
+  end
+
+  File.readlines(path).each_with_index do |line, index|
+    errors << "#{relative}:#{index + 1}: private project reference must not appear in public source" if line.match?(private_reference_pattern)
+  end
 end
 
 install_script = File.read(install_path)

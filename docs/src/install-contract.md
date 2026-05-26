@@ -1,7 +1,7 @@
 # Install Contract
 
-This page defines the contract that `orocos-rock` exports to downstream users,
-especially MetaNC.
+This page defines the contract that `orocos-rock` exports to downstream Orocos
+users.
 
 ## Output Model
 
@@ -39,7 +39,8 @@ It should make a shell ready for:
 - Orocos component and plugin discovery
 - running existing `.ops` scripts
 
-It should not require MetaNC source-tree state to be useful.
+It should not require source-tree state from this workspace or any downstream
+project to be useful.
 
 ### `dev-env.sh`
 
@@ -52,8 +53,8 @@ It should extend the runtime environment with the extra tooling needed for:
 - Typelib-related generators
 - configuring and building downstream Orocos packages
 
-This is the script MetaNC should source before configuring its Orocos-facing
-packages.
+This is the script downstream projects should source before configuring their
+Orocos-facing packages.
 
 `dev-env.sh` is also responsible for making the Ruby-based generator stack
 usable from the installed prefix. Downstream users should expect the sourced
@@ -62,15 +63,15 @@ access to the internal autoproj workspace.
 
 ## Downstream Assumptions
 
-MetaNC may assume that, after sourcing `dev-env.sh`, the shell can:
+Downstream projects may assume that, after sourcing `dev-env.sh`, the shell can:
 
 - find RTT and OCL build dependencies
 - generate new typekits
 - configure CMake packages that use Orocos macros
-- build MetaNC Orocos packages against the installed toolchain
+- build downstream Orocos packages against the installed toolchain
 - resolve the Ruby gems needed by `orogen` and related generators
 
-MetaNC should not assume:
+Downstream projects should not assume:
 
 - direct access to the internal autoproj workspace layout
 - specific checkout paths of third-party packages
@@ -118,9 +119,9 @@ An install is considered minimally valid when it can:
 3. source `dev-env.sh`
 4. run `orogen`
 5. run `typegen`
-6. support a downstream MetaNC configure step
+6. support a downstream Orocos configure step
 
-## Relationship To MetaNC
+## Relationship To Downstream Projects
 
-MetaNC should consume `orocos-rock` exactly like a third-party dependency
-prefix, even if both repositories are maintained by the same team.
+Downstream projects should consume `orocos-rock` exactly like a third-party
+dependency prefix.
