@@ -39,7 +39,9 @@ if File.file?(dockerfile)
   errors << "Dockerfile must export SHELL=/bin/bash for Autoproj" unless contents.include?("ENV SHELL=/bin/bash")
   errors << "Dockerfile must install sudo for non-root Autoproj osdeps" unless contents.match?(/sudo\s+\\\n\s+xz-utils/) &&
                                                                              contents.match?(/ruby-dev\s+\\\n\s+sudo &&/)
-  errors << "Dockerfile must create the non-root ubuntu user" unless contents.scan("useradd --create-home --shell /bin/bash ubuntu").length == 2
+  errors << "Dockerfile must create the non-root ubuntu user idempotently" unless contents.scan("if ! id -u ubuntu >/dev/null 2>&1").length == 2 &&
+                                                                                     contents.scan("useradd --create-home --shell /bin/bash ubuntu").length == 2
+  errors << "Dockerfile must ensure the ubuntu home directory is owned by ubuntu" unless contents.scan("chown ubuntu:ubuntu /home/ubuntu").length == 2
   errors << "Dockerfile must copy the workspace for the ubuntu user" unless contents.include?("COPY --chown=ubuntu:ubuntu . .")
   errors << "Dockerfile must make the install prefix writable by ubuntu" unless contents.include?('chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_PREFIX"')
   final_stage = contents.split(/^FROM \$\{OROCOS_ROCK_BASE_IMAGE\} AS final$/).last || ""

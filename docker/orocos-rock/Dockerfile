@@ -46,7 +46,11 @@ RUN apt-get update && \
         xz-utils && \
     rm -rf /var/lib/apt/lists/*
 
-RUN useradd --create-home --shell /bin/bash ubuntu && \
+RUN if ! id -u ubuntu >/dev/null 2>&1; then \
+        useradd --create-home --shell /bin/bash ubuntu; \
+    fi && \
+    mkdir -p /home/ubuntu && \
+    chown ubuntu:ubuntu /home/ubuntu && \
     printf 'ubuntu ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/ubuntu && \
     chmod 0440 /etc/sudoers.d/ubuntu
 
@@ -103,7 +107,11 @@ RUN apt-get update && \
         sudo && \
     rm -rf /var/lib/apt/lists/*
 
-RUN useradd --create-home --shell /bin/bash ubuntu && \
+RUN if ! id -u ubuntu >/dev/null 2>&1; then \
+        useradd --create-home --shell /bin/bash ubuntu; \
+    fi && \
+    mkdir -p /home/ubuntu && \
+    chown ubuntu:ubuntu /home/ubuntu && \
     printf 'ubuntu ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/ubuntu && \
     chmod 0440 /etc/sudoers.d/ubuntu
 
