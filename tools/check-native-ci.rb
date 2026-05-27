@@ -12,12 +12,16 @@ else
   errors << "native CI must run on pull requests" unless contents.include?("pull_request:")
   errors << "native CI must run on pushes to main" unless contents.include?("push:") && contents.include?("- main")
   errors << "native CI must not run for docs-only changes" if contents.match?(/docs\//)
-  errors << "native CI must define a Ubuntu version matrix" unless contents.include?("matrix:") && contents.include?("ubuntu-version:")
-  %w[22.04 24.04].each do |version|
-    errors << "native CI must cover Ubuntu #{version}" unless contents.include?(%("#{version}"))
+  errors << "native CI must define an OS matrix" unless contents.include?("matrix:") && contents.include?("os:")
+  {
+    "Ubuntu 22.04" => "ubuntu:22.04",
+    "Ubuntu 24.04" => "ubuntu:24.04",
+    "Debian 13" => "debian:trixie"
+  }.each do |name, image|
+    errors << "native CI must cover #{name}" unless contents.include?("name: #{name}") && contents.include?("image: #{image}")
   end
   errors << "native CI must not require Ubuntu 26.04 yet" if contents.include?(%("26.04"))
-  errors << "native CI must use standard Ubuntu containers" unless contents.include?("image: ubuntu:${{ matrix.ubuntu-version }}")
+  errors << "native CI must use matrix-selected containers" unless contents.include?("image: ${{ matrix.os.image }}")
   errors << "native CI must export SHELL for Autoproj" unless contents.include?("SHELL: /bin/bash")
   errors << "native CI must install build-essential for native Ruby gems and package builds" unless contents.include?("build-essential")
   errors << "native CI must install cmake before Autoproj build" unless contents.include?("cmake")
@@ -35,10 +39,12 @@ else
   errors << "native CI must build through the wrapper" unless contents.include?("./tools/install.sh --prefix")
   errors << "native CI must validate the installed prefix" unless contents.include?("./tools/validate-install.sh --prefix")
   errors << "native CI must fail on compiler warnings" unless contents.include?("compiler warning budget exceeded")
-  errors << "native CI must scan build logs" unless contents.include?('"$OROCOS_ROCK_PREFIX"/toolchain/log/*-build.log')
+  errors << "native CI must use OROCOS_PREFIX as the public install-prefix variable" unless contents.include?("OROCOS_PREFIX: /opt/orocos")
+  errors << "native CI must scan build logs" unless contents.include?('"$OROCOS_PREFIX"/toolchain/log/*-build.log')
   errors << "native CI must upload diagnostic logs on failure" unless contents.include?("actions/upload-artifact@v6") && contents.include?("if: failure()")
   errors << "native CI must upload package build logs" unless contents.include?("toolchain/log/*.log")
   errors << "native CI must upload Autoproj configuration/log context" unless contents.include?(".autoproj/config.yml") && contents.include?(".autoproj/remotes/**/*.autobuild")
+  errors << "native CI must upload osdeps suffix files" unless contents.include?(".autoproj/remotes/**/*.osdeps*") && contents.include?("autoproj/**/*.osdeps*")
 end
 
 if errors.any?

@@ -10,11 +10,10 @@ usage() {
     cat <<'USAGE'
 Usage: ./tools/bootstrap.sh [--prefix PREFIX] [--skip-osdeps]
 
-Refresh the Autoproj workspace configuration for the MetaNC Orocos/Rock
-toolchain dependency.
+Refresh the Autoproj workspace configuration for the Orocos/Rock toolchain.
 
 Options:
-  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_ROCK_PREFIX or ~/.orocos
+  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_PREFIX or ~/.orocos
   --skip-osdeps   Do not run "autoproj osdeps"
   -h, --help      Show this help
 USAGE

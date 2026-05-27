@@ -7,39 +7,39 @@ overrides:
   - rtt:
     type: git
     url: https://github.com/liufang-robot/rtt.git
-    branch: MetaNC
+    branch: dev
 
   - ocl:
     type: git
     url: https://github.com/liufang-robot/ocl.git
-    branch: MetaNC
+    branch: dev
 
   - log4cpp:
     type: git
     url: https://github.com/liufang-robot/log4cpp.git
-    branch: MetaNC
+    branch: dev
 
   - orogen:
     type: git
     url: https://github.com/liufang-robot/tools-orogen.git
-    branch: MetaNC
+    branch: dev
 
   - typelib:
     type: git
     url: https://github.com/liufang-robot/tools-typelib.git
-    branch: MetaNC
+    branch: dev
 
   - utilmm:
     type: git
     url: https://github.com/liufang-robot/utilmm.git
-    branch: MetaNC
+    branch: dev
 
   - rtt_typelib:
     type: git
     url: https://github.com/liufang-robot/tools-rtt_typelib.git
-    branch: MetaNC
+    branch: dev
 
   - stdint_typekit:
     type: git
     url: https://github.com/liufang-robot/stdint_typekit.git
-    branch: MetaNC
+    branch: dev

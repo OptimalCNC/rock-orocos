@@ -12,7 +12,16 @@ else
   errors << "package tests must run on pull requests" unless contents.include?("pull_request:")
   errors << "package tests must support manual dispatch" unless contents.include?("workflow_dispatch:")
   errors << "package tests must not run for docs-only changes" if contents.match?(/docs\//)
-  errors << "package tests must start on Ubuntu 22.04 only" unless contents.include?("image: ubuntu:22.04")
+  errors << "package tests must define an OS matrix" unless contents.include?("matrix:") && contents.include?("os:")
+  {
+    "Ubuntu 22.04" => "ubuntu:22.04",
+    "Ubuntu 24.04" => "ubuntu:24.04",
+    "Debian 13" => "debian:trixie"
+  }.each do |name, image|
+    errors << "package tests must cover #{name}" unless contents.include?("name: #{name}") && contents.include?("image: #{image}")
+  end
+  errors << "package tests must use matrix-selected containers" unless contents.include?("image: ${{ matrix.os.image }}")
+  errors << "package tests must use OROCOS_PREFIX as the public install-prefix variable" unless contents.include?("OROCOS_PREFIX: /opt/orocos")
   errors << "package tests must be non-required while experimental" unless contents.include?("continue-on-error: true")
   errors << "package tests must define a package-test matrix" unless contents.include?("package-test:")
   %w[utilmm log4cpp typelib-cxx rtt-core ocl-basic ocl-integration].each do |package_test|
@@ -24,6 +33,7 @@ else
   errors << "package tests must upload CTest logs" unless contents.include?("Testing/Temporary/*.log")
   errors << "package tests must upload CMake logs" unless contents.include?("CMakeOutput.log") && contents.include?("CMakeError.log")
   errors << "package tests must upload Autoproj package logs" unless contents.include?("toolchain/log/*.log")
+  errors << "package tests must upload osdeps suffix files" unless contents.include?(".autoproj/remotes/**/*.osdeps*") && contents.include?("autoproj/**/*.osdeps*")
 end
 
 if errors.any?

@@ -1,0 +1,8 @@
+ruby33:
+  debian,ubuntu: ruby
+
+ruby34:
+  debian,ubuntu: ruby
+
+ruby-dev:
+  debian,ubuntu: ruby-dev

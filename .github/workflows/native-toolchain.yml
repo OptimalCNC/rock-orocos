@@ -19,21 +19,28 @@ on:
 
 jobs:
   build:
-    name: Ubuntu ${{ matrix.ubuntu-version }} Native Build
+    name: ${{ matrix.os.name }} Native Build
     runs-on: ubuntu-24.04
     container:
-      image: ubuntu:${{ matrix.ubuntu-version }}
+      image: ${{ matrix.os.image }}
 
     strategy:
       fail-fast: false
       matrix:
-        ubuntu-version:
-          - "22.04"
-          - "24.04"
+        os:
+          - name: Ubuntu 22.04
+            artifact: ubuntu-22.04
+            image: ubuntu:22.04
+          - name: Ubuntu 24.04
+            artifact: ubuntu-24.04
+            image: ubuntu:24.04
+          - name: Debian 13
+            artifact: debian-13
+            image: debian:trixie
 
     env:
       DEBIAN_FRONTEND: noninteractive
-      OROCOS_ROCK_PREFIX: /opt/orocos
+      OROCOS_PREFIX: /opt/orocos
       SHELL: /bin/bash
 
     defaults:
@@ -88,18 +95,18 @@ jobs:
           ruby tools/check-package-tests-ci.rb
 
       - name: Bootstrap workspace
-        run: ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
 
       - name: Build and install toolchain
-        run: ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/install.sh --prefix "$OROCOS_PREFIX"
 
       - name: Validate installed prefix
-        run: ./tools/validate-install.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/validate-install.sh --prefix "$OROCOS_PREFIX"
 
       - name: Check compiler warning budget
         run: |
           set -euo pipefail
-          if rg -n "warning:|deprecated|pragma message" "$OROCOS_ROCK_PREFIX"/toolchain/log/*-build.log; then
+          if rg -n "warning:|deprecated|pragma message" "$OROCOS_PREFIX"/toolchain/log/*-build.log; then
             echo "compiler warning budget exceeded" >&2
             exit 1
           fi
@@ -108,13 +115,14 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: native-toolchain-logs-ubuntu-${{ matrix.ubuntu-version }}
+          name: native-toolchain-logs-${{ matrix.os.artifact }}
           if-no-files-found: ignore
           path: |
             .autoproj/config.yml
             .autoproj/env.yml
             .autoproj/installation-manifest
             .autoproj/remotes/**/*.autobuild
-            .autoproj/remotes/**/*.osdeps
-            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*.log
-            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*-stamp
+            .autoproj/remotes/**/*.osdeps*
+            autoproj/**/*.osdeps*
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*.log
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*-stamp

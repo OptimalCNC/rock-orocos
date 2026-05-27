@@ -7,6 +7,7 @@ overrides_path = File.join(root, "autoproj", "overrides.yml")
 install_path = File.join(root, "tools", "install.sh")
 setup_path = File.join(root, "tools", "setup.sh")
 rtt_manifest_path = File.join(root, "autoproj", "manifests", "rtt.xml")
+local_osdeps_path = File.join(root, "autoproj", "orocos-rock.osdeps")
 export_env_path = File.join(root, "tools", "export-env.sh")
 validate_install_path = File.join(root, "tools", "validate-install.sh")
 ruby_tools_path = File.join(root, "tools", "install-ruby-tools.sh")
@@ -41,13 +42,15 @@ expected_forks.each do |package, url|
   actual_branch = override["branch"]
 
   errors << "#{package}: expected url #{url}, got #{actual_url.inspect}" unless actual_url == url
-  errors << "#{package}: expected branch MetaNC, got #{actual_branch.inspect}" unless actual_branch == "MetaNC"
+  errors << "#{package}: expected branch dev, got #{actual_branch.inspect}" unless actual_branch == "dev"
 end
 
 install_script = File.read(install_path)
 setup_script = File.file?(setup_path) ? File.read(setup_path) : nil
 common_script = File.read(common_path)
 overrides_script = File.read(File.join(root, "autoproj", "overrides.rb"))
+local_osdeps = File.file?(local_osdeps_path) ? File.read(local_osdeps_path) : ""
+local_osdeps_data = local_osdeps.empty? ? {} : (YAML.safe_load(local_osdeps) || {})
 export_env_script = File.read(export_env_path)
 validate_install_script = File.read(validate_install_path)
 
@@ -89,22 +92,31 @@ unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
   errors << "autoproj/overrides.rb: rtt must opt into package.xml manifest loading"
 end
 
-unless export_env_script.include?('PATH "\$OROCOS_ROCK_PREFIX/toolchain/bin"')
+unless export_env_script.include?('OROCOS_PREFIX="$PREFIX"') &&
+       export_env_script.include?("export OROCOS_PREFIX")
+  errors << "tools/export-env.sh: env.sh must bind OROCOS_PREFIX to the generated install prefix"
+end
+
+if export_env_script.include?('${OROCOS_ROCK_PREFIX:-')
+  errors << "tools/export-env.sh: generated env.sh must not redirect through OROCOS_ROCK_PREFIX"
+end
+
+unless export_env_script.include?('PATH "\$OROCOS_PREFIX/toolchain/bin"')
   errors << "tools/export-env.sh: env.sh must prepend the installed toolchain bin directory"
 end
 
-unless export_env_script.include?('CMAKE_PREFIX_PATH "\$OROCOS_ROCK_PREFIX/toolchain"')
+unless export_env_script.include?('CMAKE_PREFIX_PATH "\$OROCOS_PREFIX/toolchain"')
   errors << "tools/export-env.sh: env.sh must prepend the installed toolchain prefix"
 end
 
-root_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_ROCK_PREFIX/lib"')
-toolchain_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_ROCK_PREFIX/toolchain/lib"')
+root_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_PREFIX/lib"')
+toolchain_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_PREFIX/toolchain/lib"')
 if root_lib && toolchain_lib && root_lib > toolchain_lib
   errors << "tools/export-env.sh: toolchain libraries must take precedence over root prefix libraries"
 end
 
-root_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_ROCK_PREFIX/lib/pkgconfig"')
-toolchain_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_ROCK_PREFIX/toolchain/lib/pkgconfig"')
+root_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_PREFIX/lib/pkgconfig"')
+toolchain_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_PREFIX/toolchain/lib/pkgconfig"')
 if root_pkg_config && toolchain_pkg_config && root_pkg_config > toolchain_pkg_config
   errors << "tools/export-env.sh: toolchain pkg-config metadata must take precedence over root prefix metadata"
 end
@@ -179,6 +191,20 @@ else
   errors << "autoproj/manifests/rtt.xml: must declare boost as a package dependency" unless rtt_manifest.include?('<depend package="boost" />')
   errors << "autoproj/manifests/rtt.xml: must declare omniorb as a package dependency" unless rtt_manifest.include?('<depend package="omniorb" />')
   errors << "autoproj/manifests/rtt.xml: must declare xpath-perl as a package dependency" unless rtt_manifest.include?('<depend package="xpath-perl" />')
+end
+
+if local_osdeps_data.key?("ruby")
+  errors << "autoproj/orocos-rock.osdeps: must not override ruby directly; Autoproj aliases ruby to the active rubyXX osdep"
+end
+
+%w[ruby33 ruby34].each do |ruby_osdep|
+  unless local_osdeps_data.dig(ruby_osdep, "debian,ubuntu") == "ruby"
+    errors << "autoproj/orocos-rock.osdeps: must define #{ruby_osdep} for Debian/Ubuntu package-set compatibility"
+  end
+end
+
+unless local_osdeps_data.dig("ruby-dev", "debian,ubuntu") == "ruby-dev"
+  errors << "autoproj/orocos-rock.osdeps: must define ruby-dev for Debian/Ubuntu package-set compatibility"
 end
 
 if errors.any?

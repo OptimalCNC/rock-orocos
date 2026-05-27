@@ -10,15 +10,25 @@ on:
 
 jobs:
   package-test:
-    name: Ubuntu 22.04 ${{ matrix.package-test }}
+    name: ${{ matrix.os.name }} ${{ matrix.package-test }}
     runs-on: ubuntu-24.04
     container:
-      image: ubuntu:22.04
+      image: ${{ matrix.os.image }}
     continue-on-error: true
 
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - name: Ubuntu 22.04
+            artifact: ubuntu-22.04
+            image: ubuntu:22.04
+          - name: Ubuntu 24.04
+            artifact: ubuntu-24.04
+            image: ubuntu:24.04
+          - name: Debian 13
+            artifact: debian-13
+            image: debian:trixie
         package-test:
           - utilmm
           - log4cpp
@@ -29,7 +39,7 @@ jobs:
 
     env:
       DEBIAN_FRONTEND: noninteractive
-      OROCOS_ROCK_PREFIX: /opt/orocos
+      OROCOS_PREFIX: /opt/orocos
       SHELL: /bin/bash
 
     defaults:
@@ -83,19 +93,19 @@ jobs:
         run: ./tools/install-autoproj.sh
 
       - name: Bootstrap workspace
-        run: ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
 
       - name: Build and install toolchain
-        run: ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/install.sh --prefix "$OROCOS_PREFIX"
 
       - name: Run package test subset
-        run: ./tools/test-package.sh --prefix "$OROCOS_ROCK_PREFIX" "${{ matrix.package-test }}" 2>&1 | tee "package-test-${{ matrix.package-test }}.log"
+        run: ./tools/test-package.sh --prefix "$OROCOS_PREFIX" "${{ matrix.package-test }}" 2>&1 | tee "package-test-${{ matrix.package-test }}.log"
 
       - name: Upload package test logs
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: package-test-logs-ubuntu-22.04-${{ matrix.package-test }}
+          name: package-test-logs-${{ matrix.os.artifact }}-${{ matrix.package-test }}
           if-no-files-found: ignore
           path: |
             package-test-${{ matrix.package-test }}.log
@@ -103,9 +113,10 @@ jobs:
             .autoproj/env.yml
             .autoproj/installation-manifest
             .autoproj/remotes/**/*.autobuild
-            .autoproj/remotes/**/*.osdeps
-            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*.log
-            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*-stamp
+            .autoproj/remotes/**/*.osdeps*
+            autoproj/**/*.osdeps*
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*.log
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*-stamp
             toolchain/tools/**/build/CMakeFiles/CMakeOutput.log
             toolchain/tools/**/build/CMakeFiles/CMakeError.log
             toolchain/tools/**/build/Testing/Temporary/*.log

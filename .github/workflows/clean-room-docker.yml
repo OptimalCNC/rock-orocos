@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    name: Build Ubuntu ${{ matrix.ubuntu-version }} Toolchain Image
+    name: Build Standalone Toolchain Image
     runs-on: blacksmith-4vcpu-ubuntu-2404
     strategy:
       fail-fast: false
@@ -27,7 +27,7 @@ jobs:
           context: .
           file: docker/orocos-rock/Dockerfile
           build-args: |
-            UBUNTU_VERSION=${{ matrix.ubuntu-version }}
+            OROCOS_ROCK_BASE_IMAGE=ubuntu:${{ matrix.ubuntu-version }}
           pull: true
           push: false
           load: true

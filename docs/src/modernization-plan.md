@@ -2,8 +2,8 @@
 
 This page records the modernization direction for the maintained Orocos/Rock
 toolchain. The first goal is a repeatable C++17-compatible baseline on Ubuntu
-22.04 and Ubuntu 24.04. Ubuntu 26.04 remains the next compatibility target once
-the CI runtime can be validated.
+22.04, Ubuntu 24.04, and Debian 13/Trixie. Ubuntu 26.04 remains the next
+compatibility target once the CI runtime can be validated.
 
 ## Principles
 
@@ -29,7 +29,7 @@ Work items:
 
 Gate:
 
-- maintained packages build on Ubuntu 22.04 and 24.04
+- maintained packages build on Ubuntu 22.04, Ubuntu 24.04, and Debian 13/Trixie
 - `tools/check-cpp17-policy.rb` verifies maintained package CMake files and
   oroGen defaults
 - C++ compiler logs have no warning/deprecation matches
@@ -80,7 +80,7 @@ Make CI the main compatibility gate before larger API changes.
 
 Work items:
 
-- run native install CI on Ubuntu 22.04 and 24.04
+- run native install CI on Ubuntu 22.04, Ubuntu 24.04, and Debian 13/Trixie
 - fail CI on maintained-package compiler warnings
 - keep Docker build validation manual until it is needed as a release artifact
 - add package-level tests for changed behavior before API modernization
@@ -102,8 +102,8 @@ Package unit-test policy:
   gates
 - add package unit tests in a separate workflow first, with log artifacts and
   non-required status until the legacy test behavior is understood
-- start with `utilmm`, `log4cpp`, Typelib C++ tests, the stable RTT core CTest
-  subset, and OCL timer/taskbrowser tests on Ubuntu 22.04
+- run `utilmm`, `log4cpp`, Typelib C++ tests, the stable RTT core CTest subset,
+  and OCL test subsets on Ubuntu 22.04, Ubuntu 24.04, and Debian 13/Trixie
 - keep RTT CORBA/mqueue tests and broader OCL deployment, reporting, and logging
   tests out of the required gate until their runtime assumptions are documented
 - record current package-test results in `docs/src/package-test-results.md`
@@ -132,7 +132,7 @@ Gate:
 
 ## Suggested Sequence
 
-1. Establish native CI for Ubuntu 22.04 and 24.04.
+1. Establish native CI for Ubuntu 22.04, Ubuntu 24.04, and Debian 13/Trixie.
 2. Fix CI-only compatibility issues exposed by newer system packages.
 3. Add targeted tests around type naming and script behavior before changing
    generator APIs.
