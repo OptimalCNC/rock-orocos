@@ -1,14 +1,19 @@
-ARG UBUNTU_VERSION=24.04
-ARG OROCOS_ROCK_PREFIX=/opt/orocos
+ARG OROCOS_ROCK_BASE_IMAGE=ubuntu:24.04
+ARG OROCOS_PREFIX=/opt/orocos
 
-FROM ubuntu:${UBUNTU_VERSION} AS builder
+FROM ${OROCOS_ROCK_BASE_IMAGE} AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG OROCOS_ROCK_PREFIX
+ARG OROCOS_PREFIX
+
+USER root
 
 ENV LANG=C.UTF-8
-ENV OROCOS_ROCK_PREFIX=${OROCOS_ROCK_PREFIX}
+ENV OROCOS_PREFIX=${OROCOS_PREFIX}
 ENV SHELL=/bin/bash
+# Keep Orocos/Rock package builds on their own CMake discovery path even when
+# the caller provides a base image with a toolchain file configured.
+ENV CMAKE_TOOLCHAIN_FILE=
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -41,14 +46,18 @@ RUN apt-get update && \
         xz-utils && \
     rm -rf /var/lib/apt/lists/*
 
-RUN useradd --create-home --shell /bin/bash ubuntu && \
-    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
+RUN if ! id -u ubuntu >/dev/null 2>&1; then \
+        useradd --create-home --shell /bin/bash ubuntu; \
+    fi && \
+    mkdir -p /home/ubuntu && \
+    chown ubuntu:ubuntu /home/ubuntu && \
+    printf 'ubuntu ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/ubuntu && \
     chmod 0440 /etc/sudoers.d/ubuntu
 
 WORKDIR /opt/orocos-rock
 COPY --chown=ubuntu:ubuntu . .
-RUN mkdir -p "$OROCOS_ROCK_PREFIX" && \
-    chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_ROCK_PREFIX"
+RUN mkdir -p "$OROCOS_PREFIX" && \
+    chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_PREFIX"
 
 SHELL ["/bin/bash", "-lc"]
 
@@ -56,17 +65,19 @@ USER ubuntu
 
 RUN ./tools/install-autoproj.sh
 RUN ./tools/check-autoproj-policy.rb
-RUN ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
-RUN ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
-RUN ./tools/validate-install.sh --prefix "$OROCOS_ROCK_PREFIX"
+RUN ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
+RUN ./tools/install.sh --prefix "$OROCOS_PREFIX"
+RUN ./tools/validate-install.sh --prefix "$OROCOS_PREFIX"
 
-FROM ubuntu:${UBUNTU_VERSION} AS final
+FROM ${OROCOS_ROCK_BASE_IMAGE} AS final
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG OROCOS_ROCK_PREFIX
+ARG OROCOS_PREFIX
+
+USER root
 
 ENV LANG=C.UTF-8
-ENV OROCOS_ROCK_PREFIX=${OROCOS_ROCK_PREFIX}
+ENV OROCOS_PREFIX=${OROCOS_PREFIX}
 ENV SHELL=/bin/bash
 
 RUN apt-get update && \
@@ -92,12 +103,19 @@ RUN apt-get update && \
         python3 \
         python3-dev \
         ruby \
-        ruby-dev && \
+        ruby-dev \
+        sudo && \
     rm -rf /var/lib/apt/lists/*
 
-RUN useradd --create-home --shell /bin/bash ubuntu
+RUN if ! id -u ubuntu >/dev/null 2>&1; then \
+        useradd --create-home --shell /bin/bash ubuntu; \
+    fi && \
+    mkdir -p /home/ubuntu && \
+    chown ubuntu:ubuntu /home/ubuntu && \
+    printf 'ubuntu ALL=(ALL) NOPASSWD:ALL\n' >/etc/sudoers.d/ubuntu && \
+    chmod 0440 /etc/sudoers.d/ubuntu
 
-COPY --from=builder --chown=ubuntu:ubuntu ${OROCOS_ROCK_PREFIX} ${OROCOS_ROCK_PREFIX}
+COPY --from=builder --chown=ubuntu:ubuntu ${OROCOS_PREFIX} ${OROCOS_PREFIX}
 
 SHELL ["/bin/bash", "-lc"]
 
@@ -105,10 +123,10 @@ USER ubuntu
 WORKDIR /home/ubuntu
 
 RUN test ! -e /opt/orocos-rock && \
-    source "$OROCOS_ROCK_PREFIX/dev-env.sh" && \
+    source "$OROCOS_PREFIX/dev-env.sh" && \
     ! command -v autoproj && \
     command -v deployer-gnulinux && \
     command -v orogen && \
     command -v typegen
 
-CMD ["bash", "-lc", "source \"$OROCOS_ROCK_PREFIX/dev-env.sh\" && exec bash"]
+CMD ["bash", "-lc", "source \"$OROCOS_PREFIX/dev-env.sh\" && exec bash"]

@@ -4,8 +4,8 @@ This page defines the expected lifecycle of the `orocos-rock` workspace.
 
 ## Goal
 
-Produce one installed Orocos/Rock toolchain that MetaNC can consume as a normal
-dependency.
+Produce one installed Orocos/Rock toolchain that downstream projects can consume
+as a normal dependency.
 
 ## Workspace Model
 
@@ -34,8 +34,8 @@ flowchart TD
 ## Detailed Steps
 
 1. Bootstrap the autoproj workspace.
-2. Load the minimal package set needed by MetaNC.
-3. Apply source overrides for maintained forks.
+2. Load the minimal package set needed for RTT, OCL, and generator tools.
+3. Apply source overrides for public maintenance forks.
 4. Ensure `ocl` is included.
 5. Ensure RTT scripting is enabled.
 6. Build runtime packages.
@@ -68,9 +68,6 @@ When package policy changes:
 4. reinstall the prefix
 5. rerun validation
 
-The existing MetaNC docs already note that the relevant autoproj refresh command
-is `autoproj reconfigure`.
-
 ## Validation Checklist
 
 Minimum validation after bootstrap and install:
@@ -80,14 +77,15 @@ Minimum validation after bootstrap and install:
 - RTT scripting is enabled
 - `orogen` is available
 - `typegen` is available
-- MetaNC can source `dev-env.sh` and configure a downstream build
+- a downstream Orocos package can source `dev-env.sh` and configure a build
 
 ## Failure Handling
 
 If a package fails:
 
 - first decide whether the package is truly required in phase 1
-- if required, patch it in a maintained fork or pin a known-good revision
+- if required, patch it in a public maintenance fork or pin a known-good
+  revision
 - if not required, remove it from the initial workspace scope
 
 Do not compensate for a missing generator stack by switching immediately to a
@@ -100,6 +98,6 @@ Phase 1 should stop after:
 - runtime toolchain works
 - generator toolchain works
 - deployer and RTT scripting work
-- MetaNC can build against the installed result
+- downstream Orocos packages can build against the installed result
 
 Do not expand into higher-level Rock orchestration packages in the first phase.

@@ -28,17 +28,21 @@ end
 dockerfile = File.join(root, "docker/orocos-rock/Dockerfile")
 if File.file?(dockerfile)
   contents = File.read(dockerfile)
-  errors << "Dockerfile must default to Ubuntu 24.04" unless contents.match?(/^ARG UBUNTU_VERSION=24\.04$/)
-  errors << "Dockerfile must build Orocos/Rock from a configurable Ubuntu image" unless contents.match?(/^FROM ubuntu:\$\{UBUNTU_VERSION\} AS builder$/)
-  errors << "Dockerfile final image must start again from the configurable Ubuntu image" unless contents.match?(/^FROM ubuntu:\$\{UBUNTU_VERSION\} AS final$/)
+  errors << "Dockerfile must default to the standalone Ubuntu base image" unless contents.match?(/^ARG OROCOS_ROCK_BASE_IMAGE=ubuntu:24\.04$/)
+  errors << "Dockerfile must build Orocos/Rock from the configurable standalone base image" unless contents.match?(/^FROM \$\{OROCOS_ROCK_BASE_IMAGE\} AS builder$/)
+  errors << "Dockerfile final image must start again from the configurable standalone base image" unless contents.match?(/^FROM \$\{OROCOS_ROCK_BASE_IMAGE\} AS final$/)
   errors << "Dockerfile must not use MetaNC images" if contents.match?(/optimalcnc\/metanc|METANC_BASE_IMAGE/)
   errors << "Dockerfile must not require an external Dockerfile frontend" if contents.match?(/^#\s*syntax=/)
-  errors << "Dockerfile must install sudo for Autoproj osdeps on standard Ubuntu" unless contents.match?(/\bsudo\b/)
-  errors << "Dockerfile must create the ubuntu build user" unless contents.include?("useradd")
+  errors << "Dockerfile must clear inherited CMake toolchain settings for Orocos/Rock builds" unless contents.include?("ENV CMAKE_TOOLCHAIN_FILE=")
   errors << "Dockerfile must export SHELL=/bin/bash for Autoproj" unless contents.include?("ENV SHELL=/bin/bash")
+  errors << "Dockerfile must install sudo for non-root Autoproj osdeps" unless contents.match?(/sudo\s+\\\n\s+xz-utils/) &&
+                                                                             contents.match?(/ruby-dev\s+\\\n\s+sudo &&/)
+  errors << "Dockerfile must create the non-root ubuntu user idempotently" unless contents.scan("if ! id -u ubuntu >/dev/null 2>&1").length == 2 &&
+                                                                                     contents.scan("useradd --create-home --shell /bin/bash ubuntu").length == 2
+  errors << "Dockerfile must ensure the ubuntu home directory is owned by ubuntu" unless contents.scan("chown ubuntu:ubuntu /home/ubuntu").length == 2
   errors << "Dockerfile must copy the workspace for the ubuntu user" unless contents.include?("COPY --chown=ubuntu:ubuntu . .")
-  errors << "Dockerfile must make the install prefix writable by ubuntu" unless contents.include?('chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_ROCK_PREFIX"')
-  final_stage = contents.split(/^FROM ubuntu:\$\{UBUNTU_VERSION\} AS final$/).last || ""
+  errors << "Dockerfile must make the install prefix writable by ubuntu" unless contents.include?('chown -R ubuntu:ubuntu /opt/orocos-rock "$OROCOS_PREFIX"')
+  final_stage = contents.split(/^FROM \$\{OROCOS_ROCK_BASE_IMAGE\} AS final$/).last || ""
   errors << "Dockerfile final image must copy only the installed prefix from builder" unless final_stage.include?("COPY --from=builder --chown=ubuntu:ubuntu")
   errors << "Dockerfile final image must not copy or use the orocos-rock workspace" if final_stage.match?(/COPY .*\/opt\/orocos-rock/) || final_stage.include?("WORKDIR /opt/orocos-rock")
   errors << "Dockerfile final image must assert the orocos-rock workspace is absent" unless final_stage.include?("test ! -e /opt/orocos-rock")
@@ -60,8 +64,8 @@ if File.file?(dockerfile)
   errors << "Dockerfile must run tools/bootstrap.sh" unless contents.include?("./tools/bootstrap.sh")
   errors << "Dockerfile must run tools/install.sh" unless contents.include?("./tools/install.sh")
   errors << "Dockerfile must run tools/validate-install.sh" unless contents.include?("./tools/validate-install.sh")
-  expected_cmd = 'CMD ["bash", "-lc", "source \"$OROCOS_ROCK_PREFIX/dev-env.sh\" && exec bash"]'
-  errors << "Dockerfile CMD must source dev-env.sh through OROCOS_ROCK_PREFIX" unless contents.include?(expected_cmd)
+  expected_cmd = 'CMD ["bash", "-lc", "source \"$OROCOS_PREFIX/dev-env.sh\" && exec bash"]'
+  errors << "Dockerfile CMD must source dev-env.sh through OROCOS_PREFIX" unless contents.include?(expected_cmd)
 end
 
 workflow = File.join(root, ".github/workflows/clean-room-docker.yml")
@@ -75,7 +79,7 @@ if File.file?(workflow)
   errors << "workflow must not require Ubuntu 26.04 yet" if contents.include?(%("26.04"))
   errors << "workflow must use Blacksmith Docker builder setup" unless contents.include?("useblacksmith/setup-docker-builder@v1")
   errors << "workflow must use Blacksmith build-push action" unless contents.include?("useblacksmith/build-push-action@v2")
-  errors << "workflow must pass UBUNTU_VERSION to Docker builds" unless contents.include?("UBUNTU_VERSION=${{ matrix.ubuntu-version }}")
+  errors << "workflow must pass the Ubuntu base image to Docker builds" unless contents.include?("OROCOS_ROCK_BASE_IMAGE=ubuntu:${{ matrix.ubuntu-version }}")
   errors << "workflow must pull the latest Ubuntu base image during Docker builds" unless contents.include?("pull: true")
   errors << "workflow must load the built image for smoke testing" unless contents.include?("load: true")
   errors << "workflow must build docker/orocos-rock/Dockerfile" unless contents.include?("docker/orocos-rock/Dockerfile")
@@ -95,7 +99,8 @@ end
 docker_build = File.join(root, "tools/docker-build.sh")
 if File.file?(docker_build)
   contents = File.read(docker_build)
-  errors << "docker-build.sh must default to the Ubuntu-based local image tag" unless contents.include?("orocos-rock:ubuntu")
+  errors << "docker-build.sh must default to the standalone local image tag" unless contents.include?("orocos-rock:latest")
+  errors << "docker-build.sh must pass the configurable base image" unless contents.include?("OROCOS_ROCK_BASE_IMAGE")
 end
 
 common = File.join(root, "tools/common.sh")

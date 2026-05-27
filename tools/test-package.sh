@@ -23,7 +23,7 @@ Package tests:
                Build and run stable OCL logging/reporting/state-machine CTest cases
 
 Options:
-  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_ROCK_PREFIX or ~/.orocos
+  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_PREFIX or ~/.orocos
   -h, --help       Show this help
 USAGE
 }

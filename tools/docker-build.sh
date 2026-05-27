@@ -5,11 +5,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-UBUNTU_VERSION="${UBUNTU_VERSION:-24.04}"
-IMAGE_NAME="${OROCOS_ROCK_DOCKER_IMAGE:-orocos-rock:ubuntu-$UBUNTU_VERSION}"
+OROCOS_ROCK_BASE_IMAGE="${OROCOS_ROCK_BASE_IMAGE:-ubuntu:24.04}"
+IMAGE_NAME="${OROCOS_ROCK_DOCKER_IMAGE:-orocos-rock:latest}"
 
 docker build \
-    --build-arg "UBUNTU_VERSION=$UBUNTU_VERSION" \
+    --build-arg "OROCOS_ROCK_BASE_IMAGE=$OROCOS_ROCK_BASE_IMAGE" \
     --file "$ROOT_DIR/docker/orocos-rock/Dockerfile" \
     --tag "$IMAGE_NAME" \
     "$@" \

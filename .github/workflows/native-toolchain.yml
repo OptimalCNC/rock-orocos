@@ -40,7 +40,7 @@ jobs:
 
     env:
       DEBIAN_FRONTEND: noninteractive
-      OROCOS_ROCK_PREFIX: /opt/orocos
+      OROCOS_PREFIX: /opt/orocos
       SHELL: /bin/bash
 
     defaults:
@@ -95,18 +95,18 @@ jobs:
           ruby tools/check-package-tests-ci.rb
 
       - name: Bootstrap workspace
-        run: ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
 
       - name: Build and install toolchain
-        run: ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/install.sh --prefix "$OROCOS_PREFIX"
 
       - name: Validate installed prefix
-        run: ./tools/validate-install.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/validate-install.sh --prefix "$OROCOS_PREFIX"
 
       - name: Check compiler warning budget
         run: |
           set -euo pipefail
-          if rg -n "warning:|deprecated|pragma message" "$OROCOS_ROCK_PREFIX"/toolchain/log/*-build.log; then
+          if rg -n "warning:|deprecated|pragma message" "$OROCOS_PREFIX"/toolchain/log/*-build.log; then
             echo "compiler warning budget exceeded" >&2
             exit 1
           fi
@@ -123,5 +123,5 @@ jobs:
             .autoproj/installation-manifest
             .autoproj/remotes/**/*.autobuild
             .autoproj/remotes/**/*.osdeps
-            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*.log
-            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*-stamp
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*.log
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*-stamp

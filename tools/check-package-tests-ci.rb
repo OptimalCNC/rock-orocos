@@ -21,6 +21,7 @@ else
     errors << "package tests must cover #{name}" unless contents.include?("name: #{name}") && contents.include?("image: #{image}")
   end
   errors << "package tests must use matrix-selected containers" unless contents.include?("image: ${{ matrix.os.image }}")
+  errors << "package tests must use OROCOS_PREFIX as the public install-prefix variable" unless contents.include?("OROCOS_PREFIX: /opt/orocos")
   errors << "package tests must be non-required while experimental" unless contents.include?("continue-on-error: true")
   errors << "package tests must define a package-test matrix" unless contents.include?("package-test:")
   %w[utilmm log4cpp typelib-cxx rtt-core ocl-basic ocl-integration].each do |package_test|

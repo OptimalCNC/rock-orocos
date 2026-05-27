@@ -39,7 +39,7 @@ jobs:
 
     env:
       DEBIAN_FRONTEND: noninteractive
-      OROCOS_ROCK_PREFIX: /opt/orocos
+      OROCOS_PREFIX: /opt/orocos
       SHELL: /bin/bash
 
     defaults:
@@ -93,13 +93,13 @@ jobs:
         run: ./tools/install-autoproj.sh
 
       - name: Bootstrap workspace
-        run: ./tools/bootstrap.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
 
       - name: Build and install toolchain
-        run: ./tools/install.sh --prefix "$OROCOS_ROCK_PREFIX"
+        run: ./tools/install.sh --prefix "$OROCOS_PREFIX"
 
       - name: Run package test subset
-        run: ./tools/test-package.sh --prefix "$OROCOS_ROCK_PREFIX" "${{ matrix.package-test }}" 2>&1 | tee "package-test-${{ matrix.package-test }}.log"
+        run: ./tools/test-package.sh --prefix "$OROCOS_PREFIX" "${{ matrix.package-test }}" 2>&1 | tee "package-test-${{ matrix.package-test }}.log"
 
       - name: Upload package test logs
         if: failure()
@@ -114,8 +114,8 @@ jobs:
             .autoproj/installation-manifest
             .autoproj/remotes/**/*.autobuild
             .autoproj/remotes/**/*.osdeps
-            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*.log
-            ${{ env.OROCOS_ROCK_PREFIX }}/toolchain/log/*-stamp
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*.log
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*-stamp
             toolchain/tools/**/build/CMakeFiles/CMakeOutput.log
             toolchain/tools/**/build/CMakeFiles/CMakeError.log
             toolchain/tools/**/build/Testing/Temporary/*.log

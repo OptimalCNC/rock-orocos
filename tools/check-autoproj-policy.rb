@@ -91,22 +91,31 @@ unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
   errors << "autoproj/overrides.rb: rtt must opt into package.xml manifest loading"
 end
 
-unless export_env_script.include?('PATH "\$OROCOS_ROCK_PREFIX/toolchain/bin"')
+unless export_env_script.include?('OROCOS_PREFIX="$PREFIX"') &&
+       export_env_script.include?("export OROCOS_PREFIX")
+  errors << "tools/export-env.sh: env.sh must bind OROCOS_PREFIX to the generated install prefix"
+end
+
+if export_env_script.include?('${OROCOS_ROCK_PREFIX:-')
+  errors << "tools/export-env.sh: generated env.sh must not redirect through OROCOS_ROCK_PREFIX"
+end
+
+unless export_env_script.include?('PATH "\$OROCOS_PREFIX/toolchain/bin"')
   errors << "tools/export-env.sh: env.sh must prepend the installed toolchain bin directory"
 end
 
-unless export_env_script.include?('CMAKE_PREFIX_PATH "\$OROCOS_ROCK_PREFIX/toolchain"')
+unless export_env_script.include?('CMAKE_PREFIX_PATH "\$OROCOS_PREFIX/toolchain"')
   errors << "tools/export-env.sh: env.sh must prepend the installed toolchain prefix"
 end
 
-root_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_ROCK_PREFIX/lib"')
-toolchain_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_ROCK_PREFIX/toolchain/lib"')
+root_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_PREFIX/lib"')
+toolchain_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_PREFIX/toolchain/lib"')
 if root_lib && toolchain_lib && root_lib > toolchain_lib
   errors << "tools/export-env.sh: toolchain libraries must take precedence over root prefix libraries"
 end
 
-root_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_ROCK_PREFIX/lib/pkgconfig"')
-toolchain_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_ROCK_PREFIX/toolchain/lib/pkgconfig"')
+root_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_PREFIX/lib/pkgconfig"')
+toolchain_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_PREFIX/toolchain/lib/pkgconfig"')
 if root_pkg_config && toolchain_pkg_config && root_pkg_config > toolchain_pkg_config
   errors << "tools/export-env.sh: toolchain pkg-config metadata must take precedence over root prefix metadata"
 end
