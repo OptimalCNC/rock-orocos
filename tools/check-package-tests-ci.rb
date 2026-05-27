@@ -33,6 +33,7 @@ else
   errors << "package tests must upload CTest logs" unless contents.include?("Testing/Temporary/*.log")
   errors << "package tests must upload CMake logs" unless contents.include?("CMakeOutput.log") && contents.include?("CMakeError.log")
   errors << "package tests must upload Autoproj package logs" unless contents.include?("toolchain/log/*.log")
+  errors << "package tests must upload osdeps suffix files" unless contents.include?(".autoproj/remotes/**/*.osdeps*") && contents.include?("autoproj/**/*.osdeps*")
 end
 
 if errors.any?

@@ -44,6 +44,7 @@ else
   errors << "native CI must upload diagnostic logs on failure" unless contents.include?("actions/upload-artifact@v6") && contents.include?("if: failure()")
   errors << "native CI must upload package build logs" unless contents.include?("toolchain/log/*.log")
   errors << "native CI must upload Autoproj configuration/log context" unless contents.include?(".autoproj/config.yml") && contents.include?(".autoproj/remotes/**/*.autobuild")
+  errors << "native CI must upload osdeps suffix files" unless contents.include?(".autoproj/remotes/**/*.osdeps*") && contents.include?("autoproj/**/*.osdeps*")
 end
 
 if errors.any?

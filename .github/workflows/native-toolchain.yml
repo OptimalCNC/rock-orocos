@@ -122,6 +122,7 @@ jobs:
             .autoproj/env.yml
             .autoproj/installation-manifest
             .autoproj/remotes/**/*.autobuild
-            .autoproj/remotes/**/*.osdeps
+            .autoproj/remotes/**/*.osdeps*
+            autoproj/**/*.osdeps*
             ${{ env.OROCOS_PREFIX }}/toolchain/log/*.log
             ${{ env.OROCOS_PREFIX }}/toolchain/log/*-stamp

@@ -50,6 +50,7 @@ setup_script = File.file?(setup_path) ? File.read(setup_path) : nil
 common_script = File.read(common_path)
 overrides_script = File.read(File.join(root, "autoproj", "overrides.rb"))
 local_osdeps = File.file?(local_osdeps_path) ? File.read(local_osdeps_path) : ""
+local_osdeps_data = local_osdeps.empty? ? {} : (YAML.safe_load(local_osdeps) || {})
 export_env_script = File.read(export_env_path)
 validate_install_script = File.read(validate_install_path)
 
@@ -192,13 +193,17 @@ else
   errors << "autoproj/manifests/rtt.xml: must declare xpath-perl as a package dependency" unless rtt_manifest.include?('<depend package="xpath-perl" />')
 end
 
-unless local_osdeps.include?("ruby:") &&
-       local_osdeps.include?("debian,ubuntu: ruby")
-  errors << "autoproj/orocos-rock.osdeps: must define ruby for Debian/Ubuntu package-set compatibility"
+if local_osdeps_data.key?("ruby")
+  errors << "autoproj/orocos-rock.osdeps: must not override ruby directly; Autoproj aliases ruby to the active rubyXX osdep"
 end
 
-unless local_osdeps.include?("ruby-dev:") &&
-       local_osdeps.include?("debian,ubuntu: ruby-dev")
+%w[ruby33 ruby34].each do |ruby_osdep|
+  unless local_osdeps_data.dig(ruby_osdep, "debian,ubuntu") == "ruby"
+    errors << "autoproj/orocos-rock.osdeps: must define #{ruby_osdep} for Debian/Ubuntu package-set compatibility"
+  end
+end
+
+unless local_osdeps_data.dig("ruby-dev", "debian,ubuntu") == "ruby-dev"
   errors << "autoproj/orocos-rock.osdeps: must define ruby-dev for Debian/Ubuntu package-set compatibility"
 end
 
