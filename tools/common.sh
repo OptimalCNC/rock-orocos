@@ -3,7 +3,7 @@
 set -euo pipefail
 
 OROCOS_ROCK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OROCOS_ROCK_DEFAULT_PREFIX="${OROCOS_ROCK_PREFIX:-$HOME/.orocos}"
+OROCOS_ROCK_DEFAULT_PREFIX="${OROCOS_PREFIX:-$HOME/.orocos}"
 
 orocos_rock_die() {
     printf 'error: %s\n' "$*" >&2

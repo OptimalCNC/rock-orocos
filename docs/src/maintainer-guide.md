@@ -1,8 +1,8 @@
 # Maintainer Guide
 
 This page is for people who maintain the `orocos-rock` dependency workspace.
-The maintainer's job is to produce one installed Orocos/Rock prefix that MetaNC
-can consume as a normal third-party dependency.
+The maintainer's job is to produce one installed Orocos/Rock prefix that
+downstream projects can consume as a normal third-party dependency.
 
 ## Maintainer Principles
 
@@ -10,6 +10,7 @@ can consume as a normal third-party dependency.
 - `.autoproj/`, package checkouts, and build directories are workspace state.
 - Package selection belongs in tracked Autoproj configuration.
 - Fork choices belong in tracked overrides.
+- Public maintenance forks use `dev` branches.
 - Wrapper scripts should make the workflow repeatable, not hide new policy.
 
 ## Script Flow
@@ -22,7 +23,7 @@ can consume as a normal third-party dependency.
 | `tools/install.sh` | Updates forked packages, refreshes source-declared OS dependencies, builds the selected package layout, stages Ruby generator tools, and exports environment scripts | Built packages under the configured prefix plus `env.sh` and `dev-env.sh` |
 | `tools/export-env.sh` | Regenerates prefix environment scripts without rebuilding packages | `PREFIX/env.sh`, `PREFIX/dev-env.sh` |
 | `tools/validate-install.sh` | Sources the exported environments and checks required runtime and generator commands | A pass/fail validation of the installed prefix |
-| `tools/docker-build.sh` | Builds the clean-room Docker image using the tracked Dockerfile | Local Docker image, default tag `orocos-rock:metanc-latest` |
+| `tools/docker-build.sh` | Builds the clean-room Docker image using the tracked Dockerfile | Local Docker image, default tag `orocos-rock:latest` |
 
 ## Install Sequence
 
@@ -42,7 +43,7 @@ flowchart TD
 
 The normal host prefix is `~/.orocos`. The Docker image uses `/opt/orocos`.
 In Docker builds, root is used only for OS package installation and ownership
-setup. The wrapper scripts run as the `ubuntu` user from the MetaNC base image.
+setup. The wrapper scripts run as the non-root `ubuntu` user.
 
 The Docker image is multi-stage. Autoproj, source checkouts, build directories,
 and `/opt/orocos-rock` exist only in the builder stage. The final image copies
@@ -58,15 +59,15 @@ Autoproj workspace.
 | User RubyGems | Autoproj and compatibility gems such as Facets when needed | Current user | `install-autoproj.sh` does not edit shell startup files; it prints a `PATH` line if needed |
 | Workspace state | `.autoproj/config.yml`, `.autoproj/Gemfile`, `.autoproj/bin/bundle`, package-set remotes, generated Autoproj state | `orocos-rock` workspace | Generated state. Do not commit it |
 | Source checkouts and builds | Autoproj-managed package checkouts and build results for `log4cpp`, `rtt`, `ocl`, `orogen`, `typelib`, `utilmm`, `utilrb`, `rtt_typelib`, and `stdint_typekit` | `orocos-rock` workspace and install prefix | Package list starts in `autoproj/manifest` |
-| Install prefix | `PREFIX/toolchain`, `PREFIX/bin`, `PREFIX/lib*`, `PREFIX/share`, `PREFIX/env.sh`, `PREFIX/dev-env.sh`, and staged Ruby generator tools | Public toolchain prefix | This is what MetaNC should consume |
+| Install prefix | `PREFIX/toolchain`, `PREFIX/bin`, `PREFIX/lib*`, `PREFIX/share`, `PREFIX/env.sh`, `PREFIX/dev-env.sh`, and staged Ruby generator tools | Public toolchain prefix | This is what downstream projects should consume |
 | Logs | `PREFIX/log` and Autoproj logs | Local install prefix | Useful for debugging failed osdeps, build, and install steps |
 
 ## Environment Scripts
 
 | Script | Purpose | Variables it sets or prepends |
 |---|---|---|
-| `env.sh` | Runtime environment for deployer and installed components | `OROCOS_ROCK_PREFIX`, `PATH`, `LD_LIBRARY_PATH`, `CMAKE_PREFIX_PATH`, `PKG_CONFIG_PATH`, `RTT_COMPONENT_PATH`, `OROCOS_TARGET` |
-| `dev-env.sh` | Development environment for MetaNC builds and generators | Sources `env.sh`, then sets `GEM_HOME`, `GEM_PATH`, and `RUBYLIB` for installed Ruby generator tooling |
+| `env.sh` | Runtime environment for deployer and installed components | `OROCOS_PREFIX`, `PATH`, `LD_LIBRARY_PATH`, `CMAKE_PREFIX_PATH`, `PKG_CONFIG_PATH`, `RTT_COMPONENT_PATH`, `OROCOS_TARGET` |
+| `dev-env.sh` | Development environment for downstream builds and generators | Sources `env.sh`, then sets `GEM_HOME`, `GEM_PATH`, and `RUBYLIB` for installed Ruby generator tooling |
 
 `env.sh` and `dev-env.sh` prepend paths only when the target directory exists.
 They are designed to be sourced repeatedly without duplicating path entries.
@@ -81,8 +82,8 @@ They are designed to be sourced repeatedly without duplicating path entries.
 | `autoproj/manifests/*.xml` | Local package manifest metadata needed during bootstrap |
 | `docs/src/package-policy.md` | Human-readable package and fork policy |
 
-Before adding a package, update the policy first and confirm that MetaNC really
-needs the package to build or run.
+Before adding a package, update the policy first and confirm that the focused
+RTT/OCL/generator toolchain really needs the package to build or run.
 
 ## Maintainer Validation
 
@@ -101,5 +102,5 @@ After a real install, run:
 ./tools/validate-install.sh --prefix ~/.orocos
 ```
 
-Then validate from a MetaNC checkout by sourcing `~/.orocos/dev-env.sh` before
-configuring MetaNC.
+Then validate a downstream package by sourcing `~/.orocos/dev-env.sh` before
+configuring it.

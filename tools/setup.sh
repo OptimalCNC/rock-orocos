@@ -14,7 +14,7 @@ Install Autoproj, bootstrap the Orocos/Rock workspace, install the selected
 toolchain packages, and validate the installed prefix.
 
 Options:
-  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_ROCK_PREFIX or ~/.orocos
+  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_PREFIX or ~/.orocos
   -h, --help       Show this help
 USAGE
 }

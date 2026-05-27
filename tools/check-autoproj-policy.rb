@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require "yaml"
+require "find"
 
 root = File.expand_path("..", __dir__)
 overrides_path = File.join(root, "autoproj", "overrides.yml")
@@ -14,7 +15,8 @@ common_path = File.join(root, "tools", "common.sh")
 expected_forks = {
   "rtt" => "https://github.com/OptimalCNC/rtt.git",
   "ocl" => "https://github.com/OptimalCNC/ocl.git",
-  "log4cpp" => "https://github.com/OptimalCNC/log4cpp.git"
+  "log4cpp" => "https://github.com/OptimalCNC/log4cpp.git",
+  "orogen" => "https://github.com/OptimalCNC/tools-orogen.git"
 }
 
 overrides = YAML.safe_load_file(overrides_path).fetch("overrides", [])
@@ -32,7 +34,58 @@ expected_forks.each do |package, url|
   actual_branch = override["branch"]
 
   errors << "#{package}: expected url #{url}, got #{actual_url.inspect}" unless actual_url == url
-  errors << "#{package}: expected branch MetaNC, got #{actual_branch.inspect}" unless actual_branch == "MetaNC"
+  errors << "#{package}: expected branch dev, got #{actual_branch.inspect}" unless actual_branch == "dev"
+end
+
+private_reference_pattern = /meta[_-]?#{'nc'}/i
+ignored_source_dirs = %w[
+  .autoproj
+  .bundle
+  .cache
+  .codex
+  .git
+  build
+  docs/book
+  install
+  log
+  logs
+  toolchain
+  tools/metaruby
+]
+ignored_source_files = %w[
+  .bundle_env.sh
+  env.sh
+  orocos.log
+]
+
+if File.directory?(File.join(root, ".git"))
+  source_files = `git -C "#{root}" ls-files --cached --others --exclude-standard`.split("\n")
+else
+  source_files = []
+  Find.find(root) do |path|
+    relative = path.delete_prefix("#{root}/")
+    if File.directory?(path) && ignored_source_dirs.include?(relative)
+      Find.prune
+      next
+    end
+
+    source_files << relative if File.file?(path)
+  end
+end
+
+source_files.each do |relative|
+  path = File.join(root, relative)
+  next unless File.file?(path)
+  next if ignored_source_files.include?(relative)
+  next if relative.end_with?(".log")
+
+  if relative.match?(private_reference_pattern)
+    errors << "#{relative}: private project name must not appear in public source path"
+  end
+
+  File.readlines(path, encoding: "UTF-8", invalid: :replace, undef: :replace).each_with_index do |line, index|
+    errors << "#{relative}:#{index + 1}: private project reference must not appear in public source" if line.match?(private_reference_pattern)
+  end
 end
 
 install_script = File.read(install_path)
@@ -63,22 +116,31 @@ unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
   errors << "autoproj/overrides.rb: rtt must opt into package.xml manifest loading"
 end
 
-unless export_env_script.include?('PATH "\$OROCOS_ROCK_PREFIX/toolchain/bin"')
+unless export_env_script.include?('OROCOS_PREFIX="$PREFIX"') &&
+       export_env_script.include?("export OROCOS_PREFIX")
+  errors << "tools/export-env.sh: env.sh must bind OROCOS_PREFIX to the generated install prefix"
+end
+
+if export_env_script.include?('${OROCOS_ROCK_PREFIX:-')
+  errors << "tools/export-env.sh: generated env.sh must not redirect through OROCOS_ROCK_PREFIX"
+end
+
+unless export_env_script.include?('PATH "\$OROCOS_PREFIX/toolchain/bin"')
   errors << "tools/export-env.sh: env.sh must prepend the installed toolchain bin directory"
 end
 
-unless export_env_script.include?('CMAKE_PREFIX_PATH "\$OROCOS_ROCK_PREFIX/toolchain"')
+unless export_env_script.include?('CMAKE_PREFIX_PATH "\$OROCOS_PREFIX/toolchain"')
   errors << "tools/export-env.sh: env.sh must prepend the installed toolchain prefix"
 end
 
-root_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_ROCK_PREFIX/lib"')
-toolchain_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_ROCK_PREFIX/toolchain/lib"')
+root_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_PREFIX/lib"')
+toolchain_lib = export_env_script.index('LD_LIBRARY_PATH "\$OROCOS_PREFIX/toolchain/lib"')
 if root_lib && toolchain_lib && root_lib > toolchain_lib
   errors << "tools/export-env.sh: toolchain libraries must take precedence over root prefix libraries"
 end
 
-root_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_ROCK_PREFIX/lib/pkgconfig"')
-toolchain_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_ROCK_PREFIX/toolchain/lib/pkgconfig"')
+root_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_PREFIX/lib/pkgconfig"')
+toolchain_pkg_config = export_env_script.index('PKG_CONFIG_PATH "\$OROCOS_PREFIX/toolchain/lib/pkgconfig"')
 if root_pkg_config && toolchain_pkg_config && root_pkg_config > toolchain_pkg_config
   errors << "tools/export-env.sh: toolchain pkg-config metadata must take precedence over root prefix metadata"
 end

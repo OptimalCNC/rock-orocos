@@ -13,7 +13,7 @@ Usage: ./tools/validate-install.sh [--prefix PREFIX]
 Validate the installed Orocos/Rock prefix exported by orocos-rock.
 
 Options:
-  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_ROCK_PREFIX or ~/.orocos
+  --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_PREFIX or ~/.orocos
   -h, --help       Show this help
 USAGE
 }
