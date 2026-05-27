@@ -10,7 +10,7 @@ downstream projects can consume as a normal third-party dependency.
 - `.autoproj/`, package checkouts, and build directories are workspace state.
 - Package selection belongs in tracked Autoproj configuration.
 - Fork choices belong in tracked overrides.
-- Public maintenance forks currently use `MetaNC` branches in `liufang-robot/*`.
+- Public maintenance forks use `dev` branches in `liufang-robot/*`.
 - Wrapper scripts should make the workflow repeatable, not hide new policy.
 - Changes to `rock-orocos` land through pull requests. Do not push directly to
   `main` during normal maintenance.

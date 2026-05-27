@@ -42,7 +42,7 @@ expected_forks.each do |package, url|
   actual_branch = override["branch"]
 
   errors << "#{package}: expected url #{url}, got #{actual_url.inspect}" unless actual_url == url
-  errors << "#{package}: expected branch MetaNC, got #{actual_branch.inspect}" unless actual_branch == "MetaNC"
+  errors << "#{package}: expected branch dev, got #{actual_branch.inspect}" unless actual_branch == "dev"
 end
 
 install_script = File.read(install_path)
