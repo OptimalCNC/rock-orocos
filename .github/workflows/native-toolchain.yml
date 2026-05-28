@@ -91,6 +91,7 @@ jobs:
 
       - name: Check repository policy
         run: |
+          ruby tools/check-repository-policy.rb
           ruby tools/check-autoproj-policy.rb
           ruby tools/check-package-tests-ci.rb
 

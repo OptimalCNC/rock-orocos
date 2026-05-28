@@ -1,0 +1,32 @@
+name: Repository Policy
+
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "README.md"
+      - ".github/workflows/repository-policy.yml"
+      - "docs/src/**"
+      - "tools/check-repository-policy.rb"
+  push:
+    branches:
+      - main
+    paths:
+      - "AGENTS.md"
+      - "README.md"
+      - ".github/workflows/repository-policy.yml"
+      - "docs/src/**"
+      - "tools/check-repository-policy.rb"
+  workflow_dispatch:
+
+jobs:
+  policy:
+    name: Repository Policy
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Check repository policy
+        run: ruby tools/check-repository-policy.rb

@@ -100,6 +100,7 @@ RTT/OCL/generator toolchain really needs the package to build or run.
 After changing scripts, package policy, or Docker support, run:
 
 ```bash
+ruby tools/check-repository-policy.rb
 ruby tools/check-autoproj-policy.rb
 ruby tools/check-clean-room-docker.rb
 bash -n tools/common.sh tools/bootstrap.sh tools/install.sh tools/export-env.sh tools/validate-install.sh
