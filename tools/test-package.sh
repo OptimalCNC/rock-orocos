@@ -17,6 +17,9 @@ Package tests:
   utilmm       Build utilmm_testsuite and run CTest Suite
   log4cpp     Build and run log4cpp CTest cases
   typelib-cxx Build typelib_testsuite and run C++ CTest cases only
+  rtt-typelib Build rtt_typelib transport plugin and check pkg-config metadata
+  stdint-typekit
+               Build stdint_typekit plugin and check pkg-config metadata
   rtt-core    Build and run stable RTT core/task CTest cases
   ocl-basic   Build and run OCL timer/taskbrowser CTest cases
   ocl-integration
@@ -140,6 +143,22 @@ case "$PACKAGE_TEST" in
         build_targets toolchain/tools/typelib/build typelib_testsuite
         orocos_rock_info "Running Typelib C++ CTest subset"
         run_ctest toolchain/tools/typelib/build '^(CxxSuiteInstalledPlugins|CxxSuiteLocalPlugins)$'
+        ;;
+    rtt-typelib)
+        orocos_rock_info "Configuring rtt_typelib"
+        reconfigure toolchain/tools/rtt_typelib toolchain/tools/rtt_typelib/build
+        orocos_rock_info "Building rtt_typelib transport plugin"
+        build_targets toolchain/tools/rtt_typelib/build rtt-typelib
+        orocos_rock_info "Checking rtt_typelib pkg-config metadata"
+        pkg-config --exists rtt_typelib-gnulinux
+        ;;
+    stdint-typekit)
+        orocos_rock_info "Configuring stdint_typekit"
+        reconfigure toolchain/stdint_typekit toolchain/stdint_typekit/build
+        orocos_rock_info "Building stdint_typekit plugin"
+        build_targets toolchain/stdint_typekit/build stdint-typekit
+        orocos_rock_info "Checking stdint_typekit pkg-config metadata"
+        pkg-config --exists stdint-gnulinux
         ;;
     rtt-core)
         orocos_rock_info "Configuring RTT core tests"
