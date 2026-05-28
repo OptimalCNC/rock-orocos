@@ -12,6 +12,8 @@ else
   errors << "native CI must run on pull requests" unless contents.include?("pull_request:")
   errors << "native CI must run on pushes to main" unless contents.include?("push:") && contents.include?("- main")
   errors << "native CI must not run for docs-only changes" if contents.match?(/docs\//)
+  errors << "native CI must not run for AGENTS.md-only changes" if contents.include?('"AGENTS.md"')
+  errors << "native CI must not run for repository-policy workflow-only changes" if contents.include?('".github/workflows/repository-policy.yml"')
   errors << "native CI must define an OS matrix" unless contents.include?("matrix:") && contents.include?("os:")
   {
     "Ubuntu 22.04" => "ubuntu:22.04",
@@ -33,6 +35,7 @@ else
   errors << "native CI must install Ruby development headers" unless contents.include?("ruby-dev")
   errors << "native CI must install ripgrep for warning checks" unless contents.include?("ripgrep")
   errors << "native CI must install Autoproj through the wrapper" unless contents.include?("./tools/install-autoproj.sh")
+  errors << "native CI must run repository policy check" unless contents.include?("ruby tools/check-repository-policy.rb")
   errors << "native CI must run Autoproj policy check" unless contents.include?("ruby tools/check-autoproj-policy.rb")
   errors << "native CI must run package test workflow policy check" unless contents.include?("ruby tools/check-package-tests-ci.rb")
   errors << "native CI must bootstrap through the wrapper" unless contents.include?("./tools/bootstrap.sh --prefix")
