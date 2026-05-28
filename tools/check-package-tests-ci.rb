@@ -2,6 +2,7 @@
 
 root = File.expand_path("..", __dir__)
 workflow_path = File.join(root, ".github", "workflows", "package-tests.yml")
+results_path = File.join(root, "docs", "src", "package-test-results.md")
 errors = []
 
 if !File.file?(workflow_path)
@@ -34,6 +35,23 @@ else
   errors << "package tests must upload CMake logs" unless contents.include?("CMakeOutput.log") && contents.include?("CMakeError.log")
   errors << "package tests must upload Autoproj package logs" unless contents.include?("toolchain/log/*.log")
   errors << "package tests must upload osdeps suffix files" unless contents.include?(".autoproj/remotes/**/*.osdeps*") && contents.include?("autoproj/**/*.osdeps*")
+end
+
+test_package_path = File.join(root, "tools", "test-package.sh")
+if !File.file?(test_package_path)
+  errors << "missing tools/test-package.sh"
+else
+  test_package = File.read(test_package_path)
+  errors << "OCL integration CI subset must not run interactive state-machine browser test" if test_package.include?("testWithStateMachine")
+end
+
+if !File.file?(results_path)
+  errors << "missing docs/src/package-test-results.md"
+else
+  results = File.read(results_path)
+  errors << "package test results must describe CI matrix status" unless results.include?("CI Matrix Status")
+  errors << "package test results must not refer to the old MetaNC branch" if results.include?("MetaNC")
+  errors << "package test results must mention dev branch fixes" unless results.include?("`dev`")
 end
 
 if errors.any?
