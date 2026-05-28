@@ -23,6 +23,21 @@ Debian 13/Trixie. The package source overrides use the public
 | `ocl-basic` | `timer` and `taskb` | Passes in CI after restoring OCL standalone CTest support on `liufang-robot/ocl` `dev`. Deployment, reporting, and logging tests stay out of this subset. |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and `ncreport` | Passes in CI on `liufang-robot/ocl` `dev`. The interactive `testWithStateMachine` TaskBrowser case stays out of the CI subset until it has a non-interactive harness. |
 
+Pinned `log4cpp` CTest subset:
+
+- `testCategory`
+- `testFixedContextCategory`
+- `testNDC`
+- `testPattern`
+- `testErrorCollision`
+- `testPriority`
+- `testFilter`
+- `testProperties`
+- `testConfig`
+- `testPropertyConfig`
+- `testRollingFileAppender`
+- `testDailyRollingFileAppender`
+
 Deferred test groups:
 
 - oroGen Ruby tests, until Ruby test dependencies such as `flexmock/minitest`
