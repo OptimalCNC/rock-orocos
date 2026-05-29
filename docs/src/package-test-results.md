@@ -19,7 +19,7 @@ Debian 13/Trixie. The package source overrides use the public
 | `utilmm` | `Suite` CTest case from `utilmm_testsuite` | Passes in CI after stabilizing socket, shell expansion, and pkg-config flag-order tests on `liufang-robot/utilmm` `dev`. |
 | `log4cpp` | Existing CTest tests | Passes in CI after C++17 warning cleanup on `liufang-robot/log4cpp` `dev`. |
 | `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Passes in CI after Ruby/C++ extension warning cleanup on `liufang-robot/tools-typelib` `dev`. |
-| `rtt-typelib` | Rebuilds `rtt-typelib` and checks `rtt_typelib-gnulinux` pkg-config metadata | Build/smoke gate for `liufang-robot/tools-rtt_typelib` `dev`; no package CTest suite is currently defined. |
+| `rtt-typelib` | Rebuilds `rtt-typelib`, runs `get_marshaller_for_test`, and checks `rtt_typelib-gnulinux` pkg-config metadata | Passes in CI after adding marshaller lookup coverage on `liufang-robot/tools-rtt_typelib` `dev`. |
 | `stdint-typekit` | Rebuilds `stdint-typekit` and checks `stdint-gnulinux` pkg-config metadata | Build/smoke gate for `liufang-robot/stdint_typekit` `dev`; no package CTest suite is currently defined. |
 | `rtt-core` | `main-test`, `list-test`, `core-test`, and full `task-test` | Passes in CI after making RTT task thread tests scheduler-capability aware on `liufang-robot/rtt` `dev`. CORBA and mqueue tests stay out of this subset. |
 | `ocl-basic` | `timer` and `taskb` | Passes in CI after restoring OCL standalone CTest support on `liufang-robot/ocl` `dev`. Deployment, reporting, and logging tests stay out of this subset. |
