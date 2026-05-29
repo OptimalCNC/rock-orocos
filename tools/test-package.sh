@@ -146,9 +146,11 @@ case "$PACKAGE_TEST" in
         ;;
     rtt-typelib)
         orocos_rock_info "Configuring rtt_typelib"
-        reconfigure toolchain/tools/rtt_typelib toolchain/tools/rtt_typelib/build
+        reconfigure toolchain/tools/rtt_typelib toolchain/tools/rtt_typelib/build -DBUILD_TESTING=ON
         orocos_rock_info "Building rtt_typelib transport plugin"
-        build_targets toolchain/tools/rtt_typelib/build rtt-typelib
+        build_targets toolchain/tools/rtt_typelib/build rtt-typelib get_marshaller_for_test
+        orocos_rock_info "Running rtt_typelib CTest subset"
+        run_ctest toolchain/tools/rtt_typelib/build '^get_marshaller_for_test$'
         orocos_rock_info "Checking rtt_typelib pkg-config metadata"
         pkg-config --exists rtt_typelib-gnulinux
         ;;

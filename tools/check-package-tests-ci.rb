@@ -55,10 +55,12 @@ package_test_contracts = {
   },
   "rtt-typelib" => {
     script_tokens: [
-      "build_targets toolchain/tools/rtt_typelib/build rtt-typelib",
+      "-DBUILD_TESTING=ON",
+      "build_targets toolchain/tools/rtt_typelib/build rtt-typelib get_marshaller_for_test",
+      "run_ctest toolchain/tools/rtt_typelib/build '^get_marshaller_for_test$'",
       "pkg-config --exists rtt_typelib-gnulinux"
     ],
-    result_tokens: ["`rtt-typelib`", "`rtt_typelib-gnulinux`"]
+    result_tokens: ["`rtt-typelib`", "`get_marshaller_for_test`", "`rtt_typelib-gnulinux`"]
   },
   "stdint-typekit" => {
     script_tokens: [
