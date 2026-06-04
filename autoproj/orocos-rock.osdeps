@@ -6,3 +6,17 @@ ruby34:
 
 ruby-dev:
   debian,ubuntu: ruby-dev
+
+omniorb:
+  debian,ubuntu:
+    - omniidl
+    - libomniorb4-dev
+
+ncurses:
+  debian,ubuntu: libncurses-dev
+
+libncurses:
+  debian,ubuntu: libncurses-dev
+
+libncurses-dev:
+  debian,ubuntu: libncurses-dev

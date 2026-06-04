@@ -4,6 +4,7 @@ root = File.expand_path("..", __dir__)
 agents_path = File.join(root, "AGENTS.md")
 readme_path = File.join(root, "README.md")
 workflow_path = File.join(root, ".github", "workflows", "repository-policy.yml")
+xenomai3_path = File.join(root, "docs", "src", "xenomai3-integration.md")
 errors = []
 
 required_policy_links = {
@@ -44,6 +45,22 @@ else
     ./docs/src/install-contract.md
   ].each do |target|
     errors << "README.md: missing policy link #{target}" unless readme.include?(target)
+  end
+end
+
+if !File.file?(xenomai3_path)
+  errors << "missing docs/src/xenomai3-integration.md"
+else
+  xenomai3 = File.read(xenomai3_path)
+  [
+    "ahoarau-xenomai3-support-v2",
+    "CPU affinity",
+    "rt_task_join",
+    "OROCOS_TARGET=xenomai",
+    "deployer-xenomai",
+    "libfakeethercat"
+  ].each do |token|
+    errors << "docs/src/xenomai3-integration.md: missing #{token}" unless xenomai3.include?(token)
   end
 end
 

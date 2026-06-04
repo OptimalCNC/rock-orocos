@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat <<'USAGE'
-Usage: ./tools/test-package.sh [--prefix PREFIX] PACKAGE_TEST
+Usage: ./tools/test-package.sh [--prefix PREFIX] [--target gnulinux|xenomai] PACKAGE_TEST
 
 Reconfigure an installed Autoproj package build tree with tests enabled and
 run the first experimental package CTest subsets.
@@ -27,11 +27,13 @@ Package tests:
 
 Options:
   --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_PREFIX or ~/.orocos
+  --target TARGET  Orocos target for metadata checks. Default: $OROCOS_TARGET or gnulinux
   -h, --help       Show this help
 USAGE
 }
 
 PREFIX="$OROCOS_ROCK_DEFAULT_PREFIX"
+TARGET="$OROCOS_ROCK_DEFAULT_TARGET"
 PACKAGE_TEST=""
 
 while [ "$#" -gt 0 ]; do
@@ -39,6 +41,11 @@ while [ "$#" -gt 0 ]; do
         --prefix)
             [ "$#" -ge 2 ] || orocos_rock_die "--prefix requires a value"
             PREFIX="$2"
+            shift 2
+            ;;
+        --target)
+            [ "$#" -ge 2 ] || orocos_rock_die "--target requires a value"
+            TARGET="$2"
             shift 2
             ;;
         -h|--help)
@@ -61,6 +68,7 @@ done
     usage >&2
     orocos_rock_die "missing PACKAGE_TEST"
 }
+orocos_rock_validate_target "$TARGET"
 
 BUILD_PARALLEL="${JOBS:-2}"
 PACKAGE_TEST_TIMEOUT="${PACKAGE_TEST_TIMEOUT:-120}"
@@ -75,6 +83,7 @@ source_installed_env() {
     else
         orocos_rock_die "installed environment is missing under $PREFIX; run ./tools/install.sh --prefix $PREFIX first"
     fi
+    export OROCOS_TARGET="$TARGET"
 }
 
 reconfigure() {
@@ -100,6 +109,14 @@ run_ctest() {
         cd "$build_dir"
         ctest --output-on-failure --timeout "$PACKAGE_TEST_TIMEOUT" -R "$regex"
     )
+}
+
+cmake_target_exists() {
+    build_dir="$1"
+    target="$2"
+
+    cmake --build "$build_dir" --target help 2>/dev/null |
+        awk -v target="$target" '$NF == target { found = 1 } END { exit found ? 0 : 1 }'
 }
 
 source_installed_env
@@ -152,7 +169,7 @@ case "$PACKAGE_TEST" in
         orocos_rock_info "Running rtt_typelib CTest subset"
         run_ctest toolchain/tools/rtt_typelib/build '^get_marshaller_for_test$'
         orocos_rock_info "Checking rtt_typelib pkg-config metadata"
-        pkg-config --exists rtt_typelib-gnulinux
+        pkg-config --exists "rtt_typelib-$TARGET"
         ;;
     stdint-typekit)
         orocos_rock_info "Configuring stdint_typekit"
@@ -160,7 +177,7 @@ case "$PACKAGE_TEST" in
         orocos_rock_info "Building stdint_typekit plugin"
         build_targets toolchain/stdint_typekit/build stdint-typekit
         orocos_rock_info "Checking stdint_typekit pkg-config metadata"
-        pkg-config --exists stdint-gnulinux
+        pkg-config --exists "stdint-$TARGET"
         ;;
     rtt-core)
         orocos_rock_info "Configuring RTT core tests"
@@ -193,10 +210,18 @@ case "$PACKAGE_TEST" in
             -DBUILD_DEPLOYMENT_TEST=ON \
             -DBUILD_LOGGING_TEST=ON \
             -DBUILD_REPORTING_TEST=ON
+        OCL_INTEGRATION_TARGETS=(deploy testlogging report tcpreport)
+        OCL_INTEGRATION_TEST_REGEX='^(deploy|testlogging|report|tcpreport)$'
+        if cmake_target_exists toolchain/tools/ocl/build ncreport; then
+            OCL_INTEGRATION_TARGETS+=(ncreport)
+            OCL_INTEGRATION_TEST_REGEX='^(deploy|testlogging|report|tcpreport|ncreport)$'
+        else
+            orocos_rock_info "Skipping optional ncreport test target because NetCDF support is unavailable"
+        fi
         orocos_rock_info "Building OCL integration tests"
-        build_targets toolchain/tools/ocl/build deploy testlogging report tcpreport ncreport
+        build_targets toolchain/tools/ocl/build "${OCL_INTEGRATION_TARGETS[@]}"
         orocos_rock_info "Running OCL integration CTest subset"
-        run_ctest toolchain/tools/ocl/build '^(deploy|testlogging|report|tcpreport|ncreport)$'
+        run_ctest toolchain/tools/ocl/build "$OCL_INTEGRATION_TEST_REGEX"
         ;;
     *)
         usage >&2

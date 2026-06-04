@@ -23,7 +23,7 @@ Debian 13/Trixie. The package source overrides use the public
 | `stdint-typekit` | Rebuilds `stdint-typekit` and checks `stdint-gnulinux` pkg-config metadata | Build/smoke gate for `liufang-robot/stdint_typekit` `dev`; no package CTest suite is currently defined. |
 | `rtt-core` | `main-test`, `list-test`, `core-test`, and full `task-test` | Passes in CI after making RTT task thread tests scheduler-capability aware on `liufang-robot/rtt` `dev`. CORBA and mqueue tests stay out of this subset. |
 | `ocl-basic` | `timer` and `taskb` | Passes in CI after restoring OCL standalone CTest support on `liufang-robot/ocl` `dev`. Deployment, reporting, and logging tests stay out of this subset. |
-| `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and `ncreport` | Passes in CI on `liufang-robot/ocl` `dev`. The interactive `testWithStateMachine` TaskBrowser case stays out of the CI subset until it has a non-interactive harness. |
+| `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` when NetCDF support is available | Passes in CI on `liufang-robot/ocl` `dev`. The interactive `testWithStateMachine` TaskBrowser case stays out of the CI subset until it has a non-interactive harness. |
 
 Pinned `log4cpp` CTest subset:
 

@@ -7,6 +7,7 @@
   - [Architecture](./architecture.md)
   - [Package Policy](./package-policy.md)
   - [Install Contract](./install-contract.md)
+  - [Xenomai 3 Integration](./xenomai3-integration.md)
   - [Bootstrap Workflow](./bootstrap-workflow.md)
   - [Modernization Plan](./modernization-plan.md)
   - [Package Test Results](./package-test-results.md)

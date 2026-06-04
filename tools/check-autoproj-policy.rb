@@ -97,6 +97,22 @@ unless export_env_script.include?('OROCOS_PREFIX="$PREFIX"') &&
   errors << "tools/export-env.sh: env.sh must bind OROCOS_PREFIX to the generated install prefix"
 end
 
+unless common_script.include?("orocos_rock_validate_target") &&
+       common_script.include?("gnulinux|xenomai") &&
+       common_script.include?('rtt_target: "$target"')
+  errors << "tools/common.sh: must validate gnulinux/xenomai targets and persist rtt_target in Autoproj config"
+end
+
+unless install_script.include?("--target TARGET") &&
+       install_script.include?('"$SCRIPT_DIR/export-env.sh" --prefix "$PREFIX" --target "$TARGET"')
+  errors << "tools/install.sh: must accept --target and pass it to export-env.sh"
+end
+
+unless export_env_script.include?("--target TARGET") &&
+       export_env_script.include?('OROCOS_TARGET="$TARGET"')
+  errors << "tools/export-env.sh: env.sh must export the selected Orocos target"
+end
+
 if export_env_script.include?('${OROCOS_ROCK_PREFIX:-')
   errors << "tools/export-env.sh: generated env.sh must not redirect through OROCOS_ROCK_PREFIX"
 end
@@ -126,9 +142,15 @@ unless export_env_script.include?('GEM_HOME="\${GEM_HOME:-') &&
   errors << "tools/export-env.sh: dev-env.sh must activate the installed Ruby gem home"
 end
 
-unless validate_install_script.include?("deployer-gnulinux --version") &&
-       validate_install_script.include?("OROCOS Toolchain version")
-  errors << "tools/validate-install.sh: must smoke-test deployer-gnulinux"
+unless validate_install_script.include?('DEPLOYER="$(orocos_rock_target_deployer "$TARGET")"') &&
+       validate_install_script.include?("orocos_rock_validate_deployer_version_output")
+  errors << "tools/validate-install.sh: must smoke-test the selected target deployer"
+end
+
+unless common_script.include?("orocos_rock_validate_deployer_version_output") &&
+       common_script.include?("OROCOS Toolchain version") &&
+       common_script.include?("Xenomai/cobalt")
+  errors << "tools/common.sh: must validate deployer version output for gnulinux and xenomai"
 end
 
 unless validate_install_script.include?("orogen --help")
@@ -161,9 +183,9 @@ if setup_script.nil?
 else
   expected_setup_steps = [
     '"$SCRIPT_DIR/install-autoproj.sh"',
-    '"$SCRIPT_DIR/bootstrap.sh" --prefix "$PREFIX"',
-    '"$SCRIPT_DIR/install.sh" --prefix "$PREFIX"',
-    '"$SCRIPT_DIR/validate-install.sh" --prefix "$PREFIX"'
+    '"$SCRIPT_DIR/bootstrap.sh" --prefix "$PREFIX" --target "$TARGET"',
+    '"$SCRIPT_DIR/install.sh" --prefix "$PREFIX" --target "$TARGET"',
+    '"$SCRIPT_DIR/validate-install.sh" --prefix "$PREFIX" --target "$TARGET"'
   ]
   expected_setup_steps.each do |step|
     errors << "tools/setup.sh: missing setup step #{step}" unless setup_script.include?(step)
@@ -205,6 +227,16 @@ end
 
 unless local_osdeps_data.dig("ruby-dev", "debian,ubuntu") == "ruby-dev"
   errors << "autoproj/orocos-rock.osdeps: must define ruby-dev for Debian/Ubuntu package-set compatibility"
+end
+
+unless local_osdeps_data.dig("omniorb", "debian,ubuntu") == ["omniidl", "libomniorb4-dev"]
+  errors << "autoproj/orocos-rock.osdeps: must override omniorb without unavailable omniorb-nameserver on Debian/Ubuntu"
+end
+
+%w[ncurses libncurses libncurses-dev].each do |ncurses_osdep|
+  unless local_osdeps_data.dig(ncurses_osdep, "debian,ubuntu") == "libncurses-dev"
+    errors << "autoproj/orocos-rock.osdeps: must map #{ncurses_osdep} to libncurses-dev on Debian/Ubuntu"
+  end
 end
 
 if errors.any?

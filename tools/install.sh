@@ -8,13 +8,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat <<'USAGE'
-Usage: ./tools/install.sh [--prefix PREFIX] [--no-export-env] [-- PACKAGE...]
+Usage: ./tools/install.sh [--prefix PREFIX] [--target gnulinux|xenomai] [--no-export-env] [-- PACKAGE...]
 
 Update and build the selected Autoproj package layout for the Orocos/Rock
 toolchain, then refresh the exported environment scripts.
 
 Options:
   --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_PREFIX or ~/.orocos
+  --target TARGET  Orocos target to build and export. Default: $OROCOS_TARGET or gnulinux
   --no-export-env  Do not regenerate PREFIX/env.sh and PREFIX/dev-env.sh after build
   -h, --help       Show this help
 
@@ -23,6 +24,7 @@ USAGE
 }
 
 PREFIX="$OROCOS_ROCK_DEFAULT_PREFIX"
+TARGET="$OROCOS_ROCK_DEFAULT_TARGET"
 EXPORT_ENV=1
 BUILD_ARGS=()
 FORKED_PACKAGES=(rtt ocl log4cpp orogen typelib utilmm rtt_typelib stdint_typekit)
@@ -32,6 +34,11 @@ while [ "$#" -gt 0 ]; do
         --prefix)
             [ "$#" -ge 2 ] || orocos_rock_die "--prefix requires a value"
             PREFIX="$2"
+            shift 2
+            ;;
+        --target)
+            [ "$#" -ge 2 ] || orocos_rock_die "--target requires a value"
+            TARGET="$2"
             shift 2
             ;;
         --no-export-env)
@@ -54,11 +61,14 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
+orocos_rock_validate_target "$TARGET"
+
 orocos_rock_require_file "$OROCOS_ROCK_ROOT/autoproj/manifest"
 orocos_rock_require_autoproj
 orocos_rock_ensure_workspace_ruby_gems
 orocos_rock_source_workspace_env
-orocos_rock_prepare_autoproj_workspace "$PREFIX" "none"
+orocos_rock_configure_target_environment "$TARGET"
+orocos_rock_prepare_autoproj_workspace "$PREFIX" "none" "$TARGET"
 
 cd "$OROCOS_ROCK_ROOT"
 
@@ -77,5 +87,5 @@ orocos_rock_autoproj build --no-interactive "${BUILD_ARGS[@]}"
 "$SCRIPT_DIR/install-ruby-tools.sh" --prefix "$PREFIX"
 
 if [ "$EXPORT_ENV" -eq 1 ]; then
-    "$SCRIPT_DIR/export-env.sh" --prefix "$PREFIX"
+    "$SCRIPT_DIR/export-env.sh" --prefix "$PREFIX" --target "$TARGET"
 fi

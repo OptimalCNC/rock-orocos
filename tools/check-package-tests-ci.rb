@@ -58,14 +58,14 @@ package_test_contracts = {
       "-DBUILD_TESTING=ON",
       "build_targets toolchain/tools/rtt_typelib/build rtt-typelib get_marshaller_for_test",
       "run_ctest toolchain/tools/rtt_typelib/build '^get_marshaller_for_test$'",
-      "pkg-config --exists rtt_typelib-gnulinux"
+      'pkg-config --exists "rtt_typelib-$TARGET"'
     ],
     result_tokens: ["`rtt-typelib`", "`get_marshaller_for_test`", "`rtt_typelib-gnulinux`"]
   },
   "stdint-typekit" => {
     script_tokens: [
       "build_targets toolchain/stdint_typekit/build stdint-typekit",
-      "pkg-config --exists stdint-gnulinux"
+      'pkg-config --exists "stdint-$TARGET"'
     ],
     result_tokens: ["`stdint-typekit`", "`stdint-gnulinux`"]
   },
@@ -92,10 +92,13 @@ package_test_contracts = {
       "-DBUILD_DEPLOYMENT_TEST=ON",
       "-DBUILD_LOGGING_TEST=ON",
       "-DBUILD_REPORTING_TEST=ON",
-      "build_targets toolchain/tools/ocl/build deploy testlogging report tcpreport ncreport",
-      "run_ctest toolchain/tools/ocl/build '^(deploy|testlogging|report|tcpreport|ncreport)$'"
+      "OCL_INTEGRATION_TARGETS=(deploy testlogging report tcpreport)",
+      "cmake_target_exists toolchain/tools/ocl/build ncreport",
+      "OCL_INTEGRATION_TARGETS+=(ncreport)",
+      'build_targets toolchain/tools/ocl/build "${OCL_INTEGRATION_TARGETS[@]}"',
+      'run_ctest toolchain/tools/ocl/build "$OCL_INTEGRATION_TEST_REGEX"'
     ],
-    result_tokens: ["`deploy`", "`testlogging`", "`report`", "`tcpreport`", "`ncreport`"]
+    result_tokens: ["`deploy`", "`testlogging`", "`report`", "`tcpreport`", "`ncreport`", "optional"]
   }
 }.freeze
 
@@ -123,6 +126,7 @@ else
     errors << "package tests must include #{package_test}" unless contents.include?("- #{package_test}")
   end
   errors << "package tests must run the shared package test wrapper" unless contents.include?("./tools/test-package.sh")
+  errors << "package tests must pass the default gnulinux target explicitly" unless contents.include?('./tools/test-package.sh --prefix "$OROCOS_PREFIX" --target gnulinux')
   errors << "package tests must return package test failures" if contents.include?("::warning::") || contents.include?("exit 0")
   errors << "package tests must upload diagnostic logs when package tests fail" unless contents.include?("actions/upload-artifact@v6") && contents.include?("if: failure()")
   errors << "package tests must upload CTest logs" unless contents.include?("Testing/Temporary/*.log")

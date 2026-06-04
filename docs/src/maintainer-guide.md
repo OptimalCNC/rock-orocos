@@ -27,6 +27,11 @@ downstream projects can consume as a normal third-party dependency.
 | `tools/validate-install.sh` | Sources the exported environments and checks required runtime and generator commands | A pass/fail validation of the installed prefix |
 | `tools/docker-build.sh` | Builds the clean-room Docker image using the tracked Dockerfile | Local Docker image, default tag `orocos-rock:latest` |
 
+The build scripts accept `--target gnulinux|xenomai`. The default is
+`gnulinux`, preserving the current CI behavior. The selected target is exported
+by the generated prefix environment, so reinstalling the same prefix with a
+different target switches that prefix to the new target.
+
 ## Install Sequence
 
 ```mermaid
@@ -122,3 +127,22 @@ After a real install, run:
 
 Then validate a downstream package by sourcing `~/.orocos/dev-env.sh` before
 configuring it.
+
+For a Xenomai 3 variant, keep the build on an explicit staging branch and
+select the target explicitly:
+
+```bash
+./tools/setup.sh --prefix ~/.orocos --target xenomai
+```
+
+The target-machine smoke checks are:
+
+```bash
+source ~/.orocos/env.sh
+deployer-xenomai --version
+latency
+xeno-test -p 10
+```
+
+See [Xenomai 3 Integration](./xenomai3-integration.md) for the RTT patch gates
+and target-machine validation guidance.

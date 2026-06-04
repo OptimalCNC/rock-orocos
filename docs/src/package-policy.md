@@ -71,6 +71,8 @@ Forks should carry focused portability work:
 - build-system fixes
 - dependency discovery fixes
 - distribution compatibility patches
+- target-specific runtime fixes, such as the staged RTT Xenomai 3 work,
+  when they stay inside the Orocos/Rock toolchain boundary
 
 Upstream by default:
 

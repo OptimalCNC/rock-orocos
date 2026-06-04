@@ -8,24 +8,31 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat <<'USAGE'
-Usage: ./tools/export-env.sh [--prefix PREFIX]
+Usage: ./tools/export-env.sh [--prefix PREFIX] [--target gnulinux|xenomai]
 
 Write PREFIX/env.sh and PREFIX/dev-env.sh for consuming an installed
 Orocos/Rock toolchain prefix.
 
 Options:
   --prefix PREFIX  Installed toolchain prefix. Default: $OROCOS_PREFIX or ~/.orocos
+  --target TARGET  Orocos target exported by env.sh. Default: $OROCOS_TARGET or gnulinux
   -h, --help       Show this help
 USAGE
 }
 
 PREFIX="$OROCOS_ROCK_DEFAULT_PREFIX"
+TARGET="$OROCOS_ROCK_DEFAULT_TARGET"
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --prefix)
             [ "$#" -ge 2 ] || orocos_rock_die "--prefix requires a value"
             PREFIX="$2"
+            shift 2
+            ;;
+        --target)
+            [ "$#" -ge 2 ] || orocos_rock_die "--target requires a value"
+            TARGET="$2"
             shift 2
             ;;
         -h|--help)
@@ -38,6 +45,8 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+orocos_rock_validate_target "$TARGET"
 
 mkdir -p "$PREFIX"
 PREFIX="$(cd "$PREFIX" && pwd)"
@@ -97,8 +106,16 @@ orocos_rock_prepend_path RTT_COMPONENT_PATH "\$OROCOS_PREFIX/toolchain/lib/oroco
 orocos_rock_prepend_path RTT_COMPONENT_PATH "\$OROCOS_PREFIX/toolchain/lib64/orocos"
 orocos_rock_prepend_path RTT_COMPONENT_PATH "\$OROCOS_PREFIX/toolchain/lib64/orocos/plugins"
 
-OROCOS_TARGET="\${OROCOS_TARGET:-gnulinux}"
+OROCOS_TARGET="$TARGET"
 export OROCOS_TARGET
+
+if [ "\$OROCOS_TARGET" = "xenomai" ]; then
+    XENOMAI_DIR="\${XENOMAI_DIR:-${XENOMAI_DIR:-$OROCOS_ROCK_DEFAULT_XENOMAI_DIR}}"
+    XENOMAI_ROOT_DIR="\${XENOMAI_ROOT_DIR:-\$XENOMAI_DIR}"
+    export XENOMAI_DIR
+    export XENOMAI_ROOT_DIR
+    orocos_rock_prepend_path PATH "\$XENOMAI_DIR/bin"
+fi
 
 unset orocos_rock_multiarch
 unset -f orocos_rock_prepend_path

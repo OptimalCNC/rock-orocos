@@ -27,6 +27,11 @@ The installed prefix must provide:
 - environment setup for runtime use
 - environment setup for development use
 
+The selected Orocos target is part of the prefix contract. The default target
+is `gnulinux`; a Xenomai build must be requested explicitly with
+`--target xenomai`. The default prefix remains `~/.orocos` unless the caller
+passes a different `--prefix`.
+
 ## Environment Scripts
 
 ### `env.sh`
@@ -35,7 +40,8 @@ Runtime-oriented environment.
 
 It should make a shell ready for:
 
-- `deployer-gnulinux`
+- the selected target deployer, such as `deployer-gnulinux` or
+  `deployer-xenomai`
 - Orocos component and plugin discovery
 - running existing `.ops` scripts
 
@@ -95,6 +101,10 @@ The same rule applies to Ruby tooling: downstream users may rely on the
 presence of generator commands after sourcing `dev-env.sh`, but should not
 depend on how gems are staged inside the prefix.
 
+`env.sh` exports the selected target through `OROCOS_TARGET`. Downstream
+projects should treat this as a property of the installed prefix, not as a
+workspace-internal setting.
+
 ## Development Environment Guarantees
 
 After sourcing `dev-env.sh`, the shell must be usable as a standalone toolchain
@@ -115,7 +125,7 @@ exact internal directory layout changes later.
 An install is considered minimally valid when it can:
 
 1. source `env.sh`
-2. run `deployer-gnulinux`
+2. run the deployer for the selected target
 3. source `dev-env.sh`
 4. run `orogen`
 5. run `typegen`

@@ -35,6 +35,8 @@ if File.file?(dockerfile)
   errors << "Dockerfile must not require an external Dockerfile frontend" if contents.match?(/^#\s*syntax=/)
   errors << "Dockerfile must clear inherited CMake toolchain settings for Orocos/Rock builds" unless contents.include?("ENV CMAKE_TOOLCHAIN_FILE=")
   errors << "Dockerfile must export SHELL=/bin/bash for Autoproj" unless contents.include?("ENV SHELL=/bin/bash")
+  errors << "Dockerfile must define a default gnulinux Orocos target" unless contents.include?("ARG OROCOS_TARGET=gnulinux")
+  errors << "Dockerfile must export OROCOS_TARGET" unless contents.include?("ENV OROCOS_TARGET=${OROCOS_TARGET}")
   errors << "Dockerfile must install sudo for non-root Autoproj osdeps" unless contents.match?(/sudo\s+\\\n\s+xz-utils/) &&
                                                                              contents.match?(/ruby-dev\s+\\\n\s+sudo &&/)
   errors << "Dockerfile must create the non-root ubuntu user idempotently" unless contents.scan("if ! id -u ubuntu >/dev/null 2>&1").length == 2 &&
@@ -61,9 +63,9 @@ if File.file?(dockerfile)
   elsif bootstrap_index && shell_index > bootstrap_index
     errors << "Dockerfile must switch to bash before running bootstrap/install wrapper scripts"
   end
-  errors << "Dockerfile must run tools/bootstrap.sh" unless contents.include?("./tools/bootstrap.sh")
-  errors << "Dockerfile must run tools/install.sh" unless contents.include?("./tools/install.sh")
-  errors << "Dockerfile must run tools/validate-install.sh" unless contents.include?("./tools/validate-install.sh")
+  errors << "Dockerfile must run target-aware tools/bootstrap.sh" unless contents.include?('./tools/bootstrap.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"')
+  errors << "Dockerfile must run target-aware tools/install.sh" unless contents.include?('./tools/install.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"')
+  errors << "Dockerfile must run target-aware tools/validate-install.sh" unless contents.include?('./tools/validate-install.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"')
   expected_cmd = 'CMD ["bash", "-lc", "source \"$OROCOS_PREFIX/dev-env.sh\" && exec bash"]'
   errors << "Dockerfile CMD must source dev-env.sh through OROCOS_PREFIX" unless contents.include?(expected_cmd)
 end
@@ -101,6 +103,7 @@ if File.file?(docker_build)
   contents = File.read(docker_build)
   errors << "docker-build.sh must default to the standalone local image tag" unless contents.include?("orocos-rock:latest")
   errors << "docker-build.sh must pass the configurable base image" unless contents.include?("OROCOS_ROCK_BASE_IMAGE")
+  errors << "docker-build.sh must pass the selected Orocos target" unless contents.include?("OROCOS_TARGET=$OROCOS_ROCK_TARGET")
 end
 
 common = File.join(root, "tools/common.sh")

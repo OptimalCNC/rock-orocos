@@ -95,13 +95,13 @@ jobs:
         run: ./tools/install-autoproj.sh
 
       - name: Bootstrap workspace
-        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
+        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX" --target gnulinux
 
       - name: Build and install toolchain
-        run: ./tools/install.sh --prefix "$OROCOS_PREFIX"
+        run: ./tools/install.sh --prefix "$OROCOS_PREFIX" --target gnulinux
 
       - name: Run package test subset
-        run: ./tools/test-package.sh --prefix "$OROCOS_PREFIX" "${{ matrix.package-test }}" 2>&1 | tee "package-test-${{ matrix.package-test }}.log"
+        run: ./tools/test-package.sh --prefix "$OROCOS_PREFIX" --target gnulinux "${{ matrix.package-test }}" 2>&1 | tee "package-test-${{ matrix.package-test }}.log"
 
       - name: Upload package test logs
         if: failure()

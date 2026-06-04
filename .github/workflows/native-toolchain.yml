@@ -96,13 +96,13 @@ jobs:
           ruby tools/check-package-tests-ci.rb
 
       - name: Bootstrap workspace
-        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
+        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX" --target gnulinux
 
       - name: Build and install toolchain
-        run: ./tools/install.sh --prefix "$OROCOS_PREFIX"
+        run: ./tools/install.sh --prefix "$OROCOS_PREFIX" --target gnulinux
 
       - name: Validate installed prefix
-        run: ./tools/validate-install.sh --prefix "$OROCOS_PREFIX"
+        run: ./tools/validate-install.sh --prefix "$OROCOS_PREFIX" --target gnulinux
 
       - name: Check compiler warning budget
         run: |

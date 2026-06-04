@@ -27,6 +27,18 @@ installs the selected toolchain packages, and validates the installed prefix.
 The setup may ask for `sudo` because Autoproj installs operating-system packages
 declared by the selected Orocos/Rock packages.
 
+The default target is `gnulinux`. To build a Xenomai-capable toolchain on a
+host that already has Xenomai 3 development headers and libraries installed,
+select the target explicitly:
+
+```bash
+./tools/setup.sh --prefix ~/.orocos --target xenomai
+```
+
+The generated `~/.orocos/env.sh` then exports `OROCOS_TARGET=xenomai` by
+default. A later `--target gnulinux` install to the same prefix switches the
+prefix back to `OROCOS_TARGET=gnulinux`.
+
 ## Use The Installed Toolchain
 
 For development, source the development environment before configuring or
@@ -56,6 +68,13 @@ command -v typegen
 
 The printed paths should come from `~/.orocos` or from paths made available by
 that prefix.
+
+For a Xenomai install, validate `deployer-xenomai` instead:
+
+```bash
+source ~/.orocos/dev-env.sh
+command -v deployer-xenomai
+```
 
 ## Optional Shell Startup
 
