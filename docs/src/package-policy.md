@@ -51,7 +51,7 @@ Everything else starts excluded unless a concrete toolchain need appears.
 The default rule is:
 
 - fork only packages that need current Linux or compiler compatibility fixes
-- keep those changes on public `dev` branches in `liufang-robot/*`
+- keep those changes on public `dev` branches in `OptimalCNC/*`
 - use upstream for everything else
 
 Initial public maintenance fork set:

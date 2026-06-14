@@ -6,40 +6,40 @@
 overrides:
   - rtt:
     type: git
-    url: https://github.com/liufang-robot/rtt.git
+    url: https://github.com/OptimalCNC/rtt.git
     branch: dev
 
   - ocl:
     type: git
-    url: https://github.com/liufang-robot/ocl.git
+    url: https://github.com/OptimalCNC/ocl.git
     branch: dev
 
   - log4cpp:
     type: git
-    url: https://github.com/liufang-robot/log4cpp.git
+    url: https://github.com/OptimalCNC/log4cpp.git
     branch: dev
 
   - orogen:
     type: git
-    url: https://github.com/liufang-robot/tools-orogen.git
+    url: https://github.com/OptimalCNC/tools-orogen.git
     branch: dev
 
   - typelib:
     type: git
-    url: https://github.com/liufang-robot/tools-typelib.git
+    url: https://github.com/OptimalCNC/tools-typelib.git
     branch: dev
 
   - utilmm:
     type: git
-    url: https://github.com/liufang-robot/utilmm.git
+    url: https://github.com/OptimalCNC/utilmm.git
     branch: dev
 
   - rtt_typelib:
     type: git
-    url: https://github.com/liufang-robot/tools-rtt_typelib.git
+    url: https://github.com/OptimalCNC/tools-rtt_typelib.git
     branch: dev
 
   - stdint_typekit:
     type: git
-    url: https://github.com/liufang-robot/stdint_typekit.git
+    url: https://github.com/OptimalCNC/stdint_typekit.git
     branch: dev

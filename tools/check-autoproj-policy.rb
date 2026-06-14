@@ -17,14 +17,14 @@ package_tests_ci_check_path = File.join(root, "tools", "check-package-tests-ci.r
 cpp17_policy_check_path = File.join(root, "tools", "check-cpp17-policy.rb")
 
 expected_forks = {
-  "rtt" => "https://github.com/liufang-robot/rtt.git",
-  "ocl" => "https://github.com/liufang-robot/ocl.git",
-  "log4cpp" => "https://github.com/liufang-robot/log4cpp.git",
-  "orogen" => "https://github.com/liufang-robot/tools-orogen.git",
-  "typelib" => "https://github.com/liufang-robot/tools-typelib.git",
-  "utilmm" => "https://github.com/liufang-robot/utilmm.git",
-  "rtt_typelib" => "https://github.com/liufang-robot/tools-rtt_typelib.git",
-  "stdint_typekit" => "https://github.com/liufang-robot/stdint_typekit.git"
+  "rtt" => "https://github.com/OptimalCNC/rtt.git",
+  "ocl" => "https://github.com/OptimalCNC/ocl.git",
+  "log4cpp" => "https://github.com/OptimalCNC/log4cpp.git",
+  "orogen" => "https://github.com/OptimalCNC/tools-orogen.git",
+  "typelib" => "https://github.com/OptimalCNC/tools-typelib.git",
+  "utilmm" => "https://github.com/OptimalCNC/utilmm.git",
+  "rtt_typelib" => "https://github.com/OptimalCNC/tools-rtt_typelib.git",
+  "stdint_typekit" => "https://github.com/OptimalCNC/stdint_typekit.git"
 }
 
 overrides = YAML.safe_load_file(overrides_path).fetch("overrides", [])

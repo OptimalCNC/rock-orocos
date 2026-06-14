@@ -1,7 +1,7 @@
 # Xenomai 3 Integration
 
 This page is the maintainer playbook for carrying a Xenomai 3 capable RTT
-target in the `liufang-robot/*` fork set while keeping `orocos-rock` as a
+target in the `OptimalCNC/*` fork set while keeping `orocos-rock` as a
 standalone toolchain boundary.
 
 The current default install path remains the generic `gnulinux` toolchain. A
@@ -13,7 +13,7 @@ on explicit branches, and installed to an explicit prefix such as
 
 The old Orocos RTT branch
 `orocos-toolchain/rtt:ahoarau-xenomai3-support-v2` is useful as a migration
-reference, but it should not be merged directly into `liufang-robot/rtt`.
+reference, but it should not be merged directly into `OptimalCNC/rtt`.
 
 Use it to recover the intent of the Xenomai 3 port:
 
@@ -29,12 +29,12 @@ Use it to recover the intent of the Xenomai 3 port:
 
 Do not copy the implementation mechanically. The branch was written against an
 older RTT baseline, while this workspace carries C++17 maintenance fixes on
-`liufang-robot/*` `dev` branches.
+`OptimalCNC/*` `dev` branches.
 
 ## Blocking RTT Review Items
 
 The Xenomai 3 RTT fork is not ready for application use until these items are
-settled in `liufang-robot/rtt`.
+settled in `OptimalCNC/rtt`.
 
 | Area | Required result |
 |---|---|
@@ -101,7 +101,7 @@ branch has passed the checks below. When it is ready, keep the change explicit:
 overrides:
   - rtt:
     type: git
-    url: https://github.com/liufang-robot/rtt.git
+    url: https://github.com/OptimalCNC/rtt.git
     branch: dev-xeno3
 ```
 
