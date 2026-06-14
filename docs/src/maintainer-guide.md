@@ -10,8 +10,10 @@ downstream projects can consume as a normal third-party dependency.
 - `.autoproj/`, package checkouts, and build directories are workspace state.
 - Package selection belongs in tracked Autoproj configuration.
 - Fork choices belong in tracked overrides.
-- Public maintenance forks use `dev` branches.
+- Public maintenance forks use `dev` branches in `OptimalCNC/*`.
 - Wrapper scripts should make the workflow repeatable, not hide new policy.
+- Changes to `rock-orocos` land through pull requests. Do not push directly to
+  `main` during normal maintenance.
 
 ## Script Flow
 
@@ -24,6 +26,11 @@ downstream projects can consume as a normal third-party dependency.
 | `tools/export-env.sh` | Regenerates prefix environment scripts without rebuilding packages | `PREFIX/env.sh`, `PREFIX/dev-env.sh` |
 | `tools/validate-install.sh` | Sources the exported environments and checks required runtime and generator commands | A pass/fail validation of the installed prefix |
 | `tools/docker-build.sh` | Builds the clean-room Docker image using the tracked Dockerfile | Local Docker image, default tag `orocos-rock:latest` |
+
+The build scripts accept `--target gnulinux|xenomai`. The default is
+`gnulinux`, preserving the current CI behavior. The selected target is exported
+by the generated prefix environment, so reinstalling the same prefix with a
+different target switches that prefix to the new target.
 
 ## Install Sequence
 
@@ -42,8 +49,16 @@ flowchart TD
 ```
 
 The normal host prefix is `~/.orocos`. The Docker image uses `/opt/orocos`.
-In Docker builds, root is used only for OS package installation and ownership
-setup. The wrapper scripts run as the non-root `ubuntu` user.
+In Docker builds, root is used only for OS package installation, `ubuntu` user
+creation, and ownership setup. The wrapper scripts run as the `ubuntu` user.
+
+The native CI workflow runs the wrapper scripts in standard Linux containers.
+The required CI matrix currently covers Ubuntu 22.04, Ubuntu 24.04, and Debian
+13/Trixie. Ubuntu 26.04 is tracked as the next compatibility target once the CI
+runtime is available and validated.
+
+The clean-room Docker workflow is manual-only. It remains useful for local image
+validation and release-style smoke tests, but it is not the primary PR gate.
 
 The Docker image is multi-stage. Autoproj, source checkouts, build directories,
 and `/opt/orocos-rock` exist only in the builder stage. The final image copies
@@ -90,10 +105,18 @@ RTT/OCL/generator toolchain really needs the package to build or run.
 After changing scripts, package policy, or Docker support, run:
 
 ```bash
+ruby tools/check-repository-policy.rb
 ruby tools/check-autoproj-policy.rb
 ruby tools/check-clean-room-docker.rb
 bash -n tools/common.sh tools/bootstrap.sh tools/install.sh tools/export-env.sh tools/validate-install.sh
 bash -n tools/setup.sh tools/docker-build.sh
+```
+
+After changing CI policy, run:
+
+```bash
+ruby tools/check-native-ci.rb
+ruby tools/check-package-tests-ci.rb
 ```
 
 After a real install, run:
@@ -104,3 +127,22 @@ After a real install, run:
 
 Then validate a downstream package by sourcing `~/.orocos/dev-env.sh` before
 configuring it.
+
+For a Xenomai 3 variant, keep the build on an explicit staging branch and
+select the target explicitly:
+
+```bash
+./tools/setup.sh --prefix ~/.orocos --target xenomai
+```
+
+The target-machine smoke checks are:
+
+```bash
+source ~/.orocos/env.sh
+deployer-xenomai --version
+latency
+xeno-test -p 10
+```
+
+See [Xenomai 3 Integration](./xenomai3-integration.md) for the RTT patch gates
+and target-machine validation guidance.

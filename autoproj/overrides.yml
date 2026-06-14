@@ -23,3 +23,23 @@ overrides:
     type: git
     url: https://github.com/OptimalCNC/tools-orogen.git
     branch: dev
+
+  - typelib:
+    type: git
+    url: https://github.com/OptimalCNC/tools-typelib.git
+    branch: dev
+
+  - utilmm:
+    type: git
+    url: https://github.com/OptimalCNC/utilmm.git
+    branch: dev
+
+  - rtt_typelib:
+    type: git
+    url: https://github.com/OptimalCNC/tools-rtt_typelib.git
+    branch: dev
+
+  - stdint_typekit:
+    type: git
+    url: https://github.com/OptimalCNC/stdint_typekit.git
+    branch: dev

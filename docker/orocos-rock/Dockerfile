@@ -1,15 +1,18 @@
 ARG OROCOS_ROCK_BASE_IMAGE=ubuntu:24.04
 ARG OROCOS_PREFIX=/opt/orocos
+ARG OROCOS_TARGET=gnulinux
 
 FROM ${OROCOS_ROCK_BASE_IMAGE} AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG OROCOS_PREFIX
+ARG OROCOS_TARGET
 
 USER root
 
 ENV LANG=C.UTF-8
 ENV OROCOS_PREFIX=${OROCOS_PREFIX}
+ENV OROCOS_TARGET=${OROCOS_TARGET}
 ENV SHELL=/bin/bash
 # Keep Orocos/Rock package builds on their own CMake discovery path even when
 # the caller provides a base image with a toolchain file configured.
@@ -65,19 +68,21 @@ USER ubuntu
 
 RUN ./tools/install-autoproj.sh
 RUN ./tools/check-autoproj-policy.rb
-RUN ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX"
-RUN ./tools/install.sh --prefix "$OROCOS_PREFIX"
-RUN ./tools/validate-install.sh --prefix "$OROCOS_PREFIX"
+RUN ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"
+RUN ./tools/install.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"
+RUN ./tools/validate-install.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"
 
 FROM ${OROCOS_ROCK_BASE_IMAGE} AS final
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG OROCOS_PREFIX
+ARG OROCOS_TARGET
 
 USER root
 
 ENV LANG=C.UTF-8
 ENV OROCOS_PREFIX=${OROCOS_PREFIX}
+ENV OROCOS_TARGET=${OROCOS_TARGET}
 ENV SHELL=/bin/bash
 
 RUN apt-get update && \

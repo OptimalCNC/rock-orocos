@@ -22,11 +22,11 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
 | `log4cpp` | runtime dependency used by the stack | Public maintenance fork |
 | `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
-| `typelib` | generator type support | Upstream |
-| `utilmm` | generator/runtime support | Upstream |
+| `typelib` | generator type support | Public maintenance fork while compatibility fixes are needed |
+| `utilmm` | generator/runtime support | Public maintenance fork while compatibility fixes are needed |
 | `utilrb` | autoproj and generator support | Upstream |
-| `rtt_typelib` | RTT and Typelib bridge | Upstream |
-| `stdint_typekit` | likely needed for fixed-width types | Upstream |
+| `rtt_typelib` | RTT and Typelib bridge | Public maintenance fork while compatibility fixes are needed |
+| `stdint_typekit` | fixed-width integer typekit | Public maintenance fork while compatibility fixes are needed |
 
 ## Good Candidates
 
@@ -51,7 +51,7 @@ Everything else starts excluded unless a concrete toolchain need appears.
 The default rule is:
 
 - fork only packages that need current Linux or compiler compatibility fixes
-- keep those changes on public `dev` branches
+- keep those changes on public `dev` branches in `OptimalCNC/*`
 - use upstream for everything else
 
 Initial public maintenance fork set:
@@ -60,6 +60,10 @@ Initial public maintenance fork set:
 - `ocl`
 - `log4cpp`
 - `orogen`
+- `typelib`
+- `utilmm`
+- `rtt_typelib`
+- `stdint_typekit`
 
 Forks should carry focused portability work:
 
@@ -67,15 +71,13 @@ Forks should carry focused portability work:
 - build-system fixes
 - dependency discovery fixes
 - distribution compatibility patches
+- target-specific runtime fixes, such as the staged RTT Xenomai 3 work,
+  when they stay inside the Orocos/Rock toolchain boundary
 
 Upstream by default:
 
 - `rtt_geometry`
-- `typelib`
-- `utilmm`
 - `utilrb`
-- `rtt_typelib`
-- `stdint_typekit`
 
 ## Source Of Truth
 

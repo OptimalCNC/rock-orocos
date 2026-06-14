@@ -1,0 +1,129 @@
+name: Native Toolchain Matrix
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/native-toolchain.yml"
+      - ".github/workflows/package-tests.yml"
+      - "autoproj/**"
+      - "tools/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/native-toolchain.yml"
+      - ".github/workflows/package-tests.yml"
+      - "autoproj/**"
+      - "tools/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os.name }} Native Build
+    runs-on: ubuntu-24.04
+    container:
+      image: ${{ matrix.os.image }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - name: Ubuntu 22.04
+            artifact: ubuntu-22.04
+            image: ubuntu:22.04
+          - name: Ubuntu 24.04
+            artifact: ubuntu-24.04
+            image: ubuntu:24.04
+          - name: Debian 13
+            artifact: debian-13
+            image: debian:trixie
+
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      OROCOS_PREFIX: /opt/orocos
+      SHELL: /bin/bash
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Install CI base dependencies
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            cmake \
+            curl \
+            git \
+            libboost-dev \
+            libboost-filesystem-dev \
+            libboost-graph-dev \
+            libboost-iostreams-dev \
+            libboost-program-options-dev \
+            libboost-regex-dev \
+            libboost-system-dev \
+            libboost-thread-dev \
+            libffi-dev \
+            libncurses5-dev \
+            libomniorb4-dev \
+            libxml2-dev \
+            libxml-xpath-perl \
+            lsb-release \
+            omniidl \
+            pkg-config \
+            python3 \
+            python3-dev \
+            python3-pip \
+            ripgrep \
+            ruby \
+            ruby-dev \
+            sudo \
+            xz-utils
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install Autoproj
+        run: ./tools/install-autoproj.sh
+
+      - name: Check repository policy
+        run: |
+          ruby tools/check-repository-policy.rb
+          ruby tools/check-autoproj-policy.rb
+          ruby tools/check-package-tests-ci.rb
+
+      - name: Bootstrap workspace
+        run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX" --target gnulinux
+
+      - name: Build and install toolchain
+        run: ./tools/install.sh --prefix "$OROCOS_PREFIX" --target gnulinux
+
+      - name: Validate installed prefix
+        run: ./tools/validate-install.sh --prefix "$OROCOS_PREFIX" --target gnulinux
+
+      - name: Check compiler warning budget
+        run: |
+          set -euo pipefail
+          if rg -n "warning:|deprecated|pragma message" "$OROCOS_PREFIX"/toolchain/log/*-build.log; then
+            echo "compiler warning budget exceeded" >&2
+            exit 1
+          fi
+
+      - name: Upload Autoproj and package logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-toolchain-logs-${{ matrix.os.artifact }}
+          if-no-files-found: ignore
+          path: |
+            .autoproj/config.yml
+            .autoproj/env.yml
+            .autoproj/installation-manifest
+            .autoproj/remotes/**/*.autobuild
+            .autoproj/remotes/**/*.osdeps*
+            autoproj/**/*.osdeps*
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*.log
+            ${{ env.OROCOS_PREFIX }}/toolchain/log/*-stamp

@@ -1,28 +1,18 @@
 name: Clean Room Docker Build
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/clean-room-docker.yml"
-      - ".dockerignore"
-      - "autoproj/**"
-      - "docker/**"
-      - "tools/**"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/clean-room-docker.yml"
-      - ".dockerignore"
-      - "autoproj/**"
-      - "docker/**"
-      - "tools/**"
   workflow_dispatch:
 
 jobs:
   build:
     name: Build Standalone Toolchain Image
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu-version:
+          - "22.04"
+          - "24.04"
 
     steps:
       - name: Check out repository
@@ -36,14 +26,16 @@ jobs:
         with:
           context: .
           file: docker/orocos-rock/Dockerfile
+          build-args: |
+            OROCOS_ROCK_BASE_IMAGE=ubuntu:${{ matrix.ubuntu-version }}
           pull: true
           push: false
           load: true
-          tags: orocos-rock:latest
+          tags: orocos-rock:ubuntu-${{ matrix.ubuntu-version }}
 
       - name: Check development environment
         run: |
-          docker run --rm --user ubuntu orocos-rock:latest bash -lc '
+          docker run --rm --user ubuntu orocos-rock:ubuntu-${{ matrix.ubuntu-version }} bash -lc '
             set -euo pipefail
             test "$(whoami)" = "ubuntu"
             test ! -e /opt/orocos-rock

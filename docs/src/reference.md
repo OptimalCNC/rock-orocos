@@ -7,4 +7,4 @@ Most readers should start with the guides first:
 - [Maintainer Guide](./maintainer-guide.md)
 
 Use the reference chapters when changing package selection, fork policy,
-install contracts, or bootstrap behavior.
+install contracts, Xenomai target behavior, or bootstrap behavior.

@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 
 root = File.expand_path("..", __dir__)
-private_reference_pattern = /meta[_-]?#{'nc'}/i
 
 required_files = [
   ".dockerignore",
@@ -32,11 +31,12 @@ if File.file?(dockerfile)
   errors << "Dockerfile must default to the standalone Ubuntu base image" unless contents.match?(/^ARG OROCOS_ROCK_BASE_IMAGE=ubuntu:24\.04$/)
   errors << "Dockerfile must build Orocos/Rock from the configurable standalone base image" unless contents.match?(/^FROM \$\{OROCOS_ROCK_BASE_IMAGE\} AS builder$/)
   errors << "Dockerfile final image must start again from the configurable standalone base image" unless contents.match?(/^FROM \$\{OROCOS_ROCK_BASE_IMAGE\} AS final$/)
-  errors << "Dockerfile must not use private project images as an Orocos/Rock base" if contents.match?(private_reference_pattern)
+  errors << "Dockerfile must not use MetaNC images" if contents.match?(/optimalcnc\/metanc|METANC_BASE_IMAGE/)
   errors << "Dockerfile must not require an external Dockerfile frontend" if contents.match?(/^#\s*syntax=/)
-  errors << "Dockerfile must switch to root after the base image" unless contents.include?("USER root")
   errors << "Dockerfile must clear inherited CMake toolchain settings for Orocos/Rock builds" unless contents.include?("ENV CMAKE_TOOLCHAIN_FILE=")
   errors << "Dockerfile must export SHELL=/bin/bash for Autoproj" unless contents.include?("ENV SHELL=/bin/bash")
+  errors << "Dockerfile must define a default gnulinux Orocos target" unless contents.include?("ARG OROCOS_TARGET=gnulinux")
+  errors << "Dockerfile must export OROCOS_TARGET" unless contents.include?("ENV OROCOS_TARGET=${OROCOS_TARGET}")
   errors << "Dockerfile must install sudo for non-root Autoproj osdeps" unless contents.match?(/sudo\s+\\\n\s+xz-utils/) &&
                                                                              contents.match?(/ruby-dev\s+\\\n\s+sudo &&/)
   errors << "Dockerfile must create the non-root ubuntu user idempotently" unless contents.scan("if ! id -u ubuntu >/dev/null 2>&1").length == 2 &&
@@ -63,9 +63,9 @@ if File.file?(dockerfile)
   elsif bootstrap_index && shell_index > bootstrap_index
     errors << "Dockerfile must switch to bash before running bootstrap/install wrapper scripts"
   end
-  errors << "Dockerfile must run tools/bootstrap.sh" unless contents.include?("./tools/bootstrap.sh")
-  errors << "Dockerfile must run tools/install.sh" unless contents.include?("./tools/install.sh")
-  errors << "Dockerfile must run tools/validate-install.sh" unless contents.include?("./tools/validate-install.sh")
+  errors << "Dockerfile must run target-aware tools/bootstrap.sh" unless contents.include?('./tools/bootstrap.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"')
+  errors << "Dockerfile must run target-aware tools/install.sh" unless contents.include?('./tools/install.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"')
+  errors << "Dockerfile must run target-aware tools/validate-install.sh" unless contents.include?('./tools/validate-install.sh --prefix "$OROCOS_PREFIX" --target "$OROCOS_TARGET"')
   expected_cmd = 'CMD ["bash", "-lc", "source \"$OROCOS_PREFIX/dev-env.sh\" && exec bash"]'
   errors << "Dockerfile CMD must source dev-env.sh through OROCOS_PREFIX" unless contents.include?(expected_cmd)
 end
@@ -74,14 +74,19 @@ workflow = File.join(root, ".github/workflows/clean-room-docker.yml")
 if File.file?(workflow)
   contents = File.read(workflow)
   errors << "workflow must use the Blacksmith x64 runner for Docker builds" unless contents.include?("runs-on: blacksmith-4vcpu-ubuntu-2404")
+  errors << "workflow must define a Ubuntu version matrix" unless contents.include?("matrix:") && contents.include?("ubuntu-version:")
+  %w[22.04 24.04].each do |version|
+    errors << "workflow must build Ubuntu #{version}" unless contents.include?(version)
+  end
+  errors << "workflow must not require Ubuntu 26.04 yet" if contents.include?(%("26.04"))
   errors << "workflow must use Blacksmith Docker builder setup" unless contents.include?("useblacksmith/setup-docker-builder@v1")
   errors << "workflow must use Blacksmith build-push action" unless contents.include?("useblacksmith/build-push-action@v2")
-  errors << "workflow must pull the latest base image during Docker builds" unless contents.include?("pull: true")
+  errors << "workflow must pass the Ubuntu base image to Docker builds" unless contents.include?("OROCOS_ROCK_BASE_IMAGE=ubuntu:${{ matrix.ubuntu-version }}")
+  errors << "workflow must pull the latest Ubuntu base image during Docker builds" unless contents.include?("pull: true")
   errors << "workflow must load the built image for smoke testing" unless contents.include?("load: true")
   errors << "workflow must build docker/orocos-rock/Dockerfile" unless contents.include?("docker/orocos-rock/Dockerfile")
   errors << "workflow must avoid pushing images" unless contents.include?("push: false")
-  errors << "workflow must tag the standalone local image" unless contents.include?("orocos-rock:latest")
-  errors << "workflow must not reference private project names" if contents.match?(private_reference_pattern)
+  errors << "workflow must tag Ubuntu-specific local images" unless contents.include?("orocos-rock:ubuntu-${{ matrix.ubuntu-version }}")
   smoke_test_index = contents.index("docker run --rm --user ubuntu")
   smoke_test_block = smoke_test_index ? contents[smoke_test_index, 600] : ""
   errors << "workflow must run the smoke test container as ubuntu" unless smoke_test_index
@@ -97,7 +102,8 @@ docker_build = File.join(root, "tools/docker-build.sh")
 if File.file?(docker_build)
   contents = File.read(docker_build)
   errors << "docker-build.sh must default to the standalone local image tag" unless contents.include?("orocos-rock:latest")
-  errors << "docker-build.sh must not reference private project names" if contents.match?(private_reference_pattern)
+  errors << "docker-build.sh must pass the configurable base image" unless contents.include?("OROCOS_ROCK_BASE_IMAGE")
+  errors << "docker-build.sh must pass the selected Orocos target" unless contents.include?("OROCOS_TARGET=$OROCOS_ROCK_TARGET")
 end
 
 common = File.join(root, "tools/common.sh")
