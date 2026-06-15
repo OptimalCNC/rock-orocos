@@ -9,6 +9,7 @@ toolchain/
 tools/metaruby/
 build/
 install/
+_windows-fix/
 
 # Installed-prefix and build logs
 log/

@@ -1,0 +1,79 @@
+name: Windows MSVC Integration
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-msvc.yml"
+      - "tools/build-windows-msvc.ps1"
+      - ".gitattributes"
+      - ".gitignore"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/windows-msvc.yml"
+      - "tools/build-windows-msvc.ps1"
+      - ".gitattributes"
+      - ".gitignore"
+  repository_dispatch:
+    types:
+      - windows-msvc-integration
+  workflow_dispatch:
+    inputs:
+      log4cpp_ref:
+        description: log4cpp branch, tag, or SHA
+        required: false
+        default: dev
+      rtt_ref:
+        description: RTT branch, tag, or SHA
+        required: false
+        default: dev
+      ocl_ref:
+        description: OCL branch, tag, or SHA
+        required: false
+        default: dev
+
+jobs:
+  build:
+    name: RTT/OCL win32 prefix
+    runs-on: windows-2022
+
+    env:
+      OROCOS_TARGET: win32
+      WINDOWS_WORKSPACE: ${{ github.workspace }}\_windows-ci
+      WINDOWS_PREFIX: ${{ github.workspace }}\install-msvc
+      CI_VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+      LOG4CPP_REF: ${{ github.event.inputs.log4cpp_ref || github.event.client_payload.log4cpp_ref || 'dev' }}
+      RTT_REF: ${{ github.event.inputs.rtt_ref || github.event.client_payload.rtt_ref || 'dev' }}
+      OCL_REF: ${{ github.event.inputs.ocl_ref || github.event.client_payload.ocl_ref || 'dev' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build Windows prefix
+        shell: pwsh
+        run: |
+          .\tools\build-windows-msvc.ps1 `
+            -Workspace "$env:WINDOWS_WORKSPACE" `
+            -Prefix "$env:WINDOWS_PREFIX" `
+            -VcpkgRoot "$env:CI_VCPKG_ROOT" `
+            -Log4cppRef "$env:LOG4CPP_REF" `
+            -RttRef "$env:RTT_REF" `
+            -OclRef "$env:OCL_REF"
+
+      - name: Upload Windows build logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-msvc-logs
+          if-no-files-found: ignore
+          path: |
+            ${{ env.WINDOWS_WORKSPACE }}\build\**\CMakeFiles\CMakeOutput.log
+            ${{ env.WINDOWS_WORKSPACE }}\build\**\CMakeFiles\CMakeError.log
+            ${{ env.WINDOWS_WORKSPACE }}\build\**\*.log

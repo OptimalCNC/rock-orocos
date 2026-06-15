@@ -1,0 +1,18 @@
+* text=auto
+
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+*.sh text eol=lf
+*.rb text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+*.patch text eol=lf
+*.toml text eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
