@@ -6,8 +6,7 @@ param(
     [string]$Log4cppRef = "dev",
     [string]$RttRef = "dev",
     [string]$OclRef = "dev",
-    [string]$Generator = "Visual Studio 17 2022",
-    [string]$Platform = "x64"
+    [string]$Generator = "Visual Studio 17 2022"
 )
 
 $ErrorActionPreference = "Stop"
@@ -73,13 +72,15 @@ function Sync-GitRepository {
         Invoke-NativeWithRetry git clone --no-checkout --filter=blob:none $Repository $Path
     }
 
-    Invoke-NativeWithRetry git -C $Path fetch --depth 1 origin $Ref
+    Invoke-NativeWithRetry git -C $Path fetch --depth 1 origin -- $Ref
     Invoke-Native git -C $Path checkout --force FETCH_HEAD
 }
 
 $Workspace = Convert-ToFullPath $Workspace
 $Prefix = Convert-ToFullPath $Prefix
 $VcpkgRoot = Convert-ToFullPath $VcpkgRoot
+$Platform = "x64"
+$VcpkgTriplet = "x64-windows"
 
 $Log4cppSource = Join-Path $Workspace "src\log4cpp"
 $RttSource = Join-Path $Workspace "src\rtt"
@@ -107,20 +108,20 @@ Invoke-Step "Set up vcpkg" {
 }
 
 $VcpkgToolchain = Join-Path $VcpkgRoot "scripts\buildsystems\vcpkg.cmake"
-$VcpkgInstalled = Join-Path $VcpkgRoot "installed\x64-windows"
+$VcpkgInstalled = Join-Path $VcpkgRoot "installed\$VcpkgTriplet"
 $VcpkgBin = Join-Path $VcpkgInstalled "bin"
 
 Invoke-Step "Install vcpkg dependencies" {
     Invoke-Native (Join-Path $VcpkgRoot "vcpkg.exe") install `
-        boost-assign:x64-windows `
-        boost-filesystem:x64-windows `
-        boost-serialization:x64-windows `
-        boost-thread:x64-windows `
-        boost-uuid:x64-windows `
-        boost-graph:x64-windows `
-        boost-program-options:x64-windows `
-        boost-test:x64-windows `
-        libxml2:x64-windows
+        "boost-assign:${VcpkgTriplet}" `
+        "boost-filesystem:${VcpkgTriplet}" `
+        "boost-serialization:${VcpkgTriplet}" `
+        "boost-thread:${VcpkgTriplet}" `
+        "boost-uuid:${VcpkgTriplet}" `
+        "boost-graph:${VcpkgTriplet}" `
+        "boost-program-options:${VcpkgTriplet}" `
+        "boost-test:${VcpkgTriplet}" `
+        "libxml2:${VcpkgTriplet}"
 }
 
 Invoke-Step "Configure log4cpp" {
@@ -225,9 +226,9 @@ Invoke-Step "Validate Windows prefix" {
     $env:PATH = ($pathEntries -join ";") + ";" + $env:PATH
     $env:RTT_COMPONENT_PATH = $componentPathEntries -join ";"
 
-    & (Join-Path $Prefix "bin\deployer-win32.exe") --version
-    if ($LASTEXITCODE -ne 1) {
-        throw "deployer-win32.exe --version returned $LASTEXITCODE"
+    $deployerVersionOutput = & (Join-Path $Prefix "bin\deployer-win32.exe") --version 2>&1
+    if ($deployerVersionOutput -notmatch "OROCOS Toolchain version") {
+        throw "deployer-win32.exe --version did not print the expected version output"
     }
 
     Invoke-Native (Join-Path $Prefix "bin\deployer-win32.exe") --check --no-consolelog
