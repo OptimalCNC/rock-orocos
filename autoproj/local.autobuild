@@ -1,0 +1,5 @@
+cmake_package "farbot"
+
+cmake_package "rtlog-cpp" do |pkg|
+  pkg.depends_on "farbot"
+end

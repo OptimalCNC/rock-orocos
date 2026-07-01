@@ -7,6 +7,7 @@ Expected first contents:
 
 - `manifest`
 - `init.rb`
+- `*.autobuild`
 - `overrides.yml`
 - `overrides.rb`
 
@@ -14,6 +15,7 @@ These files should define:
 
 - package selection
 - package-set bootstrap hooks
+- local package definitions
 - source overrides
 - package pins
 - OCL enablement

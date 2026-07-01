@@ -93,6 +93,7 @@ They are designed to be sourced repeatedly without duplicating path entries.
 |---|---|
 | `autoproj/manifest` | Selected package layout |
 | `autoproj/overrides.yml` | Package source overrides and maintained fork URLs |
+| `autoproj/*.autobuild` | Local package definitions not present in the imported package sets |
 | `autoproj/overrides.rb` | Autoproj package setup hooks |
 | `autoproj/manifests/*.xml` | Local package manifest metadata needed during bootstrap |
 | `docs/src/package-policy.md` | Human-readable package and fork policy |

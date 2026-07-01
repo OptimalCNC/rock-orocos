@@ -4,7 +4,9 @@ require "yaml"
 
 root = File.expand_path("..", __dir__)
 overrides_path = File.join(root, "autoproj", "overrides.yml")
+local_autobuild_path = File.join(root, "autoproj", "local.autobuild")
 install_path = File.join(root, "tools", "install.sh")
+install_autoproj_path = File.join(root, "tools", "install-autoproj.sh")
 setup_path = File.join(root, "tools", "setup.sh")
 rtt_manifest_path = File.join(root, "autoproj", "manifests", "rtt.xml")
 local_osdeps_path = File.join(root, "autoproj", "orocos-rock.osdeps")
@@ -30,14 +32,17 @@ expected_forks = {
   "stdint_typekit" => "https://github.com/OptimalCNC/stdint_typekit.git"
 }
 
-overrides = YAML.safe_load_file(overrides_path).fetch("overrides", [])
+source_selection = YAML.safe_load_file(overrides_path)
+version_control = source_selection.fetch("version_control", [])
+overrides = source_selection.fetch("overrides", [])
 errors = []
 
 expected_forks.each do |package, url|
-  override = overrides.find { |entry| entry.key?(package) }
+  source_entries = %w[farbot rtlog-cpp].include?(package) ? version_control : overrides
+  override = source_entries.find { |entry| entry.key?(package) }
 
   if override.nil?
-    errors << "#{package}: missing source override"
+    errors << "#{package}: missing source selection"
     next
   end
 
@@ -49,9 +54,11 @@ expected_forks.each do |package, url|
 end
 
 install_script = File.read(install_path)
+install_autoproj_script = File.read(install_autoproj_path)
 setup_script = File.file?(setup_path) ? File.read(setup_path) : nil
 common_script = File.read(common_path)
 overrides_script = File.read(File.join(root, "autoproj", "overrides.rb"))
+local_autobuild_script = File.file?(local_autobuild_path) ? File.read(local_autobuild_path) : ""
 local_osdeps = File.file?(local_osdeps_path) ? File.read(local_osdeps_path) : ""
 local_osdeps_data = local_osdeps.empty? ? {} : (YAML.safe_load(local_osdeps) || {})
 export_env_script = File.read(export_env_path)
@@ -61,6 +68,15 @@ expected_forks.each_key do |package|
   refreshes_package = install_script.include?("FORKED_PACKAGES=(") &&
                       install_script.match?(/FORKED_PACKAGES=\([^)]*\b#{Regexp.escape(package)}\b[^)]*\)/m)
   errors << "install.sh: must refresh maintained fork #{package}" unless refreshes_package
+end
+
+unless local_autobuild_script.include?('cmake_package "farbot"')
+  errors << "autoproj/local.autobuild: must define farbot as a local CMake package"
+end
+
+unless local_autobuild_script.include?('cmake_package "rtlog-cpp"') &&
+       local_autobuild_script.include?('pkg.depends_on "farbot"')
+  errors << "autoproj/local.autobuild: must define rtlog-cpp as a local CMake package depending on farbot"
 end
 
 unless install_script.match?(/FORKED_PACKAGES=\([^)]*\bfarbot\b[^)]*\brtlog-cpp\b[^)]*\brtt\b[^)]*\)/m)
@@ -207,6 +223,15 @@ end
 
 unless common_script.include?('BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$OROCOS_ROCK_ROOT/.autoproj/Gemfile}"')
   errors << "tools/common.sh: must provide BUNDLE_GEMFILE while invoking Autoproj"
+end
+
+unless common_script.include?('orocos_rock_user_gem_home') &&
+       common_script.include?('GEM_PATH="$user_gem_home${GEM_PATH:+:$GEM_PATH}"')
+  errors << "tools/common.sh: must include RubyGems user install directory when loading Autoproj"
+end
+
+unless install_autoproj_script.include?('GEM_PATH="$USER_GEM_HOME${GEM_PATH:+:$GEM_PATH}"')
+  errors << "tools/install-autoproj.sh: must include RubyGems user install directory when validating Autoproj"
 end
 
 unless common_script.include?('.autoproj/bin/bundle') &&

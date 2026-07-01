@@ -74,9 +74,11 @@ fi
 orocos_rock_info "Installing Autoproj with RubyGems"
 orocos_rock_retry 5 gem install --user-install --conservative --no-document autoproj
 
-USER_GEM_BIN="$(ruby -rrubygems -e 'print Gem.user_dir + "/bin"')"
+USER_GEM_HOME="$(orocos_rock_user_gem_home)"
+USER_GEM_BIN="$USER_GEM_HOME/bin"
 
-if ruby -e 'gem "facets", "< 3.2"; gem "autoproj"; require "facets/kernel/constant"' >/dev/null 2>&1; then
+if GEM_PATH="$USER_GEM_HOME${GEM_PATH:+:$GEM_PATH}" \
+    ruby -e 'gem "facets", "< 3.2"; gem "autoproj"; require "facets/kernel/constant"' >/dev/null 2>&1; then
     orocos_rock_info "autoproj installed under $USER_GEM_BIN"
     orocos_rock_info "For this shell, run:"
     orocos_rock_info "  export PATH=\"$USER_GEM_BIN:\$PATH\""
