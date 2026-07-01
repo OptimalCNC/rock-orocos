@@ -18,6 +18,7 @@ logs/
 
 # Documentation build output
 docs/book/
+docs/superpowers/
 
 # Local tool and editor state
 .worktrees/
