@@ -4,6 +4,16 @@
 # tracked package-set definitions or in autoproj/overrides.rb.
 #
 overrides:
+  - farbot:
+    type: git
+    url: https://github.com/liufang-robot/farbot.git
+    branch: dev
+
+  - rtlog-cpp:
+    type: git
+    url: https://github.com/liufang-robot/rtlog-cpp.git
+    branch: dev
+
   - rtt:
     type: git
     url: https://github.com/OptimalCNC/rtt.git

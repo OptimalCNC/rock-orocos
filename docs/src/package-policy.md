@@ -18,9 +18,11 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | Package | Why it is required | Source policy |
 |---|---|---|
 | `orocos_toolchain` | root toolchain integration | Public maintenance fork when needed |
+| `farbot` | lock-free queue dependency for the future RT-safe logger core | Public maintenance fork while install/export rules are needed |
+| `rtlog-cpp` | RT-safe logging queue and bounded formatting implementation for the future RTT logger core | Public maintenance fork while install/export rules are needed |
 | `rtt` | Orocos runtime | Public maintenance fork |
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
-| `log4cpp` | runtime dependency used by the stack | Public maintenance fork |
+| `log4cpp` | temporary legacy logging dependency until RTT/OCL logging is migrated to the RT-safe logger core | Public maintenance fork |
 | `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
 | `typelib` | generator type support | Public maintenance fork while compatibility fixes are needed |
 | `utilmm` | generator/runtime support | Public maintenance fork while compatibility fixes are needed |
@@ -56,6 +58,8 @@ The default rule is:
 
 Initial public maintenance fork set:
 
+- `farbot`
+- `rtlog-cpp`
 - `rtt`
 - `ocl`
 - `log4cpp`
@@ -64,6 +68,10 @@ Initial public maintenance fork set:
 - `utilmm`
 - `rtt_typelib`
 - `stdint_typekit`
+
+`log4cpp` remains in the initial workspace during the transition. It should be
+removed only after RTT and OCL no longer expose or link the legacy log4cpp
+logging path.
 
 Forks should carry focused portability work:
 

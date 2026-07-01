@@ -116,6 +116,9 @@ environment. At minimum, the script must:
 - expose Orocos plugin discovery paths for runtime tools
 - expose the installed Ruby generator stack through `GEM_HOME`, `GEM_PATH`, or
   equivalent `RUBYLIB` setup
+- expose CMake config packages for installed internal toolchain dependencies,
+  including `farbot` and `rtlog-cpp`, so downstream configure checks can use
+  the same prefix contract
 
 Those variables are part of the behavior contract of `dev-env.sh`, even if the
 exact internal directory layout changes later.

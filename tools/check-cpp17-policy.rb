@@ -3,6 +3,7 @@
 root = File.expand_path("..", __dir__)
 
 packages = {
+  "rtlog-cpp" => File.join(root, "toolchain", "rtlog-cpp", "CMakeLists.txt"),
   "rtt" => File.join(root, "toolchain", "tools", "rtt", "CMakeLists.txt"),
   "ocl" => File.join(root, "toolchain", "tools", "ocl", "CMakeLists.txt"),
   "log4cpp" => File.join(root, "toolchain", "tools", "log4cpp", "CMakeLists.txt"),

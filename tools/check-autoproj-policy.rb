@@ -15,8 +15,11 @@ common_path = File.join(root, "tools", "common.sh")
 native_ci_check_path = File.join(root, "tools", "check-native-ci.rb")
 package_tests_ci_check_path = File.join(root, "tools", "check-package-tests-ci.rb")
 cpp17_policy_check_path = File.join(root, "tools", "check-cpp17-policy.rb")
+rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
 
 expected_forks = {
+  "farbot" => "https://github.com/liufang-robot/farbot.git",
+  "rtlog-cpp" => "https://github.com/liufang-robot/rtlog-cpp.git",
   "rtt" => "https://github.com/OptimalCNC/rtt.git",
   "ocl" => "https://github.com/OptimalCNC/ocl.git",
   "log4cpp" => "https://github.com/OptimalCNC/log4cpp.git",
@@ -58,6 +61,10 @@ expected_forks.each_key do |package|
   refreshes_package = install_script.include?("FORKED_PACKAGES=(") &&
                       install_script.match?(/FORKED_PACKAGES=\([^)]*\b#{Regexp.escape(package)}\b[^)]*\)/m)
   errors << "install.sh: must refresh maintained fork #{package}" unless refreshes_package
+end
+
+unless install_script.match?(/FORKED_PACKAGES=\([^)]*\bfarbot\b[^)]*\brtlog-cpp\b[^)]*\brtt\b[^)]*\)/m)
+  errors << "install.sh: farbot and rtlog-cpp must be refreshed before rtt"
 end
 
 source_update = install_script.index("orocos_rock_autoproj update")
@@ -173,6 +180,7 @@ end
 errors << "tools/check-native-ci.rb: missing native CI policy check" unless File.file?(native_ci_check_path)
 errors << "tools/check-package-tests-ci.rb: missing package test CI policy check" unless File.file?(package_tests_ci_check_path)
 errors << "tools/check-cpp17-policy.rb: missing C++17 policy check" unless File.file?(cpp17_policy_check_path)
+errors << "tools/check-rtlog-prefix.sh: missing rtlog installed-prefix smoke test" unless File.file?(rtlog_prefix_check_path)
 
 unless install_script.include?('"$SCRIPT_DIR/install-ruby-tools.sh" --prefix "$PREFIX"')
   errors << "install.sh: must stage Ruby generator tools into the install prefix"
