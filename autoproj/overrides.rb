@@ -5,4 +5,5 @@
 
 setup_package "rtt" do |pkg|
   pkg.use_package_xml = true
+  pkg.depends_on "rtlog-cpp"
 end

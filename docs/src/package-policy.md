@@ -19,7 +19,7 @@ Everything else starts excluded unless a concrete toolchain need appears.
 |---|---|---|
 | `orocos_toolchain` | root toolchain integration | Public maintenance fork when needed |
 | `farbot` | lock-free queue dependency for the future RT-safe logger core | Public maintenance fork while install/export rules are needed |
-| `rtlog-cpp` | RT-safe logging queue and bounded formatting implementation for the future RTT logger core | Public maintenance fork while install/export rules are needed |
+| `rtlog-cpp` | RT-safe logging queue and bounded formatting implementation for the RTT logger core | Public maintenance fork while install/export rules are needed |
 | `rtt` | Orocos runtime | Public maintenance fork |
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
 | `log4cpp` | temporary legacy logging dependency until RTT/OCL logging is migrated to the RT-safe logger core | Public maintenance fork |
@@ -69,9 +69,10 @@ Initial public maintenance fork set:
 - `rtt_typelib`
 - `stdint_typekit`
 
-`log4cpp` remains in the initial workspace during the transition. It should be
-removed only after RTT and OCL no longer expose or link the legacy log4cpp
-logging path.
+`log4cpp` remains in the initial workspace during the transition. RTT now has a
+bounded `rtlog-cpp` logger path on the logging development branch, but `log4cpp`
+should be removed only after RTT and OCL no longer expose or link the legacy
+log4cpp logging path.
 
 Forks should carry focused portability work:
 

@@ -20,16 +20,16 @@ cpp17_policy_check_path = File.join(root, "tools", "check-cpp17-policy.rb")
 rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
 
 expected_forks = {
-  "farbot" => "https://github.com/liufang-robot/farbot.git",
-  "rtlog-cpp" => "https://github.com/liufang-robot/rtlog-cpp.git",
-  "rtt" => "https://github.com/OptimalCNC/rtt.git",
-  "ocl" => "https://github.com/OptimalCNC/ocl.git",
-  "log4cpp" => "https://github.com/OptimalCNC/log4cpp.git",
-  "orogen" => "https://github.com/OptimalCNC/tools-orogen.git",
-  "typelib" => "https://github.com/OptimalCNC/tools-typelib.git",
-  "utilmm" => "https://github.com/OptimalCNC/utilmm.git",
-  "rtt_typelib" => "https://github.com/OptimalCNC/tools-rtt_typelib.git",
-  "stdint_typekit" => "https://github.com/OptimalCNC/stdint_typekit.git"
+  "farbot" => { "url" => "https://github.com/liufang-robot/farbot.git", "branch" => "dev" },
+  "rtlog-cpp" => { "url" => "https://github.com/liufang-robot/rtlog-cpp.git", "branch" => "dev" },
+  "rtt" => { "url" => "https://github.com/liufang-robot/rtt.git", "branch" => "codex/rtlog-backend" },
+  "ocl" => { "url" => "https://github.com/OptimalCNC/ocl.git", "branch" => "dev" },
+  "log4cpp" => { "url" => "https://github.com/OptimalCNC/log4cpp.git", "branch" => "dev" },
+  "orogen" => { "url" => "https://github.com/OptimalCNC/tools-orogen.git", "branch" => "dev" },
+  "typelib" => { "url" => "https://github.com/OptimalCNC/tools-typelib.git", "branch" => "dev" },
+  "utilmm" => { "url" => "https://github.com/OptimalCNC/utilmm.git", "branch" => "dev" },
+  "rtt_typelib" => { "url" => "https://github.com/OptimalCNC/tools-rtt_typelib.git", "branch" => "dev" },
+  "stdint_typekit" => { "url" => "https://github.com/OptimalCNC/stdint_typekit.git", "branch" => "dev" }
 }
 
 source_selection = YAML.safe_load_file(overrides_path)
@@ -37,7 +37,7 @@ version_control = source_selection.fetch("version_control", [])
 overrides = source_selection.fetch("overrides", [])
 errors = []
 
-expected_forks.each do |package, url|
+expected_forks.each do |package, source|
   source_entries = %w[farbot rtlog-cpp].include?(package) ? version_control : overrides
   override = source_entries.find { |entry| entry.key?(package) }
 
@@ -49,8 +49,8 @@ expected_forks.each do |package, url|
   actual_url = override["url"]
   actual_branch = override["branch"]
 
-  errors << "#{package}: expected url #{url}, got #{actual_url.inspect}" unless actual_url == url
-  errors << "#{package}: expected branch dev, got #{actual_branch.inspect}" unless actual_branch == "dev"
+  errors << "#{package}: expected url #{source.fetch("url")}, got #{actual_url.inspect}" unless actual_url == source.fetch("url")
+  errors << "#{package}: expected branch #{source.fetch("branch")}, got #{actual_branch.inspect}" unless actual_branch == source.fetch("branch")
 end
 
 install_script = File.read(install_path)
@@ -113,6 +113,11 @@ end
 unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
        overrides_script.include?("use_package_xml = true")
   errors << "autoproj/overrides.rb: rtt must opt into package.xml manifest loading"
+end
+
+unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
+       overrides_script.include?('pkg.depends_on "rtlog-cpp"')
+  errors << "autoproj/overrides.rb: rtt must depend on rtlog-cpp for the bounded logger backend"
 end
 
 unless export_env_script.include?('OROCOS_PREFIX="$PREFIX"') &&
