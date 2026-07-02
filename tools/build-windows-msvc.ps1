@@ -3,7 +3,6 @@ param(
     [string]$Workspace = (Join-Path (Get-Location) "build\windows-msvc"),
     [string]$Prefix = (Join-Path (Get-Location) "install\windows-msvc"),
     [string]$VcpkgRoot = (Join-Path (Get-Location) "vcpkg"),
-    [string]$Log4cppRef = "dev",
     [string]$RttRef = "dev",
     [string]$OclRef = "dev",
     [string]$Generator = "Visual Studio 17 2022"
@@ -82,10 +81,8 @@ $VcpkgRoot = Convert-ToFullPath $VcpkgRoot
 $Platform = "x64"
 $VcpkgTriplet = "x64-windows"
 
-$Log4cppSource = Join-Path $Workspace "src\log4cpp"
 $RttSource = Join-Path $Workspace "src\rtt"
 $OclSource = Join-Path $Workspace "src\ocl"
-$Log4cppBuild = Join-Path $Workspace "build\log4cpp"
 $RttBuild = Join-Path $Workspace "build\rtt"
 $OclBuild = Join-Path $Workspace "build\ocl"
 
@@ -95,7 +92,6 @@ New-Item -ItemType Directory -Force -Path $Prefix | Out-Null
 $env:OROCOS_TARGET = "win32"
 
 Invoke-Step "Check out source repositories" {
-    Sync-GitRepository -Repository "https://github.com/liufang-robot/log4cpp.git" -Ref $Log4cppRef -Path $Log4cppSource
     Sync-GitRepository -Repository "https://github.com/liufang-robot/rtt.git" -Ref $RttRef -Path $RttSource
     Sync-GitRepository -Repository "https://github.com/liufang-robot/ocl.git" -Ref $OclRef -Path $OclSource
 }
@@ -122,16 +118,6 @@ Invoke-Step "Install vcpkg dependencies" {
         "boost-program-options:${VcpkgTriplet}" `
         "boost-test:${VcpkgTriplet}" `
         "libxml2:${VcpkgTriplet}"
-}
-
-Invoke-Step "Configure log4cpp" {
-    Invoke-Native cmake -S $Log4cppSource -B $Log4cppBuild -G $Generator -A $Platform `
-        -DCMAKE_INSTALL_PREFIX="$Prefix" `
-        -DCMAKE_BUILD_TYPE=Release
-}
-
-Invoke-Step "Install log4cpp" {
-    Invoke-Native cmake --build $Log4cppBuild --config Release --target INSTALL --parallel 4
 }
 
 Invoke-Step "Configure RTT" {
@@ -174,7 +160,6 @@ Invoke-Step "Configure OCL" {
         -DBUILD_LUA_RTT=OFF `
         -DBUILD_TIMER=ON `
         -DBUILD_LOGGING=OFF `
-        -DLOG4CPP_ROOT="$Prefix" `
         -DCMAKE_BUILD_TYPE=Release
 }
 
@@ -192,7 +177,6 @@ Invoke-Step "Validate Windows prefix" {
         "bin\orocos-rtt-win32.dll",
         "bin\deployer-win32.exe",
         "bin\rttscript-win32.exe",
-        "lib\orocos-log4cpp.lib",
         "lib\orocos\win32\plugins\rtt-scripting-win32.dll",
         "lib\orocos\win32\types\rtt-typekit-win32.dll"
     )

@@ -10,7 +10,7 @@ downstream projects can consume as a normal third-party dependency.
 - `.autoproj/`, package checkouts, and build directories are workspace state.
 - Package selection belongs in tracked Autoproj configuration.
 - Fork choices belong in tracked overrides.
-- Public maintenance forks use `dev` branches in `OptimalCNC/*`.
+- Public maintenance forks use branch pins recorded in `autoproj/overrides.yml`.
 - Wrapper scripts should make the workflow repeatable, not hide new policy.
 - Changes to `rock-orocos` land through pull requests. Do not push directly to
   `main` during normal maintenance.
@@ -73,7 +73,7 @@ Autoproj workspace.
 | OS packages | Build tools, CMake, Boost libraries, omniORB, XML tools, Ruby, Python, `pkg-config`, and package-specific Autoproj osdeps such as ncurses development headers | System package manager | `bootstrap.sh` and `install.sh` may invoke `autoproj osdeps`, which can call `sudo apt-get install` |
 | User RubyGems | Autoproj and compatibility gems such as Facets when needed | Current user | `install-autoproj.sh` does not edit shell startup files; it prints a `PATH` line if needed |
 | Workspace state | `.autoproj/config.yml`, `.autoproj/Gemfile`, `.autoproj/bin/bundle`, package-set remotes, generated Autoproj state | `orocos-rock` workspace | Generated state. Do not commit it |
-| Source checkouts and builds | Autoproj-managed package checkouts and build results for `log4cpp`, `rtt`, `ocl`, `orogen`, `typelib`, `utilmm`, `utilrb`, `rtt_typelib`, and `stdint_typekit` | `orocos-rock` workspace and install prefix | Package list starts in `autoproj/manifest` |
+| Source checkouts and builds | Autoproj-managed package checkouts and build results for `farbot`, `rtlog-cpp`, `rtt`, `ocl`, `orogen`, `typelib`, `utilmm`, `utilrb`, `rtt_typelib`, and `stdint_typekit` | `orocos-rock` workspace and install prefix | Package list starts in `autoproj/manifest` |
 | Install prefix | `PREFIX/toolchain`, `PREFIX/bin`, `PREFIX/lib*`, `PREFIX/share`, `PREFIX/env.sh`, `PREFIX/dev-env.sh`, and staged Ruby generator tools | Public toolchain prefix | This is what downstream projects should consume |
 | Logs | `PREFIX/log` and Autoproj logs | Local install prefix | Useful for debugging failed osdeps, build, and install steps |
 

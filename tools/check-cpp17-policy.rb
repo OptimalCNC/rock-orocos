@@ -6,7 +6,6 @@ packages = {
   "rtlog-cpp" => File.join(root, "toolchain", "rtlog-cpp", "CMakeLists.txt"),
   "rtt" => File.join(root, "toolchain", "tools", "rtt", "CMakeLists.txt"),
   "ocl" => File.join(root, "toolchain", "tools", "ocl", "CMakeLists.txt"),
-  "log4cpp" => File.join(root, "toolchain", "tools", "log4cpp", "CMakeLists.txt"),
   "typelib" => File.join(root, "toolchain", "tools", "typelib", "CMakeLists.txt"),
   "utilmm" => File.join(root, "toolchain", "tools", "utilmm", "CMakeLists.txt"),
   "rtt_typelib" => File.join(root, "toolchain", "tools", "rtt_typelib", "CMakeLists.txt"),

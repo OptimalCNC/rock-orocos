@@ -6,7 +6,6 @@ layout:
   - toolchain:
     - farbot
     - rtlog-cpp
-    - log4cpp
     - rtt
     - ocl
     - orogen

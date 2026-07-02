@@ -31,7 +31,6 @@ jobs:
             image: debian:trixie
         package-test:
           - utilmm
-          - log4cpp
           - typelib-cxx
           - rtt-typelib
           - stdint-typekit

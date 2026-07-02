@@ -102,8 +102,8 @@ Package unit-test policy:
   gates
 - add package unit tests in a separate workflow first, with log artifacts and
   non-required status until the legacy test behavior is understood
-- run `utilmm`, `log4cpp`, Typelib C++ tests, the stable RTT core CTest subset,
-  and OCL test subsets on Ubuntu 22.04, Ubuntu 24.04, and Debian 13/Trixie
+- run `utilmm`, Typelib C++ tests, the stable RTT core CTest subset, and OCL
+  test subsets on Ubuntu 22.04, Ubuntu 24.04, and Debian 13/Trixie
 - keep RTT CORBA/mqueue tests and broader OCL deployment, reporting, and logging
   tests out of the required gate until their runtime assumptions are documented
 - record current package-test results in `docs/src/package-test-results.md`

@@ -22,7 +22,6 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `rtlog-cpp` | RT-safe logging queue and bounded formatting implementation for the RTT logger core | Public maintenance fork while install/export rules are needed |
 | `rtt` | Orocos runtime | Public maintenance fork |
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
-| `log4cpp` | temporary legacy logging dependency until RTT/OCL logging is migrated to the RT-safe logger core | Public maintenance fork |
 | `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
 | `typelib` | generator type support | Public maintenance fork while compatibility fixes are needed |
 | `utilmm` | generator/runtime support | Public maintenance fork while compatibility fixes are needed |
@@ -53,7 +52,7 @@ Everything else starts excluded unless a concrete toolchain need appears.
 The default rule is:
 
 - fork only packages that need current Linux or compiler compatibility fixes
-- keep those changes on public `dev` branches in `OptimalCNC/*`
+- keep those changes on public branch pins recorded in `autoproj/overrides.yml`
 - use upstream for everything else
 
 Initial public maintenance fork set:
@@ -62,17 +61,11 @@ Initial public maintenance fork set:
 - `rtlog-cpp`
 - `rtt`
 - `ocl`
-- `log4cpp`
 - `orogen`
 - `typelib`
 - `utilmm`
 - `rtt_typelib`
 - `stdint_typekit`
-
-`log4cpp` remains in the initial workspace during the transition. RTT now has a
-bounded `rtlog-cpp` logger path on the logging development branch, but `log4cpp`
-should be removed only after RTT and OCL no longer expose or link the legacy
-log4cpp logging path.
 
 Forks should carry focused portability work:
 

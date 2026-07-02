@@ -13,39 +13,6 @@ package_test_contracts = {
     ],
     result_tokens: ["`Suite`"]
   },
-  "log4cpp" => {
-    script_tokens: %w[
-      testCategory
-      testFixedContextCategory
-      testNDC
-      testPattern
-      testErrorCollision
-      testPriority
-      testFilter
-      testProperties
-      testConfig
-      testPropertyConfig
-      testRollingFileAppender
-      testDailyRollingFileAppender
-    ] + [
-      'build_targets toolchain/tools/log4cpp/build "${LOG4CPP_TESTS[@]}"',
-      "run_ctest toolchain/tools/log4cpp/build/tests"
-    ],
-    result_tokens: %w[
-      testCategory
-      testFixedContextCategory
-      testNDC
-      testPattern
-      testErrorCollision
-      testPriority
-      testFilter
-      testProperties
-      testConfig
-      testPropertyConfig
-      testRollingFileAppender
-      testDailyRollingFileAppender
-    ].map { |name| "`#{name}`" }
-  },
   "typelib-cxx" => {
     script_tokens: [
       "build_targets toolchain/tools/typelib/build typelib_testsuite",

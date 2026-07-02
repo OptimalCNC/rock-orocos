@@ -20,10 +20,6 @@ on:
       - windows-msvc-integration
   workflow_dispatch:
     inputs:
-      log4cpp_ref:
-        description: log4cpp branch, tag, or SHA
-        required: false
-        default: dev
       rtt_ref:
         description: RTT branch, tag, or SHA
         required: false
@@ -43,7 +39,6 @@ jobs:
       WINDOWS_WORKSPACE: ${{ github.workspace }}\_windows-ci
       WINDOWS_PREFIX: ${{ github.workspace }}\install-msvc
       CI_VCPKG_ROOT: ${{ github.workspace }}\vcpkg
-      LOG4CPP_REF: ${{ github.event.inputs.log4cpp_ref || github.event.client_payload.log4cpp_ref || 'dev' }}
       RTT_REF: ${{ github.event.inputs.rtt_ref || github.event.client_payload.rtt_ref || 'dev' }}
       OCL_REF: ${{ github.event.inputs.ocl_ref || github.event.client_payload.ocl_ref || 'dev' }}
 
@@ -63,7 +58,6 @@ jobs:
             -Workspace "$env:WINDOWS_WORKSPACE" `
             -Prefix "$env:WINDOWS_PREFIX" `
             -VcpkgRoot "$env:CI_VCPKG_ROOT" `
-            -Log4cppRef "$env:LOG4CPP_REF" `
             -RttRef "$env:RTT_REF" `
             -OclRef "$env:OCL_REF"
 

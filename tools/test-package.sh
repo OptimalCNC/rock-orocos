@@ -15,7 +15,6 @@ run the first experimental package CTest subsets.
 
 Package tests:
   utilmm       Build utilmm_testsuite and run CTest Suite
-  log4cpp     Build and run log4cpp CTest cases
   typelib-cxx Build typelib_testsuite and run C++ CTest cases only
   rtt-typelib Build rtt_typelib transport plugin and check pkg-config metadata
   stdint-typekit
@@ -130,28 +129,6 @@ case "$PACKAGE_TEST" in
         build_targets toolchain/tools/utilmm/build utilmm_testsuite
         orocos_rock_info "Running utilmm CTest subset"
         run_ctest toolchain/tools/utilmm/build '^Suite$'
-        ;;
-    log4cpp)
-        LOG4CPP_TESTS=(
-            testCategory
-            testFixedContextCategory
-            testNDC
-            testPattern
-            testErrorCollision
-            testPriority
-            testFilter
-            testProperties
-            testConfig
-            testPropertyConfig
-            testRollingFileAppender
-            testDailyRollingFileAppender
-        )
-        orocos_rock_info "Configuring log4cpp tests"
-        reconfigure toolchain/tools/log4cpp toolchain/tools/log4cpp/build -DBUILD_TESTING=ON
-        orocos_rock_info "Building log4cpp tests"
-        build_targets toolchain/tools/log4cpp/build "${LOG4CPP_TESTS[@]}"
-        orocos_rock_info "Running log4cpp CTest subset"
-        run_ctest toolchain/tools/log4cpp/build/tests "^($(IFS='|'; echo "${LOG4CPP_TESTS[*]}"))$"
         ;;
     typelib-cxx)
         orocos_rock_info "Configuring Typelib C++ tests"
