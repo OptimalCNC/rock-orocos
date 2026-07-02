@@ -76,12 +76,13 @@ orocos_rock_retry 5 gem install --user-install --conservative --no-document auto
 
 USER_GEM_HOME="$(orocos_rock_user_gem_home)"
 USER_GEM_BIN="$USER_GEM_HOME/bin"
+USER_GEM_PATH="$(orocos_rock_user_gem_path)"
 
-if GEM_PATH="$USER_GEM_HOME${GEM_PATH:+:$GEM_PATH}" \
+if GEM_PATH="$USER_GEM_PATH" \
     ruby -e 'gem "facets", "< 3.2"; gem "autoproj"; require "facets/kernel/constant"' >/dev/null 2>&1; then
     orocos_rock_info "autoproj installed under $USER_GEM_BIN"
     orocos_rock_info "For this shell, run:"
     orocos_rock_info "  export PATH=\"$USER_GEM_BIN:\$PATH\""
 else
-    orocos_rock_die "autoproj install finished, but the autoproj executable was not found under $USER_GEM_BIN"
+    orocos_rock_die "autoproj install finished, but Autoproj Ruby gems are not usable with GEM_PATH=$USER_GEM_PATH"
 fi

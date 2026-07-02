@@ -229,13 +229,16 @@ unless common_script.include?('BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$OROCOS_ROCK_RO
   errors << "tools/common.sh: must provide BUNDLE_GEMFILE while invoking Autoproj"
 end
 
-unless common_script.include?('orocos_rock_user_gem_home') &&
-       common_script.include?('GEM_PATH="$user_gem_home${GEM_PATH:+:$GEM_PATH}"')
-  errors << "tools/common.sh: must include RubyGems user install directory when loading Autoproj"
+unless common_script.include?('orocos_rock_user_gem_path') &&
+       common_script.include?('Gem.default_path') &&
+       common_script.include?('gem_path="$(orocos_rock_user_gem_path)"') &&
+       common_script.include?('GEM_PATH="$gem_path"')
+  errors << "tools/common.sh: must include RubyGems user and default gem paths when loading Autoproj"
 end
 
-unless install_autoproj_script.include?('GEM_PATH="$USER_GEM_HOME${GEM_PATH:+:$GEM_PATH}"')
-  errors << "tools/install-autoproj.sh: must include RubyGems user install directory when validating Autoproj"
+unless install_autoproj_script.include?('USER_GEM_PATH="$(orocos_rock_user_gem_path)"') &&
+       install_autoproj_script.include?('GEM_PATH="$USER_GEM_PATH"')
+  errors << "tools/install-autoproj.sh: must include RubyGems user and default gem paths when validating Autoproj"
 end
 
 unless common_script.include?('.autoproj/bin/bundle') &&

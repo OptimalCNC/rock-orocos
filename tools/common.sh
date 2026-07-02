@@ -33,6 +33,10 @@ orocos_rock_user_gem_home() {
     ruby -rrubygems -e 'print Gem.user_dir'
 }
 
+orocos_rock_user_gem_path() {
+    ruby -rrubygems -e 'paths = [Gem.user_dir] + Gem.path + Gem.default_path; print paths.uniq.join(":")'
+}
+
 orocos_rock_validate_target() {
     case "$1" in
         gnulinux|xenomai) ;;
@@ -127,8 +131,8 @@ EOF
 
 orocos_rock_require_autoproj() {
     orocos_rock_require_command ruby
-    user_gem_home="$(orocos_rock_user_gem_home)"
-    GEM_PATH="$user_gem_home${GEM_PATH:+:$GEM_PATH}" \
+    gem_path="$(orocos_rock_user_gem_path)"
+    GEM_PATH="$gem_path" \
         ruby -e 'gem "facets", "< 3.2"; gem "autoproj"; require "facets/kernel/constant"' >/dev/null 2>&1 ||
         orocos_rock_die "Autoproj Ruby gems are not usable; run ./tools/install-autoproj.sh"
 }
@@ -180,14 +184,10 @@ orocos_rock_ensure_workspace_ruby_gems() {
 }
 
 orocos_rock_autoproj() {
-    user_gem_home="$(orocos_rock_user_gem_home)"
-    gem_path="$(ruby -rrubygems -e 'print Gem.path.join(":")')"
+    gem_path="$(orocos_rock_user_gem_path)"
     export XDG_DATA_HOME="${XDG_DATA_HOME:-$OROCOS_ROCK_ROOT/.autoproj/xdg}"
-    export GEM_PATH="$gem_path"
-    case ":$GEM_PATH:" in
-        *:"$user_gem_home":*) ;;
-        *) export GEM_PATH="$user_gem_home:$GEM_PATH" ;;
-    esac
+    export GEM_PATH
+    GEM_PATH="$gem_path"
     BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$OROCOS_ROCK_ROOT/.autoproj/Gemfile}" \
         ruby -e 'gem "facets", "< 3.2"; load Gem.bin_path("autoproj", "autoproj")' -- "$@"
 }
