@@ -22,8 +22,8 @@ rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
 expected_forks = {
   "farbot" => { "url" => "https://github.com/liufang-robot/farbot.git", "branch" => "dev" },
   "rtlog-cpp" => { "url" => "https://github.com/liufang-robot/rtlog-cpp.git", "branch" => "dev" },
-  "rtt" => { "url" => "https://github.com/liufang-robot/rtt.git", "branch" => "codex/rtlog-backend" },
-  "ocl" => { "url" => "https://github.com/liufang-robot/ocl.git", "branch" => "codex/rtlog-backend" },
+  "rtt" => { "url" => "https://github.com/liufang-robot/rtt.git", "branch" => "dev" },
+  "ocl" => { "url" => "https://github.com/liufang-robot/ocl.git", "branch" => "dev" },
   "orogen" => { "url" => "https://github.com/OptimalCNC/tools-orogen.git", "branch" => "dev" },
   "typelib" => { "url" => "https://github.com/OptimalCNC/tools-typelib.git", "branch" => "dev" },
   "utilmm" => { "url" => "https://github.com/OptimalCNC/utilmm.git", "branch" => "dev" },
