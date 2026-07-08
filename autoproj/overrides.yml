@@ -18,12 +18,12 @@ overrides:
   - rtt:
     type: git
     url: https://github.com/liufang-robot/rtt.git
-    branch: codex/rtlog-backend
+    branch: dev
 
   - ocl:
     type: git
     url: https://github.com/liufang-robot/ocl.git
-    branch: codex/rtlog-backend
+    branch: dev
 
   - orogen:
     type: git
