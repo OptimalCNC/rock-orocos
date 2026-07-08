@@ -28,7 +28,7 @@ else
   errors << "native CI must install build-essential for native Ruby gems and package builds" unless contents.include?("build-essential")
   errors << "native CI must install cmake before Autoproj build" unless contents.include?("cmake")
   errors << "native CI must install Boost headers before utilmm configure" unless contents.include?("libboost-dev")
-  errors << "native CI must install omniORB headers and IDL compiler" unless contents.include?("libomniorb4-dev") && contents.include?("omniidl")
+  errors << "native CI must not install omniORB for the default no-CORBA build" if contents.include?("libomniorb4-dev") || contents.include?("omniidl")
   errors << "native CI must install XML and XPath support" unless contents.include?("libxml2-dev") && contents.include?("libxml-xpath-perl")
   errors << "native CI must install pkg-config" unless contents.include?("pkg-config")
   errors << "native CI must install libffi headers for the ffi Ruby gem" unless contents.include?("libffi-dev")

@@ -32,12 +32,21 @@ host that already has Xenomai 3 development headers and libraries installed,
 select the target explicitly:
 
 ```bash
+export XENOMAI_DIR=/usr/xenomai
+export XENOMAI_ROOT_DIR=/usr/xenomai
+export PATH="$XENOMAI_DIR/bin:$PATH"
+
 ./tools/setup.sh --prefix ~/.orocos --target xenomai
 ```
 
 The generated `~/.orocos/env.sh` then exports `OROCOS_TARGET=xenomai` by
 default. A later `--target gnulinux` install to the same prefix switches the
 prefix back to `OROCOS_TARGET=gnulinux`.
+
+The Xenomai 3 build disables RTT CORBA by default, so OmniORB is not required.
+If you are testing local uncommitted RTT or OCL Xenomai patches, use the
+no-update maintainer workflow in
+[Xenomai 3 Integration](./xenomai3-integration.md) instead of `setup.sh`.
 
 ## Use The Installed Toolchain
 
@@ -72,8 +81,10 @@ that prefix.
 For a Xenomai install, validate `deployer-xenomai` instead:
 
 ```bash
-source ~/.orocos/dev-env.sh
+source ~/.orocos/env.sh
+echo "$OROCOS_TARGET"
 command -v deployer-xenomai
+deployer-xenomai --version
 ```
 
 ## Optional Shell Startup

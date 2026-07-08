@@ -125,6 +125,7 @@ apt_dpkg_update: false
 prefer_indep_over_os_packages: false
 USE_OCL: true
 rtt_target: "$target"
+rtt_corba_implementation: none
 XENOMAI_DIR: "${XENOMAI_DIR:-$OROCOS_ROCK_DEFAULT_XENOMAI_DIR}"
 EOF
 }

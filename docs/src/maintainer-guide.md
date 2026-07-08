@@ -70,7 +70,7 @@ Autoproj workspace.
 
 | Layer | Installed or generated content | Owner | Notes |
 |---|---|---|---|
-| OS packages | Build tools, CMake, Boost libraries, omniORB, XML tools, Ruby, Python, `pkg-config`, and package-specific Autoproj osdeps such as ncurses development headers | System package manager | `bootstrap.sh` and `install.sh` may invoke `autoproj osdeps`, which can call `sudo apt-get install` |
+| OS packages | Build tools, CMake, Boost libraries, XML tools, Ruby, Python, `pkg-config`, and package-specific Autoproj osdeps such as ncurses development headers | System package manager | `bootstrap.sh` and `install.sh` may invoke `autoproj osdeps`, which can call `sudo apt-get install` |
 | User RubyGems | Autoproj and compatibility gems such as Facets when needed | Current user | `install-autoproj.sh` does not edit shell startup files; it prints a `PATH` line if needed |
 | Workspace state | `.autoproj/config.yml`, `.autoproj/Gemfile`, `.autoproj/bin/bundle`, package-set remotes, generated Autoproj state | `orocos-rock` workspace | Generated state. Do not commit it |
 | Source checkouts and builds | Autoproj-managed package checkouts and build results for `farbot`, `rtlog-cpp`, `rtt`, `ocl`, `orogen`, `typelib`, `utilmm`, `utilrb`, `rtt_typelib`, and `stdint_typekit` | `orocos-rock` workspace and install prefix | Package list starts in `autoproj/manifest` |
@@ -129,17 +129,28 @@ After a real install, run:
 Then validate a downstream package by sourcing `~/.orocos/dev-env.sh` before
 configuring it.
 
-For a Xenomai 3 variant, keep the build on an explicit staging branch and
-select the target explicitly:
+For a Xenomai 3 variant, select the target explicitly. The default build is a
+no-CORBA build and should not require OmniORB:
 
 ```bash
+export XENOMAI_DIR=/usr/xenomai
+export XENOMAI_ROOT_DIR=/usr/xenomai
+export PATH="$XENOMAI_DIR/bin:$PATH"
+
 ./tools/setup.sh --prefix ~/.orocos --target xenomai
 ```
+
+If RTT or OCL Xenomai fixes are still local and uncommitted, do not run the
+source-updating wrapper. Use the no-update workflow in
+[Xenomai 3 Integration](./xenomai3-integration.md).
 
 The target-machine smoke checks are:
 
 ```bash
+/usr/xenomai/bin/xeno-config --version
+/usr/xenomai/bin/xeno-config --skin=native --cflags
 source ~/.orocos/env.sh
+echo "$OROCOS_TARGET"
 deployer-xenomai --version
 latency
 xeno-test -p 10

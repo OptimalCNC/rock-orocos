@@ -4,6 +4,5 @@
   <license>GPL v2 with linking exception</license>
   <url>http://www.orocos.org/rtt</url>
   <depend package="boost" />
-  <depend package="omniorb" />
   <depend package="xpath-perl" />
 </package>

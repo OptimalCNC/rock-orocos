@@ -1,7 +1,7 @@
 # Xenomai 3 Integration
 
 This page is the maintainer playbook for carrying a Xenomai 3 capable RTT
-target in the `OptimalCNC/*` fork set while keeping `orocos-rock` as a
+target in the `liufang-robot/*` fork set while keeping `orocos-rock` as a
 standalone toolchain boundary.
 
 The current default install path remains the generic `gnulinux` toolchain. A
@@ -9,11 +9,29 @@ Xenomai build is a deliberate variant selected with `--target xenomai`, staged
 on explicit branches, and installed to an explicit prefix such as
 `~/.orocos`.
 
+## Current Build Status
+
+The local Xenomai 3 build is a no-CORBA build. `orocos-rock` writes
+`rtt_corba_implementation: none` into `.autoproj/config.yml`, which makes RTT
+configure with `-DENABLE_CORBA=OFF`. OmniORB is not required for the default
+Xenomai 3 toolchain build.
+
+The verified local build uses Xenomai 3.3.3 from `/usr/xenomai` and exports:
+
+- `OROCOS_TARGET=xenomai`
+- `XENOMAI_DIR=/usr/xenomai`
+- `XENOMAI_ROOT_DIR=/usr/xenomai`
+
+The current RTT support is still transitional. It can build and smoke-run on
+Xenomai 3 through the native/trank compatibility headers, but it is not yet a
+clean Alchemy/POSIX port. Keep the runtime blockers below visible until they
+are fixed and tested.
+
 ## Compatibility Decision
 
 The old Orocos RTT branch
 `orocos-toolchain/rtt:ahoarau-xenomai3-support-v2` is useful as a migration
-reference, but it should not be merged directly into `OptimalCNC/rtt`.
+reference, but it should not be merged directly into `liufang-robot/rtt`.
 
 Use it to recover the intent of the Xenomai 3 port:
 
@@ -28,13 +46,13 @@ Use it to recover the intent of the Xenomai 3 port:
 - define a Xenomai 3 policy for `IRQActivity`
 
 Do not copy the implementation mechanically. The branch was written against an
-older RTT baseline, while this workspace carries C++17 maintenance fixes on
-`OptimalCNC/*` `dev` branches.
+older RTT baseline, while this workspace carries C++17, rtlog, and Xenomai
+compatibility fixes on `liufang-robot/*` `dev` branches.
 
 ## Blocking RTT Review Items
 
 The Xenomai 3 RTT fork is not ready for application use until these items are
-settled in `OptimalCNC/rtt`.
+settled in `liufang-robot/rtt`.
 
 | Area | Required result |
 |---|---|
@@ -94,26 +112,60 @@ Only PR E belongs in this repository.
 
 ## `rock-orocos` Wiring
 
-Do not switch `autoproj/overrides.yml` to `dev-xeno3` until the RTT staging
-branch has passed the checks below. When it is ready, keep the change explicit:
+The current RTT source pin is:
 
 ```yaml
 overrides:
   - rtt:
     type: git
-    url: https://github.com/OptimalCNC/rtt.git
-    branch: dev-xeno3
+    url: https://github.com/liufang-robot/rtt.git
+    branch: dev
 ```
 
-Build the Xenomai variant by selecting the target explicitly:
+Use a different branch only when the RTT staging branch has passed the checks
+below. Keep any staging override explicit and reviewable.
+
+The standard build command is:
 
 ```bash
-./tools/bootstrap.sh --prefix ~/.orocos --target xenomai
-./tools/install.sh --prefix ~/.orocos --target xenomai
+export XENOMAI_DIR=/usr/xenomai
+export XENOMAI_ROOT_DIR=/usr/xenomai
+export PATH="$XENOMAI_DIR/bin:$PATH"
+
+./tools/setup.sh --prefix ~/.orocos --target xenomai
 ```
 
 The generated `env.sh` exports `OROCOS_TARGET=xenomai` for this prefix. The
 normal `gnulinux` prefix still exports `OROCOS_TARGET=gnulinux`.
+
+`setup.sh` runs `install.sh`, and `install.sh` updates Autoproj-managed source
+checkouts before building. If the Xenomai 3 fixes are still only local
+uncommitted changes in `toolchain/tools/rtt` or `toolchain/tools/ocl`, use the
+no-update maintainer path instead:
+
+```bash
+export XENOMAI_DIR=/usr/xenomai
+export XENOMAI_ROOT_DIR=/usr/xenomai
+export PATH="$XENOMAI_DIR/bin:$PATH"
+export OROCOS_TARGET=xenomai
+
+./tools/install-autoproj.sh
+./tools/bootstrap.sh --prefix ~/.orocos --target xenomai --skip-osdeps
+
+source tools/common.sh
+orocos_rock_require_autoproj
+orocos_rock_ensure_workspace_ruby_gems
+orocos_rock_configure_target_environment xenomai
+orocos_rock_prepare_autoproj_workspace "$HOME/.orocos" none xenomai
+orocos_rock_autoproj build --no-interactive
+
+./tools/install-ruby-tools.sh --prefix ~/.orocos
+./tools/export-env.sh --prefix ~/.orocos --target xenomai
+./tools/validate-install.sh --prefix ~/.orocos --target xenomai
+```
+
+Do not use the no-update path as a release substitute. It is only for testing a
+workspace that deliberately carries local staged fixes.
 
 ## Validation Layers
 
@@ -128,12 +180,21 @@ Use three separate gates. A green compile does not prove real-time behavior.
 Useful target-machine smoke commands are:
 
 ```bash
+/usr/xenomai/bin/xeno-config --version
+/usr/xenomai/bin/xeno-config --skin=native --cflags
+/usr/xenomai/bin/xeno-config --skin=posix --cflags
 source ~/.orocos/env.sh
+echo "$OROCOS_TARGET"
 deployer-xenomai --version
-/usr/xenomai/bin/xeno-config --alchemy --cflags
-/usr/xenomai/bin/xeno-config --alchemy --ldflags
 latency
 xeno-test -p 10
+```
+
+Expected minimal output:
+
+```text
+xenomai
+based on Xenomai/cobalt v3.x
 ```
 
 The minimum target-machine regression after the RTT patch lands is:

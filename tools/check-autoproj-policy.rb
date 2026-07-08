@@ -225,6 +225,10 @@ unless common_script.include?('.autoproj/Gemfile') &&
   errors << "tools/common.sh: must create .autoproj/Gemfile for Autoproj bundler osdeps"
 end
 
+unless common_script.include?('rtt_corba_implementation: none')
+  errors << "tools/common.sh: must disable RTT CORBA by default"
+end
+
 unless common_script.include?('BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$OROCOS_ROCK_ROOT/.autoproj/Gemfile}"')
   errors << "tools/common.sh: must provide BUNDLE_GEMFILE while invoking Autoproj"
 end
@@ -251,7 +255,7 @@ if !File.file?(rtt_manifest_path)
 else
   rtt_manifest = File.read(rtt_manifest_path)
   errors << "autoproj/manifests/rtt.xml: must declare boost as a package dependency" unless rtt_manifest.include?('<depend package="boost" />')
-  errors << "autoproj/manifests/rtt.xml: must declare omniorb as a package dependency" unless rtt_manifest.include?('<depend package="omniorb" />')
+  errors << "autoproj/manifests/rtt.xml: must not require omniorb while CORBA is disabled by default" if rtt_manifest.include?('<depend package="omniorb" />')
   errors << "autoproj/manifests/rtt.xml: must declare xpath-perl as a package dependency" unless rtt_manifest.include?('<depend package="xpath-perl" />')
 end
 
