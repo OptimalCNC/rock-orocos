@@ -10,4 +10,5 @@
   - [Xenomai 3 Integration](./xenomai3-integration.md)
   - [Bootstrap Workflow](./bootstrap-workflow.md)
   - [Modernization Plan](./modernization-plan.md)
+  - [Deployer TUI PRD](./deployer-tui-prd.md)
   - [Package Test Results](./package-test-results.md)
