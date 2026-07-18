@@ -40,6 +40,7 @@ editing, operation forms, and lifecycle controls are separate follow-up work.
 ## Goals
 
 - Preserve the existing deployer and TaskBrowser command language.
+- Preserve the classic TaskBrowser readline/editline input and history path.
 - Add target-neutral and target-specific TUI entry points.
 - Keep command input, command results, and RTT logs visibly separate.
 - Provide read-only navigation of the live RTT object graph.
@@ -101,6 +102,9 @@ editing, operation forms, and lifecycle controls are separate follow-up work.
     available and tested, so that adopting the TUI is optional.
 22. As a Xenomai user, I want the same TUI source and command contract as
     GNU/Linux, so that target selection does not change the operator workflow.
+23. As a classic TaskBrowser user, I want readline/editline line editing,
+    signals, completion, and history persistence to remain unchanged, so that
+    the TUI refactor does not degrade the existing console.
 
 ## Product Requirements
 
@@ -163,9 +167,33 @@ The selected layout is:
   facade.
 - Session results contain plain command output, diagnostic output, context
   changes, and completion data without FTXUI types.
-- The classic readline/editline frontend preserves existing ANSI rendering,
-  prompts, history, and loop behavior.
-- `.tb_history` remains the command-history file for both frontends.
+- Session extraction begins after the classic console has acquired a line. It
+  does not replace the classic console's readline/editline input machinery.
+
+### Readline And History Compatibility
+
+> [!IMPORTANT]
+> The classic TaskBrowser keeps its existing readline/editline input path. The
+> TUI refactor may extract command dispatch and completion-candidate discovery,
+> but it must not replace `readline()` with FTXUI or a generic input abstraction
+> in the classic console.
+
+- The classic frontend preserves its prompt handling, `rl_gets()` behavior,
+  signal integration, readline/editline completion callbacks, ANSI rendering,
+  and blocking input loop.
+- The classic frontend continues to use the readline/editline history API for
+  loading, duplicate suppression, navigation, and writeback.
+- `ORO_TB_HISTFILE` remains the history-file override. `.tb_history` and the
+  existing home-directory fallback remain compatible.
+- Empty commands and `quit` retain their current history behavior.
+- Completion-candidate discovery moves behind a reusable session method, while
+  the classic frontend keeps its existing readline callback adapter.
+- FTXUI owns input editing and key events only in `deployer-tui`. The TUI does
+  not invoke interactive `readline()` or install readline signal handlers.
+- The TUI uses the same history file selection, line format, duplicate
+  suppression, and `quit` exclusion rules as the classic frontend.
+- Both frontends preserve history across process restarts. No new TUI-specific
+  history file is introduced.
 
 ### Command Execution
 
@@ -350,7 +378,8 @@ flowchart TB
 - Introduce the internal session output and command contract.
 - Move built-in command dispatch out of the blocking console loop.
 - Make mutable browser session state instance-owned.
-- Adapt classic TaskBrowser to the session contract.
+- Adapt classic TaskBrowser command dispatch to the session contract without
+  changing its readline/editline line acquisition, signals, or history owner.
 - Prove existing TaskBrowser and deployer behavior with focused regression tests.
 
 ### Milestone 2: Toolchain Dependency And TUI Shell
@@ -397,6 +426,10 @@ components where practical and do not mock parser implementation details.
   help, macro/trace behavior, and completion through the session contract.
 - Assert emitted results, diagnostics, active context, and history behavior.
 - Run classic frontend regression checks against the same session behavior.
+- Run the classic TaskBrowser through a pseudo-terminal and verify readline or
+  editline line editing, history navigation, tab completion, signal handling,
+  duplicate suppression, `quit` exclusion, `ORO_TB_HISTFILE`, and history
+  persistence across restarts.
 
 ### Runtime Inspector Tests
 
@@ -471,6 +504,8 @@ Milestone one is complete when all of the following are true:
 12. Xenomai builds, passes headless smoke checks, and has recorded interactive
     validation on a capable host.
 13. No RTT source or API change is required.
+14. The classic TaskBrowser retains its readline/editline input, completion,
+    signal, and persistent-history behavior.
 
 ## Alternatives Considered
 
@@ -500,6 +535,9 @@ Logs requirement without expanding RTT's API.
 - TaskBrowser has presentation and behavior interleaved across a large source
   file. Extract the session in small steps and keep classic regression tests
   green after every step.
+- Readline owns global callback and history state. Keep that ownership in the
+  classic frontend and expose only completion candidates and shared history
+  policy to the TUI.
 - Long RTT commands cannot be cancelled safely. Serialize them on a worker,
   display busy state, and document that graceful exit may wait.
 - Loaded components may write directly to process file descriptors. Define
