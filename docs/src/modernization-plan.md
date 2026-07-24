@@ -1,5 +1,12 @@
 # Modernization Plan
 
+> [!IMPORTANT]
+> This page records the completed C++17 baseline direction. The approved next
+> stage is defined in
+> [C++20 And OPC UA Modernization Design](./cpp20-opcua-modernization-design.md),
+> which supersedes the language, type-alias, and scripting compatibility
+> direction below.
+
 This page records the modernization direction for the maintained Orocos/Rock
 toolchain. The first goal is a repeatable C++17-compatible baseline on Ubuntu
 22.04, Ubuntu 24.04, and Debian 13/Trixie. Ubuntu 26.04 remains the next

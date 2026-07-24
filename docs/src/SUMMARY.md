@@ -10,5 +10,6 @@
   - [Xenomai 3 Integration](./xenomai3-integration.md)
   - [Bootstrap Workflow](./bootstrap-workflow.md)
   - [Modernization Plan](./modernization-plan.md)
+  - [C++20 And OPC UA Modernization Design](./cpp20-opcua-modernization-design.md)
   - [Deployer TUI PRD](./deployer-tui-prd.md)
   - [Package Test Results](./package-test-results.md)
