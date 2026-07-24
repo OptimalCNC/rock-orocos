@@ -17,8 +17,6 @@ Package tests:
   utilmm       Build utilmm_testsuite and run CTest Suite
   typelib-cxx Build typelib_testsuite and run C++ CTest cases only
   rtt-typelib Build rtt_typelib transport plugin and check pkg-config metadata
-  stdint-typekit
-               Build stdint_typekit plugin and check pkg-config metadata
   rtt-core    Build and run stable RTT core/task CTest cases
   ocl-basic   Build and run OCL timer/taskbrowser CTest cases
   ocl-integration
@@ -147,14 +145,6 @@ case "$PACKAGE_TEST" in
         run_ctest toolchain/tools/rtt_typelib/build '^get_marshaller_for_test$'
         orocos_rock_info "Checking rtt_typelib pkg-config metadata"
         pkg-config --exists "rtt_typelib-$TARGET"
-        ;;
-    stdint-typekit)
-        orocos_rock_info "Configuring stdint_typekit"
-        reconfigure toolchain/stdint_typekit toolchain/stdint_typekit/build
-        orocos_rock_info "Building stdint_typekit plugin"
-        build_targets toolchain/stdint_typekit/build stdint-typekit
-        orocos_rock_info "Checking stdint_typekit pkg-config metadata"
-        pkg-config --exists "stdint-$TARGET"
         ;;
     rtt-core)
         orocos_rock_info "Configuring RTT core tests"

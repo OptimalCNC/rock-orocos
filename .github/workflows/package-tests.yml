@@ -33,7 +33,6 @@ jobs:
           - utilmm
           - typelib-cxx
           - rtt-typelib
-          - stdint-typekit
           - rtt-core
           - ocl-basic
           - ocl-integration
@@ -121,6 +120,3 @@ jobs:
             toolchain/tools/**/build/CMakeFiles/CMakeOutput.log
             toolchain/tools/**/build/CMakeFiles/CMakeError.log
             toolchain/tools/**/build/Testing/Temporary/*.log
-            toolchain/stdint_typekit/build/CMakeFiles/CMakeOutput.log
-            toolchain/stdint_typekit/build/CMakeFiles/CMakeError.log
-            toolchain/stdint_typekit/build/Testing/Temporary/*.log

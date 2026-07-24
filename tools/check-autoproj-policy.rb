@@ -3,6 +3,7 @@
 require "yaml"
 
 root = File.expand_path("..", __dir__)
+manifest_path = File.join(root, "autoproj", "manifest")
 overrides_path = File.join(root, "autoproj", "overrides.yml")
 local_autobuild_path = File.join(root, "autoproj", "local.autobuild")
 install_path = File.join(root, "tools", "install.sh")
@@ -27,10 +28,10 @@ expected_forks = {
   "orogen" => { "url" => "https://github.com/OptimalCNC/tools-orogen.git", "branch" => "dev" },
   "typelib" => { "url" => "https://github.com/OptimalCNC/tools-typelib.git", "branch" => "dev" },
   "utilmm" => { "url" => "https://github.com/OptimalCNC/utilmm.git", "branch" => "dev" },
-  "rtt_typelib" => { "url" => "https://github.com/OptimalCNC/tools-rtt_typelib.git", "branch" => "dev" },
-  "stdint_typekit" => { "url" => "https://github.com/OptimalCNC/stdint_typekit.git", "branch" => "dev" }
+  "rtt_typelib" => { "url" => "https://github.com/OptimalCNC/tools-rtt_typelib.git", "branch" => "dev" }
 }
 
+manifest = File.read(manifest_path)
 source_selection = YAML.safe_load_file(overrides_path)
 version_control = source_selection.fetch("version_control", [])
 overrides = source_selection.fetch("overrides", [])
@@ -62,6 +63,16 @@ local_osdeps = File.file?(local_osdeps_path) ? File.read(local_osdeps_path) : ""
 local_osdeps_data = local_osdeps.empty? ? {} : (YAML.safe_load(local_osdeps) || {})
 export_env_script = File.read(export_env_path)
 validate_install_script = File.read(validate_install_path)
+
+if manifest.match?(/\bstdint_typekit\b/)
+  errors << "autoproj/manifest: stdint_typekit is retired because RTT provides fixed-width built-ins"
+end
+if (version_control + overrides).any? { |entry| entry.key?("stdint_typekit") }
+  errors << "autoproj/overrides.yml: stdint_typekit must not have a source selection"
+end
+if install_script.match?(/\bstdint_typekit\b/)
+  errors << "tools/install.sh: stdint_typekit must not be refreshed or built"
+end
 
 expected_forks.each_key do |package|
   refreshes_package = install_script.include?("FORKED_PACKAGES=(") &&

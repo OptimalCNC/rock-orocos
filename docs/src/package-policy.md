@@ -27,7 +27,10 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `utilmm` | generator/runtime support | Public maintenance fork while compatibility fixes are needed |
 | `utilrb` | autoproj and generator support | Upstream |
 | `rtt_typelib` | RTT and Typelib bridge | Public maintenance fork while compatibility fixes are needed |
-| `stdint_typekit` | fixed-width integer typekit | Public maintenance fork while compatibility fixes are needed |
+
+RTT itself owns the fixed-width built-in types. The retired
+`stdint_typekit` package must not be added to the workspace or installed
+prefix.
 
 ## Good Candidates
 
@@ -65,7 +68,6 @@ Initial public maintenance fork set:
 - `typelib`
 - `utilmm`
 - `rtt_typelib`
-- `stdint_typekit`
 
 Forks should carry focused portability work:
 

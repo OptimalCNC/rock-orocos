@@ -29,13 +29,6 @@ package_test_contracts = {
     ],
     result_tokens: ["`rtt-typelib`", "`get_marshaller_for_test`", "`rtt_typelib-gnulinux`"]
   },
-  "stdint-typekit" => {
-    script_tokens: [
-      "build_targets toolchain/stdint_typekit/build stdint-typekit",
-      'pkg-config --exists "stdint-$TARGET"'
-    ],
-    result_tokens: ["`stdint-typekit`", "`stdint-gnulinux`"]
-  },
   "rtt-core" => {
     script_tokens: [
       "build_targets toolchain/tools/rtt/build main-test list-test core-test task-test",
@@ -98,7 +91,6 @@ else
   errors << "package tests must upload diagnostic logs when package tests fail" unless contents.include?("actions/upload-artifact@v6") && contents.include?("if: failure()")
   errors << "package tests must upload CTest logs" unless contents.include?("Testing/Temporary/*.log")
   errors << "package tests must upload CMake logs" unless contents.include?("CMakeOutput.log") && contents.include?("CMakeError.log")
-  errors << "package tests must upload stdint_typekit CMake logs" unless contents.include?("toolchain/stdint_typekit/build/CMakeFiles/CMakeOutput.log") && contents.include?("toolchain/stdint_typekit/build/CMakeFiles/CMakeError.log")
   errors << "package tests must upload Autoproj package logs" unless contents.include?("toolchain/log/*.log")
   errors << "package tests must upload osdeps suffix files" unless contents.include?(".autoproj/remotes/**/*.osdeps*") && contents.include?("autoproj/**/*.osdeps*")
 end
