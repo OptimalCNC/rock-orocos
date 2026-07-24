@@ -16,7 +16,7 @@ ruby_tools_path = File.join(root, "tools", "install-ruby-tools.sh")
 common_path = File.join(root, "tools", "common.sh")
 native_ci_check_path = File.join(root, "tools", "check-native-ci.rb")
 package_tests_ci_check_path = File.join(root, "tools", "check-package-tests-ci.rb")
-cpp17_policy_check_path = File.join(root, "tools", "check-cpp17-policy.rb")
+cpp20_policy_check_path = File.join(root, "tools", "check-cpp20-policy.rb")
 rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
 
 expected_forks = {
@@ -92,13 +92,13 @@ elsif build && source_update > build
   errors << "install.sh: Autoproj source update must run before build"
 end
 
-cpp17_check = install_script.index('ruby "$SCRIPT_DIR/check-cpp17-policy.rb"')
-if cpp17_check.nil?
-  errors << "install.sh: missing C++17 package policy check after source update"
-elsif source_update && cpp17_check < source_update
-  errors << "install.sh: C++17 package policy check must run after Autoproj source update"
-elsif build && cpp17_check > build
-  errors << "install.sh: C++17 package policy check must run before build"
+cpp20_check = install_script.index('ruby "$SCRIPT_DIR/check-cpp20-policy.rb"')
+if cpp20_check.nil?
+  errors << "install.sh: missing C++20 package policy check after source update"
+elsif source_update && cpp20_check < source_update
+  errors << "install.sh: C++20 package policy check must run after Autoproj source update"
+elsif build && cpp20_check > build
+  errors << "install.sh: C++20 package policy check must run before build"
 end
 
 if osdeps.nil?
@@ -199,7 +199,7 @@ end
 
 errors << "tools/check-native-ci.rb: missing native CI policy check" unless File.file?(native_ci_check_path)
 errors << "tools/check-package-tests-ci.rb: missing package test CI policy check" unless File.file?(package_tests_ci_check_path)
-errors << "tools/check-cpp17-policy.rb: missing C++17 policy check" unless File.file?(cpp17_policy_check_path)
+errors << "tools/check-cpp20-policy.rb: missing C++20 policy check" unless File.file?(cpp20_policy_check_path)
 errors << "tools/check-rtlog-prefix.sh: missing rtlog installed-prefix smoke test" unless File.file?(rtlog_prefix_check_path)
 
 unless install_script.include?('"$SCRIPT_DIR/install-ruby-tools.sh" --prefix "$PREFIX"')
