@@ -26,6 +26,30 @@ the public maintenance forks and branch pins recorded in
 | `ocl-basic` | `timer` and `taskb` | Passes in CI after restoring OCL standalone CTest support on `OptimalCNC/ocl` `dev`. Deployment, reporting, and logging tests stay out of this subset. |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` when NetCDF support is available | Passes in CI on the selected OCL maintenance branch. The interactive `testWithStateMachine` TaskBrowser case stays out of the CI subset until it has a non-interactive harness. |
 
+## C++20 and OPC UA Modernization Verification
+
+The modernization worktree was verified locally on Ubuntu 24.04 x86-64 with
+GCC 13.3 and CMake 3.28. All C++ targets were compiled as C++20 with
+`-Wall -Wextra -Wpedantic -Werror`.
+
+| Package | Verification result |
+|---|---|
+| RTT release | Full rebuild and all 44 CTest cases passed in 233.72 seconds. CORBA was configured `OFF`. |
+| RTT sanitizers | Full Debug rebuild and all 44 CTest cases passed in 273.24 seconds with AddressSanitizer, UndefinedBehaviorSanitizer, and LeakSanitizer enabled. |
+| RTT scripting | The program/parser suites and all eight parser corpus seeds passed in release and sanitizer builds. Coverage includes rejection of adjacent operation calls without a statement separator. |
+| `rtt_opcua` | All five CTest cases passed in 5.03 seconds against the temporary installed RTT prefix. |
+| OCL | All 11 registered CTest cases passed in 3.87 seconds after explicitly rebuilding their executable targets against the installed RTT headers. This includes `testWithStateMachine`, canonical Lua scalar names, and the loopback OPC UA deployment test. |
+| Installed tools | `deployer-opcua-gnulinux --help` exposes the loopback-only address, port, and endpoint-path options; `ctaskbrowser-opcua-gnulinux --help` exposes the remote endpoint/component syntax. |
+
+The builds, tests, and installs used an isolated directory under `/tmp`, with a
+temporary `HOME` and install prefix. The installed manifests, filenames, and
+runtime dependencies contain no CORBA/omniORB artifacts and do not resolve
+libraries from `~/.orocos`.
+
+Clang is not installed in the local verification environment, so the
+libFuzzer mutation target was not run. The same shared parser harness and its
+seed corpus passed under GCC with the sanitizers listed above.
+
 Deferred test groups:
 
 - oroGen Ruby tests, until Ruby test dependencies such as `flexmock/minitest`
