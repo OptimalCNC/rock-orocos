@@ -36,6 +36,18 @@ package_test_contracts = {
     ],
     result_tokens: ["`main-test`", "`list-test`", "`core-test`", "`task-test`"]
   },
+  "rtt-opcua" => {
+    script_tokens: [
+      "-DRTT_OPCUA_WARNINGS_AS_ERRORS=ON",
+      'build_targets toolchain/tools/rtt_opcua/build "${RTT_OPCUA_TEST_TARGETS[@]}"',
+      "run_ctest toolchain/tools/rtt_opcua/build '^rtt_opcua_.*_test$'",
+      "build_targets toolchain/tools/ocl/build ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua",
+      "run_ctest toolchain/tools/ocl/build '^ocl_opcua_deployment_test$'",
+      'pkg-config --exists "rtt_opcua-$TARGET"',
+      'pkg-config --exists "ocl-deployment-$TARGET"'
+    ],
+    result_tokens: ["`rtt_opcua_*_test`", "`ocl_opcua_deployment_test`", "`rtt_opcua-gnulinux`"]
+  },
   "ocl-basic" => {
     script_tokens: [
       "-DBUILD_TIMER_TEST=ON",

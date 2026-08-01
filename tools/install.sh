@@ -27,7 +27,7 @@ PREFIX="$OROCOS_ROCK_DEFAULT_PREFIX"
 TARGET="$OROCOS_ROCK_DEFAULT_TARGET"
 EXPORT_ENV=1
 BUILD_ARGS=()
-FORKED_PACKAGES=(farbot rtlog-cpp rtt ocl orogen typelib utilmm rtt_typelib)
+SOURCE_PACKAGES=(farbot rtlog-cpp rtt open62541 open62541pp rtt_opcua ocl orogen typelib utilmm rtt_typelib)
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -73,7 +73,7 @@ orocos_rock_prepare_autoproj_workspace "$PREFIX" "none" "$TARGET"
 cd "$OROCOS_ROCK_ROOT"
 
 orocos_rock_info "Updating Autoproj sources"
-orocos_rock_autoproj update --no-interactive --no-osdeps --no-config --no-bundler --no-autoproj "${FORKED_PACKAGES[@]}"
+orocos_rock_autoproj update --no-interactive --no-osdeps --no-config --no-bundler --no-autoproj "${SOURCE_PACKAGES[@]}"
 
 orocos_rock_info "Checking C++20 package policy"
 ruby "$SCRIPT_DIR/check-cpp20-policy.rb"

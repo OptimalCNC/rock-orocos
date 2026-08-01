@@ -24,12 +24,19 @@ expected_forks = {
   "farbot" => { "url" => "https://github.com/liufang-robot/farbot.git", "branch" => "dev" },
   "rtlog-cpp" => { "url" => "https://github.com/liufang-robot/rtlog-cpp.git", "branch" => "dev" },
   "rtt" => { "url" => "https://github.com/liufang-robot/rtt.git", "branch" => "dev" },
+  "rtt_opcua" => { "url" => "https://github.com/liufang-robot/rtt_opcua.git", "branch" => "dev" },
   "ocl" => { "url" => "https://github.com/liufang-robot/ocl.git", "branch" => "dev" },
   "orogen" => { "url" => "https://github.com/OptimalCNC/tools-orogen.git", "branch" => "dev" },
   "typelib" => { "url" => "https://github.com/OptimalCNC/tools-typelib.git", "branch" => "dev" },
   "utilmm" => { "url" => "https://github.com/OptimalCNC/utilmm.git", "branch" => "dev" },
   "rtt_typelib" => { "url" => "https://github.com/OptimalCNC/tools-rtt_typelib.git", "branch" => "dev" }
 }
+expected_upstream_sources = {
+  "open62541" => { "url" => "https://github.com/open62541/open62541.git", "tag" => "v1.4.15" },
+  "open62541pp" => { "url" => "https://github.com/open62541pp/open62541pp.git", "tag" => "v0.21.1" }
+}
+expected_sources = expected_forks.merge(expected_upstream_sources)
+local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua]
 
 manifest = File.read(manifest_path)
 source_selection = YAML.safe_load_file(overrides_path)
@@ -37,8 +44,8 @@ version_control = source_selection.fetch("version_control", [])
 overrides = source_selection.fetch("overrides", [])
 errors = []
 
-expected_forks.each do |package, source|
-  source_entries = %w[farbot rtlog-cpp].include?(package) ? version_control : overrides
+expected_sources.each do |package, source|
+  source_entries = local_source_packages.include?(package) ? version_control : overrides
   override = source_entries.find { |entry| entry.key?(package) }
 
   if override.nil?
@@ -47,10 +54,11 @@ expected_forks.each do |package, source|
   end
 
   actual_url = override["url"]
-  actual_branch = override["branch"]
+  ref_key = source.key?("tag") ? "tag" : "branch"
+  actual_ref = override[ref_key]
 
   errors << "#{package}: expected url #{source.fetch("url")}, got #{actual_url.inspect}" unless actual_url == source.fetch("url")
-  errors << "#{package}: expected branch #{source.fetch("branch")}, got #{actual_branch.inspect}" unless actual_branch == source.fetch("branch")
+  errors << "#{package}: expected #{ref_key} #{source.fetch(ref_key)}, got #{actual_ref.inspect}" unless actual_ref == source.fetch(ref_key)
 end
 
 install_script = File.read(install_path)
@@ -74,10 +82,10 @@ if install_script.match?(/\bstdint_typekit\b/)
   errors << "tools/install.sh: stdint_typekit must not be refreshed or built"
 end
 
-expected_forks.each_key do |package|
-  refreshes_package = install_script.include?("FORKED_PACKAGES=(") &&
-                      install_script.match?(/FORKED_PACKAGES=\([^)]*\b#{Regexp.escape(package)}\b[^)]*\)/m)
-  errors << "install.sh: must refresh maintained fork #{package}" unless refreshes_package
+expected_sources.each_key do |package|
+  refreshes_package = install_script.include?("SOURCE_PACKAGES=(") &&
+                      install_script.match?(/SOURCE_PACKAGES=\([^)]*\b#{Regexp.escape(package)}\b[^)]*\)/m)
+  errors << "install.sh: must refresh selected source package #{package}" unless refreshes_package
 end
 
 unless local_autobuild_script.include?('cmake_package "farbot"')
@@ -89,8 +97,36 @@ unless local_autobuild_script.include?('cmake_package "rtlog-cpp"') &&
   errors << "autoproj/local.autobuild: must define rtlog-cpp as a local CMake package depending on farbot"
 end
 
-unless install_script.match?(/FORKED_PACKAGES=\([^)]*\bfarbot\b[^)]*\brtlog-cpp\b[^)]*\brtt\b[^)]*\)/m)
+unless local_autobuild_script.include?('cmake_package "open62541"') &&
+       local_autobuild_script.include?('pkg.define "UA_NAMESPACE_ZERO", "REDUCED"')
+  errors << "autoproj/local.autobuild: must define the reduced open62541 package"
+end
+
+unless local_autobuild_script.include?('cmake_package "open62541pp"') &&
+       local_autobuild_script.include?('pkg.depends_on "open62541"') &&
+       local_autobuild_script.include?('pkg.define "UAPP_INTERNAL_OPEN62541", "OFF"')
+  errors << "autoproj/local.autobuild: must build open62541pp against the selected open62541 package"
+end
+
+unless local_autobuild_script.include?('cmake_package "rtt_opcua"') &&
+       local_autobuild_script.include?('pkg.depends_on "rtt"') &&
+       local_autobuild_script.include?('pkg.depends_on "open62541pp"') &&
+       local_autobuild_script.include?('move_package "rtt_opcua", "tools"')
+  errors << "autoproj/local.autobuild: must define rtt_opcua in the toolchain tools layout"
+end
+
+unless install_script.match?(/SOURCE_PACKAGES=\([^)]*\bfarbot\b[^)]*\brtlog-cpp\b[^)]*\brtt\b[^)]*\)/m)
   errors << "install.sh: farbot and rtlog-cpp must be refreshed before rtt"
+end
+
+rtt_position = manifest.index("    - rtt\n")
+rtt_opcua_position = manifest.index("    - rtt_opcua\n")
+ocl_position = manifest.index("    - ocl\n")
+if rtt_opcua_position.nil?
+  errors << "autoproj/manifest: must select rtt_opcua"
+elsif rtt_position.nil? || ocl_position.nil? ||
+      !(rtt_position < rtt_opcua_position && rtt_opcua_position < ocl_position)
+  errors << "autoproj/manifest: rtt_opcua must be ordered after rtt and before ocl"
 end
 
 source_update = install_script.index("orocos_rock_autoproj update")
@@ -128,6 +164,12 @@ end
 unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
        overrides_script.include?('pkg.depends_on "rtlog-cpp"')
   errors << "autoproj/overrides.rb: rtt must depend on rtlog-cpp for the bounded logger backend"
+end
+
+unless overrides_script.match?(/setup_package\s+["']ocl["']/) &&
+       overrides_script.include?('pkg.depends_on "rtt_opcua"') &&
+       overrides_script.include?('pkg.define "BUILD_OPCUA", "ON"')
+  errors << "autoproj/overrides.rb: ocl must build against rtt_opcua"
 end
 
 unless export_env_script.include?('OROCOS_PREFIX="$PREFIX"') &&
@@ -185,10 +227,20 @@ unless validate_install_script.include?('DEPLOYER="$(orocos_rock_target_deployer
   errors << "tools/validate-install.sh: must smoke-test the selected target deployer"
 end
 
+unless validate_install_script.include?('OPCUA_DEPLOYER="$(orocos_rock_target_opcua_deployer "$TARGET")"') &&
+       validate_install_script.include?('pkg-config --exists "rtt_opcua-$TARGET"')
+  errors << "tools/validate-install.sh: must smoke-test the installed OPC UA transport"
+end
+
 unless common_script.include?("orocos_rock_validate_deployer_version_output") &&
        common_script.include?("OROCOS Toolchain version") &&
        common_script.include?("Xenomai/cobalt")
   errors << "tools/common.sh: must validate deployer version output for gnulinux and xenomai"
+end
+
+unless common_script.include?("orocos_rock_target_opcua_deployer") &&
+       common_script.include?('deployer-opcua-$1')
+  errors << "tools/common.sh: must resolve the target-specific OPC UA deployer"
 end
 
 unless validate_install_script.include?("orogen --help")

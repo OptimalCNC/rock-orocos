@@ -7,3 +7,8 @@ setup_package "rtt" do |pkg|
   pkg.use_package_xml = true
   pkg.depends_on "rtlog-cpp"
 end
+
+setup_package "ocl" do |pkg|
+  pkg.depends_on "rtt_opcua"
+  pkg.define "BUILD_OPCUA", "ON"
+end

@@ -47,6 +47,8 @@ done
 
 orocos_rock_validate_target "$TARGET"
 DEPLOYER="$(orocos_rock_target_deployer "$TARGET")"
+OPCUA_DEPLOYER="$(orocos_rock_target_opcua_deployer "$TARGET")"
+OPCUA_BROWSER="ctaskbrowser-opcua-$TARGET"
 
 orocos_rock_require_file "$PREFIX/env.sh"
 orocos_rock_require_file "$PREFIX/dev-env.sh"
@@ -60,6 +62,16 @@ orocos_rock_require_file "$PREFIX/dev-env.sh"
     if ! orocos_rock_validate_deployer_version_output "$TARGET" "$deployer_version_output"; then
         orocos_rock_die "$DEPLOYER smoke check failed"
     fi
+    orocos_rock_require_command "$OPCUA_DEPLOYER"
+    opcua_deployer_version_output="$("$OPCUA_DEPLOYER" --version 2>&1 || true)"
+    if ! orocos_rock_validate_deployer_version_output "$TARGET" "$opcua_deployer_version_output"; then
+        orocos_rock_die "$OPCUA_DEPLOYER smoke check failed"
+    fi
+    orocos_rock_require_command "$OPCUA_BROWSER"
+    "$OPCUA_BROWSER" --version >/dev/null
+    orocos_rock_require_command pkg-config
+    pkg-config --exists "rtt_opcua-$TARGET"
+    pkg-config --exists "ocl-deployment-$TARGET"
 )
 
 (

@@ -7,6 +7,9 @@ layout:
     - farbot
     - rtlog-cpp
     - rtt
+    - open62541
+    - open62541pp
+    - rtt_opcua
     - ocl
     - orogen
     - typelib

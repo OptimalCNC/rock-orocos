@@ -18,6 +18,7 @@ Package tests:
   typelib-cxx Build typelib_testsuite and run C++ CTest cases only
   rtt-typelib Build rtt_typelib transport plugin and check pkg-config metadata
   rtt-core    Build and run stable RTT core/task CTest cases
+  rtt-opcua   Build and run the native RTT/OCL OPC UA integration tests
   ocl-basic   Build and run OCL timer/taskbrowser CTest cases
   ocl-integration
                Build and run stable OCL deployment/logging/reporting CTest cases
@@ -153,6 +154,39 @@ case "$PACKAGE_TEST" in
         build_targets toolchain/tools/rtt/build main-test list-test core-test task-test
         orocos_rock_info "Running RTT core CTest subset"
         run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test|task-test)$'
+        ;;
+    rtt-opcua)
+        orocos_rock_info "Configuring native RTT OPC UA tests"
+        reconfigure toolchain/tools/rtt_opcua toolchain/tools/rtt_opcua/build \
+            -DBUILD_TESTING=ON \
+            -DRTT_OPCUA_WARNINGS_AS_ERRORS=ON
+        RTT_OPCUA_TEST_TARGETS=(
+            rtt_opcua_foundation_test
+            rtt_opcua_server_test
+            rtt_opcua_type_protocol_test
+            rtt_opcua_object_model_test
+            rtt_opcua_task_context_proxy_test
+        )
+        orocos_rock_info "Building native RTT OPC UA tests"
+        build_targets toolchain/tools/rtt_opcua/build "${RTT_OPCUA_TEST_TARGETS[@]}"
+        orocos_rock_info "Running native RTT OPC UA CTest suite"
+        run_ctest toolchain/tools/rtt_opcua/build '^rtt_opcua_.*_test$'
+
+        orocos_rock_info "Configuring OCL OPC UA integration test"
+        reconfigure toolchain/tools/ocl toolchain/tools/ocl/build \
+            -DBUILD_TESTING=ON \
+            -DBUILD_TESTS=ON \
+            -DBUILD_DEPLOYMENT=ON \
+            -DBUILD_TASKBROWSER=ON \
+            -DBUILD_OPCUA=ON
+        orocos_rock_info "Building OCL OPC UA integration targets"
+        build_targets toolchain/tools/ocl/build ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
+        orocos_rock_info "Running OCL OPC UA integration test"
+        run_ctest toolchain/tools/ocl/build '^ocl_opcua_deployment_test$'
+
+        orocos_rock_info "Checking installed OPC UA pkg-config metadata"
+        pkg-config --exists "rtt_opcua-$TARGET"
+        pkg-config --exists "ocl-deployment-$TARGET"
         ;;
     ocl-basic)
         orocos_rock_info "Configuring OCL basic tests"

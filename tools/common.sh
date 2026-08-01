@@ -52,6 +52,11 @@ orocos_rock_target_deployer() {
     esac
 }
 
+orocos_rock_target_opcua_deployer() {
+    orocos_rock_validate_target "$1"
+    printf '%s\n' "deployer-opcua-$1"
+}
+
 orocos_rock_validate_deployer_version_output() {
     target="$1"
     output="$2"

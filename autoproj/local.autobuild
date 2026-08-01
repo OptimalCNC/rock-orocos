@@ -3,3 +3,30 @@ cmake_package "farbot"
 cmake_package "rtlog-cpp" do |pkg|
   pkg.depends_on "farbot"
 end
+
+cmake_package "open62541" do |pkg|
+  pkg.define "BUILD_SHARED_LIBS", "ON"
+  pkg.define "UA_NAMESPACE_ZERO", "REDUCED"
+  pkg.define "UA_ENABLE_PUBSUB", "OFF"
+  pkg.define "UA_ENABLE_PUBSUB_INFORMATIONMODEL", "OFF"
+  pkg.define "UA_BUILD_EXAMPLES", "OFF"
+  pkg.define "UA_BUILD_UNIT_TESTS", "OFF"
+end
+
+cmake_package "open62541pp" do |pkg|
+  pkg.depends_on "open62541"
+  pkg.define "BUILD_SHARED_LIBS", "ON"
+  pkg.define "UAPP_INTERNAL_OPEN62541", "OFF"
+  pkg.define "UAPP_BUILD_TESTS", "OFF"
+  pkg.define "UAPP_BUILD_EXAMPLES", "OFF"
+  pkg.define "UAPP_BUILD_DOCUMENTATION", "OFF"
+end
+
+cmake_package "rtt_opcua" do |pkg|
+  pkg.depends_on "rtt"
+  pkg.depends_on "open62541"
+  pkg.depends_on "open62541pp"
+  pkg.define "RTT_OPCUA_WARNINGS_AS_ERRORS", "ON"
+end
+
+move_package "rtt_opcua", "tools"

@@ -6,6 +6,7 @@ packages = {
   "farbot" => File.join(root, "toolchain", "farbot", "CMakeLists.txt"),
   "rtlog-cpp" => File.join(root, "toolchain", "rtlog-cpp", "CMakeLists.txt"),
   "rtt" => File.join(root, "toolchain", "tools", "rtt", "CMakeLists.txt"),
+  "rtt_opcua" => File.join(root, "toolchain", "tools", "rtt_opcua", "CMakeLists.txt"),
   "ocl" => File.join(root, "toolchain", "tools", "ocl", "CMakeLists.txt"),
   "typelib" => File.join(root, "toolchain", "tools", "typelib", "CMakeLists.txt"),
   "utilmm" => File.join(root, "toolchain", "tools", "utilmm", "CMakeLists.txt"),
