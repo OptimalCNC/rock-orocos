@@ -73,6 +73,8 @@ When package policy changes:
 Minimum validation after bootstrap and install:
 
 - `deployer-gnulinux` is available
+- `deployer-opcua-gnulinux` and `ctaskbrowser-opcua-gnulinux` are available
+- `rtt_opcua-gnulinux` resolves through pkg-config
 - OCL-based deployment still works
 - RTT scripting is enabled
 - `orogen` is available

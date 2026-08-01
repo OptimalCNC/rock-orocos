@@ -20,6 +20,7 @@ A successful install provides:
 
 - Orocos RTT runtime tools
 - OCL deployer support
+- native OPC UA deployer and remote TaskBrowser support
 - RTT scripting support
 - generator tools such as `orogen` and `typegen`
 - `env.sh` for runtime use

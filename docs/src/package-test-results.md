@@ -10,9 +10,11 @@ exit status.
 
 ## CI Matrix Status
 
-The latest package-test matrix passes on Ubuntu 22.04, Ubuntu 24.04, and
-Debian 13/Trixie. The package source overrides use the public
-maintenance forks and branch pins recorded in `autoproj/overrides.yml`.
+The established package-test matrix entries pass on Ubuntu 22.04, Ubuntu
+24.04, and Debian 13/Trixie. The new `rtt-opcua` entry has local coverage and
+is awaiting its first cross-distribution CI run. Package source overrides use
+the public maintenance forks and branch pins recorded in
+`autoproj/overrides.yml`.
 
 | Package test | Initial subset | Current status |
 |---|---|---|
@@ -20,6 +22,7 @@ maintenance forks and branch pins recorded in `autoproj/overrides.yml`.
 | `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Passes in CI after Ruby/C++ extension warning cleanup on `OptimalCNC/tools-typelib` `dev`. |
 | `rtt-typelib` | Rebuilds `rtt-typelib`, runs `get_marshaller_for_test`, and checks `rtt_typelib-gnulinux` pkg-config metadata | Passes in CI after adding marshaller lookup coverage on `OptimalCNC/tools-rtt_typelib` `dev`. |
 | `rtt-core` | `main-test`, `list-test`, `core-test`, and full `task-test` | Passes in CI after making RTT task thread tests scheduler-capability aware on `OptimalCNC/rtt` `dev`. CORBA and mqueue tests stay out of this subset. |
+| `rtt-opcua` | All `rtt_opcua_*_test` cases, `ocl_opcua_deployment_test`, the OPC UA deployer/browser targets, and `rtt_opcua-gnulinux` pkg-config metadata | Locally passes with loopback client/server sockets against the temporary installed prefix. The cross-distribution CI result remains pending until the new public `liufang-robot/rtt_opcua` source repository is available. |
 | `ocl-basic` | `timer` and `taskb` | Passes in CI after restoring OCL standalone CTest support on `OptimalCNC/ocl` `dev`. Deployment, reporting, and logging tests stay out of this subset. |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` when NetCDF support is available | Passes in CI on the selected OCL maintenance branch. The interactive `testWithStateMachine` TaskBrowser case stays out of the CI subset until it has a non-interactive harness. |
 

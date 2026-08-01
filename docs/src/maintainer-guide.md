@@ -73,7 +73,7 @@ Autoproj workspace.
 | OS packages | Build tools, CMake, Boost libraries, XML tools, Ruby, Python, `pkg-config`, and package-specific Autoproj osdeps such as ncurses development headers | System package manager | `bootstrap.sh` and `install.sh` may invoke `autoproj osdeps`, which can call `sudo apt-get install` |
 | User RubyGems | Autoproj and compatibility gems such as Facets when needed | Current user | `install-autoproj.sh` does not edit shell startup files; it prints a `PATH` line if needed |
 | Workspace state | `.autoproj/config.yml`, `.autoproj/Gemfile`, `.autoproj/bin/bundle`, package-set remotes, generated Autoproj state | `orocos-rock` workspace | Generated state. Do not commit it |
-| Source checkouts and builds | Autoproj-managed package checkouts and build results for `farbot`, `rtlog-cpp`, `rtt`, `ocl`, `orogen`, `typelib`, `utilmm`, `utilrb`, and `rtt_typelib` | `orocos-rock` workspace and install prefix | Package list starts in `autoproj/manifest` |
+| Source checkouts and builds | Autoproj-managed package checkouts and build results for `farbot`, `rtlog-cpp`, `rtt`, `open62541`, `open62541pp`, `rtt_opcua`, `ocl`, and the generator stack | `orocos-rock` workspace and install prefix | Package list starts in `autoproj/manifest` |
 | Install prefix | `PREFIX/toolchain`, `PREFIX/bin`, `PREFIX/lib*`, `PREFIX/share`, `PREFIX/env.sh`, `PREFIX/dev-env.sh`, and staged Ruby generator tools | Public toolchain prefix | This is what downstream projects should consume |
 | Logs | `PREFIX/log` and Autoproj logs | Local install prefix | Useful for debugging failed osdeps, build, and install steps |
 
@@ -125,6 +125,10 @@ After a real install, run:
 ```bash
 ./tools/validate-install.sh --prefix ~/.orocos
 ```
+
+This validates the selected local deployer, the target-specific OPC UA
+deployer and TaskBrowser client, `rtt_opcua` pkg-config metadata, and the Ruby
+generator tools. CORBA remains disabled by `rtt_corba_implementation: none`.
 
 Then validate a downstream package by sourcing `~/.orocos/dev-env.sh` before
 configuring it.

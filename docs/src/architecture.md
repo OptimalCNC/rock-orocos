@@ -47,6 +47,8 @@ flowchart LR
   build cleanly on the target distribution
 - keep `ocl` enabled
 - keep RTT scripting enabled
+- build the generic `rtt_opcua` transport and OCL OPC UA tools
+- keep RTT CORBA disabled in the selected build
 - provide `orogen`, `typegen`, and related generator tooling
 - install a usable runtime prefix
 - install a usable development environment
@@ -65,6 +67,7 @@ flowchart LR
 The runtime model remains Orocos-based:
 
 - `deployer-gnulinux`
+- `deployer-opcua-gnulinux` and `ctaskbrowser-opcua-gnulinux`
 - OCL
 - RTT scripting
 - RTT components and typekits
@@ -81,6 +84,10 @@ Rock is not used here as:
 - the primary deployment framework
 - the primary orchestration model
 - a replacement for Orocos RTT
+
+OPC UA is a non-realtime remote management and data transport. It does not
+move application semantics into this repository and does not replace local RTT
+execution.
 
 ## Interface Contract
 

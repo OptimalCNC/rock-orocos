@@ -22,10 +22,14 @@ The installed prefix must provide:
 
 - Orocos runtime tools
 - OCL deployer support
+- native RTT OPC UA libraries, type transport, deployer, and TaskBrowser client
 - RTT scripting support
 - generator tools needed for typekit and component development
 - environment setup for runtime use
 - environment setup for development use
+
+The prefix does not include RTT or OCL CORBA libraries and executables in the
+default build.
 
 The selected Orocos target is part of the prefix contract. The default target
 is `gnulinux`; a Xenomai build must be requested explicitly with
@@ -42,6 +46,8 @@ It should make a shell ready for:
 
 - the selected target deployer, such as `deployer-gnulinux` or
   `deployer-xenomai`
+- the selected target OPC UA tools, such as `deployer-opcua-gnulinux` and
+  `ctaskbrowser-opcua-gnulinux`
 - Orocos component and plugin discovery
 - running existing `.ops` scripts
 
@@ -129,10 +135,12 @@ An install is considered minimally valid when it can:
 
 1. source `env.sh`
 2. run the deployer for the selected target
-3. source `dev-env.sh`
-4. run `orogen`
-5. run `typegen`
-6. support a downstream Orocos configure step
+3. resolve the native OPC UA transport through pkg-config
+4. run the target OPC UA deployer and TaskBrowser client version checks
+5. source `dev-env.sh`
+6. run `orogen`
+7. run `typegen`
+8. support a downstream Orocos configure step
 
 ## Relationship To Downstream Projects
 

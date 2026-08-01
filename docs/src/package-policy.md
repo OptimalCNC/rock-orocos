@@ -21,6 +21,9 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `farbot` | lock-free queue dependency for the future RT-safe logger core | Public maintenance fork while install/export rules are needed |
 | `rtlog-cpp` | RT-safe logging queue and bounded formatting implementation for the RTT logger core | Public maintenance fork while install/export rules are needed |
 | `rtt` | Orocos runtime | Public maintenance fork |
+| `open62541` | OPC UA C stack used by the native RTT transport | Upstream tag `v1.4.15` |
+| `open62541pp` | C++ API used by `rtt_opcua` | Upstream tag `v0.21.1` |
+| `rtt_opcua` | Generic native OPC UA server, RTT object model, proxy, and port transport | `liufang-robot` upstream |
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
 | `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
 | `typelib` | generator type support | Public maintenance fork while compatibility fixes are needed |
@@ -58,11 +61,12 @@ The default rule is:
 - keep those changes on public branch pins recorded in `autoproj/overrides.yml`
 - use upstream for everything else
 
-Initial public maintenance fork set:
+Initial public maintenance source set:
 
 - `farbot`
 - `rtlog-cpp`
 - `rtt`
+- `rtt_opcua`
 - `ocl`
 - `orogen`
 - `typelib`
@@ -80,8 +84,14 @@ Forks should carry focused portability work:
 
 Upstream by default:
 
+- `open62541` at the selected compatibility tag
+- `open62541pp` at the selected compatibility tag
 - `rtt_geometry`
 - `utilrb`
+
+The workspace builds `open62541pp` against the separately selected
+`open62541` package. It does not depend on recursive Git submodules for this
+dependency.
 
 ## Source Of Truth
 

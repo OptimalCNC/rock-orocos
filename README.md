@@ -9,6 +9,7 @@ The repository keeps the scope narrow:
 - maintain a small Autoproj package layout
 - use public maintenance branches for compiler and distribution fixes
 - reduce build warnings and compatibility issues from newer toolchains
+- provide a native OPC UA RTT transport and remote deployer tools
 - install one reusable prefix with runtime and development environment scripts
 
 ## Install
@@ -20,7 +21,11 @@ The repository keeps the scope narrow:
 The installed prefix exports:
 
 - `env.sh` for runtime tools such as `deployer-gnulinux`
+- `deployer-opcua` and `ctaskbrowser-opcua` for loopback remote access
 - `dev-env.sh` for generator tools such as `orogen` and `typegen`
+
+RTT CORBA sources remain available in their upstream packages, but this
+workspace configures CORBA off and does not install CORBA artifacts.
 
 Downstream projects should consume the installed prefix, not the internal
 Autoproj workspace.
