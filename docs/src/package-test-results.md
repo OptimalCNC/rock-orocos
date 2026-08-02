@@ -37,14 +37,16 @@ GCC 13.3 and CMake 3.28. All C++ targets were compiled as C++20 with
 | RTT release | Full rebuild and all 44 CTest cases passed in 233.72 seconds. CORBA was configured `OFF`. |
 | RTT sanitizers | Full Debug rebuild and all 44 CTest cases passed in 273.24 seconds with AddressSanitizer, UndefinedBehaviorSanitizer, and LeakSanitizer enabled. |
 | RTT scripting | The program/parser suites and all eight parser corpus seeds passed in release and sanitizer builds. Coverage includes rejection of adjacent operation calls without a statement separator. |
-| `rtt_opcua` | All five CTest cases passed in 5.03 seconds against the temporary installed RTT prefix. |
-| OCL | All 11 registered CTest cases passed in 3.87 seconds after explicitly rebuilding their executable targets against the installed RTT headers. This includes `testWithStateMachine`, canonical Lua scalar names, and the loopback OPC UA deployment test. |
+| `rtt_opcua` | All five CTest cases passed in 5.68 seconds against `open62541pp v0.21.2` and `open62541 v1.4.15` from the isolated temporary prefix. Server coverage verifies loopback startup and non-loopback rejection. |
+| OCL | All 11 registered CTest cases passed after explicitly rebuilding their executable targets against the installed RTT headers. This includes `testWithStateMachine`, canonical Lua scalar names, and OPC UA deployment coverage proving that one `publishPeer` call exposes the component's complete supported RTT interface. |
 | Installed tools | `deployer-opcua-gnulinux --help` exposes the loopback-only address, port, and endpoint-path options; `ctaskbrowser-opcua-gnulinux --help` exposes the remote endpoint/component syntax. |
 
 The builds, tests, and installs used an isolated directory under `/tmp`, with a
-temporary `HOME` and install prefix. The installed manifests, filenames, and
-runtime dependencies contain no CORBA/omniORB artifacts and do not resolve
-libraries from `~/.orocos`.
+temporary `HOME` and install prefix. The installed RTT and OCL libraries,
+executables, pkg-config metadata, and runtime dependencies contain no
+CORBA/omniORB artifacts and do not resolve libraries from `~/.orocos`. OroGen
+retains its generic CORBA source templates, consistent with keeping CORBA
+source present while the selected RTT and OCL builds remain disabled.
 
 Clang is not installed in the local verification environment, so the
 libFuzzer mutation target was not run. The same shared parser harness and its
