@@ -22,7 +22,7 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `rtlog-cpp` | RT-safe logging queue and bounded formatting implementation for the RTT logger core | Public maintenance fork while install/export rules are needed |
 | `rtt` | Orocos runtime | Public maintenance fork |
 | `open62541` | OPC UA C stack used by the native RTT transport | Upstream tag `v1.4.15` |
-| `open62541pp` | C++ API used by `rtt_opcua` | Upstream tag `v0.21.1` |
+| `open62541pp` | C++ API used by `rtt_opcua` | Upstream tag `v0.21.2` |
 | `rtt_opcua` | Generic native OPC UA server, RTT object model, proxy, and port transport | `liufang-robot` upstream |
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
 | `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
@@ -92,6 +92,10 @@ Upstream by default:
 The workspace builds `open62541pp` against the separately selected
 `open62541` package. It does not depend on recursive Git submodules for this
 dependency.
+
+The wrapper may advance to a newer stable tag after its package and integration
+tests pass from a temporary prefix. This migration keeps `open62541` at
+`v1.4.15`; wrapper catch-up does not independently advance the C stack.
 
 ## Source Of Truth
 

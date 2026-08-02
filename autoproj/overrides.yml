@@ -22,7 +22,7 @@ version_control:
   - open62541pp:
     type: git
     url: https://github.com/open62541pp/open62541pp.git
-    tag: v0.21.1
+    tag: v0.21.2
 
   - rtt_opcua:
     type: git

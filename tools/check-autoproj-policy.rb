@@ -33,7 +33,7 @@ expected_forks = {
 }
 expected_upstream_sources = {
   "open62541" => { "url" => "https://github.com/open62541/open62541.git", "tag" => "v1.4.15" },
-  "open62541pp" => { "url" => "https://github.com/open62541pp/open62541pp.git", "tag" => "v0.21.1" }
+  "open62541pp" => { "url" => "https://github.com/open62541pp/open62541pp.git", "tag" => "v0.21.2" }
 }
 expected_sources = expected_forks.merge(expected_upstream_sources)
 local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua]
