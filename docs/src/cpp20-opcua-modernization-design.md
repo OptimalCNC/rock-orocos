@@ -25,6 +25,8 @@ UA remote-object transport.
 - preserve source compatibility for `ServiceRequester::requires()`
 - make OPC UA network communication hard realtime
 - add application-specific OPC UA contracts
+- add OPC UA publication modes or per-resource allowlists
+- add PKI, access control, or non-loopback OPC UA listening
 - rewrite the scripting grammar during the initial hardening work
 - remove the dormant CORBA implementation
 
@@ -243,6 +245,11 @@ The server publishes a stable `urn:orocos:rtt` namespace for:
 - typed port metadata
 - model revision and lifecycle state
 
+Publishing a component exposes its entire interface supported by `rtt_opcua`,
+including supported nested services, operations, properties, attributes, and
+ports. The migration does not add administrative or restricted publication
+modes, and it does not define per-component resource allowlists.
+
 Namespace indexes are resolved dynamically. Stable NodeIds encode names with a
 defined escaping policy rather than embedding unescaped component or service
 names. The model reconciles additions, changes, and removals automatically;
@@ -260,18 +267,20 @@ The first type protocols cover the canonical built-in catalog. Custom and
 generated typekits register additional OPC UA protocols through RTT's
 transport extension mechanism.
 
-### Security Default
+### Migration Security Scope
 
-`deployer-opcua` binds to loopback (`127.0.0.1` and/or `::1`) by default.
+`deployer-opcua` binds to loopback (`127.0.0.1` and/or `::1`). The initial
+migration rejects non-loopback startup.
 
 > [!WARNING]
 > A remote deployer can import libraries, load components, and invoke arbitrary
 > exported operations. It is a remote-code-execution surface by design.
 
-Non-loopback startup requires an explicit listen address plus configured OPC UA
-certificate and authentication policy. Anonymous remote deployment requires a
-separate explicit unsafe-development option. These defaults may be extended
-later without weakening the safe default.
+PKI, certificate trust stores, signed and encrypted SecurityPolicies,
+AccessControl, session or user permissions, and non-loopback listening are not
+part of this migration. They require a separate future security design. That
+design must distinguish application trust and SecureChannel protection from
+authorization of browse, read, write, and method calls.
 
 ## Remote TaskContext Proxy
 
@@ -337,7 +346,7 @@ temporary environment:
 | Warnings | Maintained-source and generated-code warning gate passes |
 | Types | Exact canonical catalog; legacy names absent; generated typekit smoke test passes |
 | Scripts | Unit/regression tests, valid-command recovery, ASan/UBSan, bounded fuzz run |
-| OPC UA server | Cross-process browse, call, read/write, lifecycle, timeout, and security-default tests |
+| OPC UA server | Cross-process browse, call, read/write, lifecycle, timeout, loopback-only binding, and non-loopback rejection tests |
 | Proxy | Cross-process synchronous and asynchronous calls, model update, disconnect, and reconnect tests |
 | Ports | Bidirectional data, buffering, overload, type mismatch, teardown, and reconnect tests |
 | Install | Runtime and development environments work from the `/tmp` prefix |
@@ -345,8 +354,8 @@ temporary environment:
 | CORBA | No CORBA binary or library is built or installed |
 
 Documentation includes migration guidance for built-in type names,
-`requests()`, the C++20 requirement, OPC UA configuration, security, and an
-explicit CORBA-to-OPC-UA parity matrix.
+`requests()`, the C++20 requirement, OPC UA configuration, the loopback-only
+security scope, and an explicit CORBA-to-OPC-UA parity matrix.
 
 ## Commit And Integration Policy
 
