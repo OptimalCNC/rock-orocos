@@ -18,19 +18,17 @@ the public maintenance forks and branch pins recorded in
 
 | Package test | Initial subset | Current status |
 |---|---|---|
-| `utilmm` | `Suite` CTest case from `utilmm_testsuite` | Passes in CI after stabilizing socket, shell expansion, and pkg-config flag-order tests on `OptimalCNC/utilmm` `dev`. |
-| `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Passes in CI after Ruby/C++ extension warning cleanup on `OptimalCNC/tools-typelib` `dev`. |
-| `rtt-typelib` | Rebuilds `rtt-typelib`, runs `get_marshaller_for_test`, and checks `rtt_typelib-gnulinux` pkg-config metadata | Passes in CI after adding marshaller lookup coverage on `OptimalCNC/tools-rtt_typelib` `dev`. |
-| `rtt-core` | `main-test`, `list-test`, `core-test`, and full `task-test` | Passes in CI after making RTT task thread tests scheduler-capability aware on `OptimalCNC/rtt` `dev`. CORBA and mqueue tests stay out of this subset. |
+| `utilmm` | `Suite` CTest case from `utilmm_testsuite` | Passes in CI after stabilizing socket, shell expansion, and pkg-config flag-order tests on `liufang-robot/utilmm` `dev`. |
+| `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Passes in CI after Ruby/C++ extension warning cleanup on `liufang-robot/tools-typelib` `dev`. |
+| `rtt-typelib` | Rebuilds `rtt-typelib`, runs `get_marshaller_for_test`, and checks `rtt_typelib-gnulinux` pkg-config metadata | Passes in CI after adding marshaller lookup coverage on `liufang-robot/tools-rtt_typelib` `dev`. |
+| `rtt-core` | `main-test`, `list-test`, `core-test`, and full `task-test` | Passes in CI after making RTT task thread tests scheduler-capability aware on `liufang-robot/rtt` `dev`. CORBA and mqueue tests stay out of this subset. |
 | `rtt-opcua` | All `rtt_opcua_*_test` cases, `ocl_opcua_deployment_test`, the OPC UA deployer/browser targets, and `rtt_opcua-gnulinux` pkg-config metadata | Locally passes with loopback client/server sockets against the temporary installed prefix. The public `liufang-robot/rtt_opcua` repository now exists; its first cross-distribution CI result remains pending. |
-| `ocl-basic` | `timer` and `taskb` | Passes in CI after restoring OCL standalone CTest support on `OptimalCNC/ocl` `dev`. Deployment, reporting, and logging tests stay out of this subset. |
+| `ocl-basic` | `timer` and `taskb` | Passes in CI after restoring OCL standalone CTest support on `liufang-robot/ocl` `dev`. Deployment, reporting, and logging tests stay out of this subset. |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` when NetCDF support is available | Passes in CI on the selected OCL maintenance branch. The interactive `testWithStateMachine` TaskBrowser case stays out of the CI subset until it has a non-interactive harness. |
 
-For coordinated pre-merge and Xenomai validation,
-`autoproj/overrides.d/orocos-modernization.yml` pins every maintained package
-to `codex/orocos-modernization`. The stable source policy remains on `dev` in
-`autoproj/overrides.yml`; remove the staging override after the package
-branches land there.
+The stable source policy follows each maintenance fork's default branch in
+`autoproj/overrides.yml`: `farbot` uses `master`, `rtlog-cpp` uses `main`, and
+the RTT, OCL, generator, and OPC UA packages use `dev`.
 
 ## C++20 and OPC UA Modernization Verification
 

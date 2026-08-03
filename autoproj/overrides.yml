@@ -7,12 +7,12 @@ version_control:
   - farbot:
     type: git
     url: https://github.com/liufang-robot/farbot.git
-    branch: dev
+    branch: master
 
   - rtlog-cpp:
     type: git
     url: https://github.com/liufang-robot/rtlog-cpp.git
-    branch: dev
+    branch: main
 
   - open62541:
     type: git
