@@ -11,5 +11,6 @@
   - [Bootstrap Workflow](./bootstrap-workflow.md)
   - [Modernization Plan](./modernization-plan.md)
   - [C++20 And OPC UA Modernization Design](./cpp20-opcua-modernization-design.md)
+  - [OPC UA Custom Datatype Design](./orocos-opcua-custom-datatype-design.md)
   - [Deployer TUI PRD](./deployer-tui-prd.md)
   - [Package Test Results](./package-test-results.md)
