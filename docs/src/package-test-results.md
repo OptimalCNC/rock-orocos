@@ -22,9 +22,15 @@ the public maintenance forks and branch pins recorded in
 | `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Passes in CI after Ruby/C++ extension warning cleanup on `OptimalCNC/tools-typelib` `dev`. |
 | `rtt-typelib` | Rebuilds `rtt-typelib`, runs `get_marshaller_for_test`, and checks `rtt_typelib-gnulinux` pkg-config metadata | Passes in CI after adding marshaller lookup coverage on `OptimalCNC/tools-rtt_typelib` `dev`. |
 | `rtt-core` | `main-test`, `list-test`, `core-test`, and full `task-test` | Passes in CI after making RTT task thread tests scheduler-capability aware on `OptimalCNC/rtt` `dev`. CORBA and mqueue tests stay out of this subset. |
-| `rtt-opcua` | All `rtt_opcua_*_test` cases, `ocl_opcua_deployment_test`, the OPC UA deployer/browser targets, and `rtt_opcua-gnulinux` pkg-config metadata | Locally passes with loopback client/server sockets against the temporary installed prefix. The cross-distribution CI result remains pending until the new public `liufang-robot/rtt_opcua` source repository is available. |
+| `rtt-opcua` | All `rtt_opcua_*_test` cases, `ocl_opcua_deployment_test`, the OPC UA deployer/browser targets, and `rtt_opcua-gnulinux` pkg-config metadata | Locally passes with loopback client/server sockets against the temporary installed prefix. The public `liufang-robot/rtt_opcua` repository now exists; its first cross-distribution CI result remains pending. |
 | `ocl-basic` | `timer` and `taskb` | Passes in CI after restoring OCL standalone CTest support on `OptimalCNC/ocl` `dev`. Deployment, reporting, and logging tests stay out of this subset. |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` when NetCDF support is available | Passes in CI on the selected OCL maintenance branch. The interactive `testWithStateMachine` TaskBrowser case stays out of the CI subset until it has a non-interactive harness. |
+
+For coordinated pre-merge and Xenomai validation,
+`autoproj/overrides.d/orocos-modernization.yml` pins every maintained package
+to `codex/orocos-modernization`. The stable source policy remains on `dev` in
+`autoproj/overrides.yml`; remove the staging override after the package
+branches land there.
 
 ## C++20 and OPC UA Modernization Verification
 
@@ -34,15 +40,18 @@ GCC 13.3 and CMake 3.28. All C++ targets were compiled as C++20 with
 
 | Package | Verification result |
 |---|---|
-| RTT release | Full rebuild and all 44 CTest cases passed in 233.72 seconds. CORBA was configured `OFF`. |
-| RTT sanitizers | Full Debug rebuild and all 44 CTest cases passed in 273.24 seconds with AddressSanitizer, UndefinedBehaviorSanitizer, and LeakSanitizer enabled. |
+| RTT release | Full rebuild and all 44 CTest cases passed in 223.56 seconds. CORBA was configured `OFF`. |
+| RTT sanitizers | Full Debug rebuild and all 44 CTest cases passed in 243.71 seconds with AddressSanitizer, UndefinedBehaviorSanitizer, LeakSanitizer, and strict ODR violation detection enabled. Build-tree typekits and plugins are staged as links to their canonical targets so the loader cannot map a second copy of an already-linked library. |
 | RTT scripting | The program/parser suites and all eight parser corpus seeds passed in release and sanitizer builds. Coverage includes rejection of adjacent operation calls without a statement separator. |
-| `rtt_opcua` | All five CTest cases passed in 5.68 seconds against `open62541pp v0.21.2` and `open62541 v1.4.15` from the isolated temporary prefix. Server coverage verifies loopback startup and non-loopback rejection. |
-| OCL | All 11 registered CTest cases passed after explicitly rebuilding their executable targets against the installed RTT headers. This includes `testWithStateMachine`, canonical Lua scalar names, and OPC UA deployment coverage proving that one `publishPeer` call exposes the component's complete supported RTT interface. |
+| `rtt_opcua` | All five CTest cases passed in 5.53 seconds against `open62541pp v0.21.2` and `open62541 v1.4.15` from the isolated temporary prefix. The same five cases passed in 7.09 seconds with AddressSanitizer, UndefinedBehaviorSanitizer, and LeakSanitizer enabled. Coverage includes immediate model shutdown after an OwnThread operation timeout. |
+| OCL | All 11 registered CTest cases passed in 4.10 seconds after explicitly rebuilding their executable targets and installing RTT/OCL into the isolated temporary prefix. This includes `testWithStateMachine`, canonical Lua scalar names, and OPC UA deployment coverage proving that one `publishPeer` call exposes the component's complete supported RTT interface. The OPC UA deployment library, deployer, and TaskBrowser client compiled with `-Wall -Wextra -Wpedantic -Werror`. |
+| oroGen | The complete no-CORBA generator matrix passed: 89 tests and 312 assertions. It covers generated C++20 task code, typekits, typegen regeneration, the self-contained RTT scalar/array model, and removed-type lookup. Thirteen tests whose names or fixtures explicitly require CORBA remain outside the required matrix. |
 | Installed tools | `deployer-opcua-gnulinux --help` exposes the loopback-only address, port, and endpoint-path options; `ctaskbrowser-opcua-gnulinux --help` exposes the remote endpoint/component syntax. |
 
-The builds, tests, and installs used an isolated directory under `/tmp`, with a
-temporary `HOME` and install prefix. The installed RTT and OCL libraries,
+The builds, tests, and installs used isolated directories under `/tmp`, with a
+temporary `HOME` and install prefix. The final verification environment set
+its executable, library, pkg-config, CMake, Ruby, and RTT component paths
+explicitly so that none referenced `~/.orocos`. The installed RTT and OCL libraries,
 executables, pkg-config metadata, and runtime dependencies contain no
 CORBA/omniORB artifacts and do not resolve libraries from `~/.orocos`. OroGen
 retains its generic CORBA source templates, consistent with keeping CORBA
@@ -54,7 +63,7 @@ seed corpus passed under GCC with the sanitizers listed above.
 
 Deferred test groups:
 
-- oroGen Ruby tests, until Ruby test dependencies such as `flexmock/minitest`
-  are explicitly staged.
-- RTT CORBA, mqueue, and transport-sensitive tests, until their runtime
-  assumptions are documented.
+- oroGen tests whose transport sets or deployment fixtures explicitly require
+  CORBA. The no-CORBA generator matrix stages `flexmock/minitest` in `/tmp`.
+- RTT CORBA and target-specific transport tests that are unavailable in the
+  local `gnulinux` no-CORBA configuration.
