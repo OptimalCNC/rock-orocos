@@ -5,6 +5,9 @@ require "yaml"
 root = File.expand_path("..", __dir__)
 manifest_path = File.join(root, "autoproj", "manifest")
 overrides_path = File.join(root, "autoproj", "overrides.yml")
+modernization_overrides_path = File.join(
+  root, "autoproj", "overrides.d", "orocos-modernization.yml"
+)
 local_autobuild_path = File.join(root, "autoproj", "local.autobuild")
 install_path = File.join(root, "tools", "install.sh")
 install_autoproj_path = File.join(root, "tools", "install-autoproj.sh")
@@ -26,10 +29,10 @@ expected_forks = {
   "rtt" => { "url" => "https://github.com/liufang-robot/rtt.git", "branch" => "dev" },
   "rtt_opcua" => { "url" => "https://github.com/liufang-robot/rtt_opcua.git", "branch" => "dev" },
   "ocl" => { "url" => "https://github.com/liufang-robot/ocl.git", "branch" => "dev" },
-  "orogen" => { "url" => "https://github.com/OptimalCNC/tools-orogen.git", "branch" => "dev" },
-  "typelib" => { "url" => "https://github.com/OptimalCNC/tools-typelib.git", "branch" => "dev" },
-  "utilmm" => { "url" => "https://github.com/OptimalCNC/utilmm.git", "branch" => "dev" },
-  "rtt_typelib" => { "url" => "https://github.com/OptimalCNC/tools-rtt_typelib.git", "branch" => "dev" }
+  "orogen" => { "url" => "https://github.com/liufang-robot/tools-orogen.git", "branch" => "dev" },
+  "typelib" => { "url" => "https://github.com/liufang-robot/tools-typelib.git", "branch" => "dev" },
+  "utilmm" => { "url" => "https://github.com/liufang-robot/utilmm.git", "branch" => "dev" },
+  "rtt_typelib" => { "url" => "https://github.com/liufang-robot/tools-rtt_typelib.git", "branch" => "dev" }
 }
 expected_upstream_sources = {
   "open62541" => { "url" => "https://github.com/open62541/open62541.git", "tag" => "v1.4.15" },
@@ -37,6 +40,7 @@ expected_upstream_sources = {
 }
 expected_sources = expected_forks.merge(expected_upstream_sources)
 local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua]
+modernization_branch = "codex/orocos-modernization"
 
 manifest = File.read(manifest_path)
 source_selection = YAML.safe_load_file(overrides_path)
@@ -59,6 +63,33 @@ expected_sources.each do |package, source|
 
   errors << "#{package}: expected url #{source.fetch("url")}, got #{actual_url.inspect}" unless actual_url == source.fetch("url")
   errors << "#{package}: expected #{ref_key} #{source.fetch(ref_key)}, got #{actual_ref.inspect}" unless actual_ref == source.fetch(ref_key)
+end
+
+if File.file?(modernization_overrides_path)
+  modernization_selection = YAML.safe_load_file(modernization_overrides_path)
+  modernization_overrides = modernization_selection.fetch("overrides", [])
+  vcs_metadata_keys = %w[type url branch tag]
+  unexpected_packages = modernization_overrides.flat_map do |entry|
+    entry.keys - vcs_metadata_keys
+  end - expected_forks.keys
+
+  unexpected_packages.each do |package|
+    errors << "autoproj/overrides.d/orocos-modernization.yml: unexpected package #{package}"
+  end
+
+  expected_forks.each do |package, source|
+    override = modernization_overrides.find { |entry| entry.key?(package) }
+
+    if override.nil?
+      errors << "#{package}: missing modernization source selection"
+      next
+    end
+
+    actual_url = override["url"]
+    actual_branch = override["branch"]
+    errors << "#{package}: expected modernization url #{source.fetch("url")}, got #{actual_url.inspect}" unless actual_url == source.fetch("url")
+    errors << "#{package}: expected modernization branch #{modernization_branch}, got #{actual_branch.inspect}" unless actual_branch == modernization_branch
+  end
 end
 
 install_script = File.read(install_path)
