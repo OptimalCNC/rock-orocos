@@ -25,8 +25,9 @@ This design is implemented as two separately reviewed deliveries:
    packages only after no consumer remains.
 
 > [!IMPORTANT]
-> The first implementation plan covers only the generic toolchain delivery.
-> The MetaNC migration gets its own plan and verification gate.
+> The current `orocos-rock` session implements only generic migration steps 1
+> through 8. MetaNC migration steps 9 through 13 are explicitly out of scope
+> here and get their own repository session, plan, and verification gate.
 
 ## Goals
 
