@@ -13,6 +13,7 @@
   - [C++20 And OPC UA Modernization Design](./cpp20-opcua-modernization-design.md)
   - [OPC UA Custom Datatype Design](./orocos-opcua-custom-datatype-design.md)
   - [OPC UA Deployer Lifecycle Design](./opcua-deployer-lifecycle-design.md)
+  - [OPC UA Deployer Lifecycle Plan](./opcua-deployer-lifecycle-plan.md)
   - [OPC UA Custom Datatype Plan](./orocos-opcua-custom-datatype-plan.md)
   - [OPC UA Custom Datatype Verification](./opcua-custom-datatype-verification.md)
   - [Deployer TUI PRD](./deployer-tui-prd.md)
