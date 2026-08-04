@@ -19,6 +19,13 @@ deterministic publication diagnostics.
 CMake, Boost.Test, mdBook, AddressSanitizer, UndefinedBehaviorSanitizer, and
 LeakSanitizer.
 
+**Execution status (2026-08-04):** Generic migration steps 1 through 8 and the
+application-neutral installed-prefix verification gate are complete on
+`gnulinux`. Plan Task 9 is the verification gate for those generic steps; it
+is not MetaNC migration step 9. MetaNC migration steps 9 through 13 remain out
+of scope and are recorded in
+`/tmp/metanc-opcua-custom-datatype-migration-handoff.md`.
+
 ## Global Constraints
 
 - Implement only generic migration steps 1 through 8. Do not modify MetaNC.
@@ -845,10 +852,12 @@ unsupported-resource report.
 
 ```bash
 OPCUA_TEST_ROOT="$(mktemp -d /tmp/orocos-opcua-custom-datatypes.XXXXXX)"
+OPCUA_DEPENDENCY_PREFIX=/tmp/orocos-opcua-dependencies/prefix
 env -u OROCOS_PREFIX -u LD_LIBRARY_PATH -u RTT_COMPONENT_PATH \
     -u CMAKE_PREFIX_PATH -u PKG_CONFIG_PATH -u RUBYLIB \
     ./tools/test-opcua-custom-datatypes.sh \
-      --prefix "$OPCUA_TEST_ROOT/release-prefix"
+      --prefix "$OPCUA_TEST_ROOT/release-prefix" \
+      --dependency-prefix "$OPCUA_DEPENDENCY_PREFIX"
 env -u OROCOS_PREFIX -u LD_LIBRARY_PATH -u RTT_COMPONENT_PATH \
     -u CMAKE_PREFIX_PATH -u PKG_CONFIG_PATH -u RUBYLIB \
     CXXFLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
@@ -856,7 +865,8 @@ env -u OROCOS_PREFIX -u LD_LIBRARY_PATH -u RTT_COMPONENT_PATH \
     ASAN_OPTIONS='detect_leaks=1:halt_on_error=1' \
     UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1' \
     ./tools/test-opcua-custom-datatypes.sh \
-      --prefix "$OPCUA_TEST_ROOT/sanitizer-prefix"
+      --prefix "$OPCUA_TEST_ROOT/sanitizer-prefix" \
+      --dependency-prefix "$OPCUA_DEPENDENCY_PREFIX"
 ```
 
 Expected: all package tests, cross-process fixture tests, leak checks, and

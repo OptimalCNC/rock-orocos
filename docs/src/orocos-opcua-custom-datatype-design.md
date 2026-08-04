@@ -1,9 +1,10 @@
 # Orocos OPC UA Custom Datatype And Sequence Type Design
 
 Date: 2026-08-03
+Updated: 2026-08-04
 
-Status: Accepted design basis for follow-on work. This is an architecture
-specification, not an implementation plan.
+Status: Generic migration steps 1 through 8 are implemented and verified on
+`gnulinux`. MetaNC migration steps 9 through 13 remain a separate delivery.
 
 ## Purpose
 
@@ -28,6 +29,13 @@ This design is implemented as two separately reviewed deliveries:
 > The current `orocos-rock` session implements only generic migration steps 1
 > through 8. MetaNC migration steps 9 through 13 are explicitly out of scope
 > here and get their own repository session, plan, and verification gate.
+
+The generic delivery is implemented by coordinated changes in RTT,
+`rtt_opcua`, OCL, and this repository. Its installed-prefix fixture is
+application-neutral: it defines its own typekit and OPC UA transport plugin,
+then builds them only after the generic packages have been installed. See
+[OPC UA Custom Datatype Verification](./opcua-custom-datatype-verification.md)
+for the reproducible test contract and current platform evidence.
 
 ## Goals
 
@@ -448,18 +456,11 @@ extension requirement. The runtime API must be proven first.
 - Validate the installed toolchain and MetaNC deployment in the target Xenomai
   environment.
 
-## Remaining Details For The Implementation Plan
+## Deferred MetaNC And Future Details
 
-- Final public C++ names and ownership model for logical providers, bound
-  registries, and codecs.
 - Exact MetaNC namespace URI spelling.
-- Stable string NodeId escaping and collision rules for custom datatype names.
-- Representation of OPC UA DataTypeDefinition and binary encoding references in
-  the address space.
-- How provider dependencies are declared and sorted.
-- Exact deployment operation names for starting the server and querying
-  unsupported resources.
-- Exact CLI parsing and repeatability rules for `ctaskbrowser-opcua --import`.
-- Client diagnostics when only some required application plugins are installed.
 - Whether oroGen/typegen should later generate the registration translation
   unit, datatype metadata, or both.
+- MetaNC's exact provider split if its wire datatypes span more than one
+  independently versioned contract package.
+- PKI, non-loopback endpoints, session authentication, and access control.

@@ -19,6 +19,8 @@ Package tests:
   rtt-typelib Build rtt_typelib transport plugin and check pkg-config metadata
   rtt-core    Build and run stable RTT core/task CTest cases
   rtt-opcua   Build and run the native RTT/OCL OPC UA integration tests
+  opcua-custom-datatypes
+              Rebuild the OPC UA stack and run the installed external fixture
   ocl-basic   Build and run OCL timer/taskbrowser CTest cases
   ocl-integration
                Build and run stable OCL deployment/logging/reporting CTest cases
@@ -116,6 +118,15 @@ cmake_target_exists() {
     cmake --build "$build_dir" --target help 2>/dev/null |
         awk -v target="$target" '$NF == target { found = 1 } END { exit found ? 0 : 1 }'
 }
+
+if [ "$PACKAGE_TEST" = "opcua-custom-datatypes" ]; then
+    [ -n "${OROCOS_ROCK_OPCUA_DEPENDENCY_PREFIX:-}" ] || \
+        orocos_rock_die "set OROCOS_ROCK_OPCUA_DEPENDENCY_PREFIX to the temporary prerequisite prefix"
+    exec "$SCRIPT_DIR/test-opcua-custom-datatypes.sh" \
+        --prefix "$PREFIX" \
+        --dependency-prefix "$OROCOS_ROCK_OPCUA_DEPENDENCY_PREFIX" \
+        --target "$TARGET"
+fi
 
 source_installed_env
 cd "$OROCOS_ROCK_ROOT"

@@ -27,8 +27,9 @@ the public maintenance forks and branch pins recorded in
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` when NetCDF support is available | Passes in CI on the selected OCL maintenance branch. The interactive `testWithStateMachine` TaskBrowser case stays out of the CI subset until it has a non-interactive harness. |
 
 The stable source policy follows each maintenance fork's default branch in
-`autoproj/overrides.yml`: `farbot` uses `master`, `rtlog-cpp` uses `main`, and
-the RTT, OCL, generator, and OPC UA packages use `dev`.
+`autoproj/overrides.yml`: `farbot`, `open62541`, and `open62541pp` use
+`master`; `rtlog-cpp` uses `main`; and RTT, OCL, the generator packages, and
+`rtt_opcua` use `dev`.
 
 ## C++20 and OPC UA Modernization Verification
 
@@ -65,3 +66,42 @@ Deferred test groups:
   CORBA. The no-CORBA generator matrix stages `flexmock/minitest` in `/tmp`.
 - RTT CORBA and target-specific transport tests that are unavailable in the
   local `gnulinux` no-CORBA configuration.
+
+## Generic OPC UA Custom Datatype Verification
+
+The generic migration steps 1 through 8 have an installed-prefix,
+application-neutral verification runner. It first builds RTT with CORBA and
+message queues disabled, then builds `rtt_opcua` with strict warnings, OCL with
+the OPC UA deployer and TaskBrowser, and finally an external typekit and
+transport plugin against only the installed packages.
+
+The final 2026-08-04 release run passed on Ubuntu 24.04 x86-64 with GCC 13.3 and
+CMake 3.28.3:
+
+| Surface | Result |
+|---|---|
+| RTT canonical type repository | `typekit_test` passed, 1/1 in 0.03 seconds. |
+| `rtt_opcua` | All 10 CTest cases passed in 7.83 seconds. |
+| OCL OPC UA | All 6 focused deployment and CLI cases passed in 4.94 seconds. |
+| External fixture | Separate server and client processes round-tripped all seven representative types through operations, writable properties and attributes, and both port directions. |
+| Isolation | CMake caches, logs, pkg-config metadata, and `ldd` output contained no resolved artifact below `~/.orocos`. |
+
+The release install prefix is
+`/tmp/orocos-opcua-installed-fixture-release-final-20260803/prefix`; its
+evidence directory is the sibling `prefix-work`.
+
+The sanitizer install at
+`/tmp/orocos-opcua-installed-fixture-sanitizer-complete-20260803/prefix`
+passed RTT 1/1, `rtt_opcua` 10/10, OCL 6/6, and the external two-process
+fixture without ASan, UBSan, or LSan findings. The supporting dependency gates
+passed `open62541pp` 225/225 and the open62541 attribute suite 31/31 under the
+same sanitizers. The exact command and sanitizer form are documented in
+[OPC UA Custom Datatype Verification](./opcua-custom-datatype-verification.md).
+
+The only remaining local compiler diagnostics are GCC
+`-Wmaybe-uninitialized` warnings originating in Boost.Spirit Classic headers
+during optimized sanitizer RTT test builds. Maintained changed targets remain
+warning-clean under `-Werror`.
+
+Target Xenomai validation, cross-distribution CI, and MetaNC migration steps 9
+through 13 remain pending in their respective environments.
