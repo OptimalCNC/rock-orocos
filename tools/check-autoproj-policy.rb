@@ -23,6 +23,8 @@ rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
 expected_forks = {
   "farbot" => { "url" => "https://github.com/liufang-robot/farbot.git", "branch" => "master" },
   "rtlog-cpp" => { "url" => "https://github.com/liufang-robot/rtlog-cpp.git", "branch" => "main" },
+  "open62541" => { "url" => "https://github.com/liufang-robot/open62541.git", "branch" => "master" },
+  "open62541pp" => { "url" => "https://github.com/liufang-robot/open62541pp.git", "branch" => "master" },
   "rtt" => { "url" => "https://github.com/liufang-robot/rtt.git", "branch" => "dev" },
   "rtt_opcua" => { "url" => "https://github.com/liufang-robot/rtt_opcua.git", "branch" => "dev" },
   "ocl" => { "url" => "https://github.com/liufang-robot/ocl.git", "branch" => "dev" },
@@ -31,11 +33,7 @@ expected_forks = {
   "utilmm" => { "url" => "https://github.com/liufang-robot/utilmm.git", "branch" => "dev" },
   "rtt_typelib" => { "url" => "https://github.com/liufang-robot/tools-rtt_typelib.git", "branch" => "dev" }
 }
-expected_upstream_sources = {
-  "open62541" => { "url" => "https://github.com/open62541/open62541.git", "tag" => "v1.4.15" },
-  "open62541pp" => { "url" => "https://github.com/open62541pp/open62541pp.git", "tag" => "v0.21.2" }
-}
-expected_sources = expected_forks.merge(expected_upstream_sources)
+expected_sources = expected_forks
 local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua]
 
 manifest = File.read(manifest_path)
