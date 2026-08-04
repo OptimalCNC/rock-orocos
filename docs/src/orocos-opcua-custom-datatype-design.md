@@ -4,7 +4,11 @@ Date: 2026-08-03
 Updated: 2026-08-04
 
 Status: Generic migration steps 1 through 8 are implemented and verified on
-`gnulinux`. MetaNC migration steps 9 through 13 remain a separate delivery.
+`gnulinux`. The accepted explicit-start and strict-publication lifecycle is
+specified in
+[OPC UA Deployer Lifecycle Design](./opcua-deployer-lifecycle-design.md)
+and remains to be implemented. MetaNC migration steps 9 through 13 remain a
+separate delivery.
 
 ## Purpose
 
@@ -45,7 +49,8 @@ for the reproducible test contract and current platform evidence.
 - Use namespace URIs and stable string NodeIds rather than fixed namespace
   indexes.
 - Load all datatype definitions before the OPC UA server starts.
-- Make unsupported resources visible and diagnosable.
+- Reject partial component publication and make unsupported resources visible
+  and diagnosable.
 - Support the same custom types in server and RTT proxy client processes.
 
 ## Non-Goals
@@ -79,14 +84,20 @@ for the reproducible test contract and current platform evidence.
    endpoint. No provider may assume namespace index `1`.
 7. Custom datatype providers must load before the OPC UA server starts. Late
    registration is rejected initially.
-8. `deployer-opcua` starts its OPC UA server only after startup deployment
-   scripts have run and type plugins have registered.
+8. `deployer-opcua` never starts its OPC UA server automatically. Startup
+   scripts or the embedded TaskBrowser import type plugins, then call
+   `opcua.start()` explicitly.
 9. RTT-based clients load application type plugins explicitly before creating a
    proxy. Remote servers cannot trigger automatic local library loading.
-10. Components publish every resource whose RTT type has an OPC UA protocol.
-    Unsupported resources are omitted but must produce warnings and remain
-    queryable through diagnostics.
-11. Automatic oroGen/typegen generation is a later improvement. The first
+10. `opcua.start()` freezes the datatype registry for the process lifetime and
+    publishes only the complete Deployer interface.
+11. Every other local component requires an explicit
+    `opcua.publishComponent(name)` call. `Server=true` never triggers OPC UA
+    publication.
+12. Component publication is strict and transactional. An unsupported resource
+    rejects the whole component with no partial address-space model, and the
+    diagnostics remain queryable.
+13. Automatic oroGen/typegen generation is a later improvement. The first
     MetaNC migration uses a small application-owned registration plugin around
     its existing metadata.
 
@@ -128,8 +139,12 @@ entry naming a MetaNC type.
 - Register the canonical sequence names.
 - Remove the lowercase legacy sequence names and update constructors,
   operators, tests, examples, and documentation.
-- Defer `deployer-opcua` server startup until startup scripts complete.
-- Queue components selected for publication until the server is ready.
+- Keep `deployer-opcua` server startup under the explicit `opcua.start()` API.
+- Reject component publication before startup instead of queueing it.
+- Publish only the Deployer during startup and require explicit publication for
+  every other local component.
+- Add the generic `RTT::ConnPolicy` structure codec needed to publish the full
+  Deployer interface.
 - Add explicit application package imports to `ctaskbrowser-opcua`.
 - Expose publication diagnostics through the OPC UA deployment service.
 
@@ -270,25 +285,27 @@ the same rollout.
 
 ```text
 construct deployer with OPC UA server stopped
-  -> load site configuration
-  -> execute startup .ops scripts
+  -> load site configuration and execute requested startup scripts
   -> import RTT typekits and their OPC UA transport plugins
-  -> validate the datatype-provider registry
-  -> register provider namespace URIs
-  -> materialize custom datatypes with resolved namespace indexes
+  -> call opcua.start() locally
+  -> register generic protocols, including RTT::ConnPolicy
+  -> freeze and validate the datatype-provider registry for process lifetime
+  -> resolve provider namespace URIs and materialize endpoint-bound datatypes
   -> configure and start the open62541 server
   -> create datatype and encoding nodes
-  -> publish the deployer and queued components
-  -> reconcile later component interface changes
+  -> strictly publish the complete Deployer interface only
+  -> call opcua.publishComponent(name) for each other local component
 ```
 
-If no startup scripts exist, the server starts immediately after the empty
-startup phase.
+If no startup scripts exist, the server remains stopped until a local caller
+invokes `opcua.start()`. `ctaskbrowser-opcua` cannot connect before that call;
+the embedded TaskBrowser can.
 
 Components loaded after startup may be published when all their required
 providers were already registered. Loading a new datatype provider after server
-startup returns an explicit error. Automatic server restart and live datatype
-mutation are deferred.
+startup returns an explicit error. The first start attempt freezes the registry
+even if endpoint startup later fails. Automatic server restart and live
+datatype mutation are deferred.
 
 ## RTT Client Flow
 
@@ -321,11 +338,13 @@ MetaNC's non-RTT SDK links its contract metadata normally and installs the same
 custom datatypes into its own OPC UA client configuration. It does not load an
 Orocos transport plugin.
 
-## Publication And Unsupported-Type Warnings
+## Strict Publication And Unsupported-Type Diagnostics
 
-Publication creates every operation, property, attribute, and port supported by
-the loaded protocol registry. A missing protocol does not silently erase a
-resource.
+Publication validates a complete component snapshot before committing its
+address-space nodes. Every operation, property, attribute, constant, and port
+must use a type bound in the endpoint protocol registry. A missing protocol
+rejects the complete candidate revision; it never silently erases one resource
+from an otherwise published component.
 
 For each unsupported resource, log a warning containing:
 
@@ -343,17 +362,19 @@ Example:
 '/meta_nc/rt_api/CommandWire' has no registered OPC UA protocol.
 ```
 
-Warning behavior:
+Diagnostic behavior:
 
-- Emit one warning per unsupported resource when it first appears.
-- Do not repeat warnings during every reconciliation interval.
-- Recompute diagnostics when the component interface revision changes.
-- Log when a previously unsupported resource becomes supported.
-- Store the same entries for a deployment operation conceptually named
-  `opcua.unsupportedResources(component)`.
-- Structural address-space or server failures still make publication fail.
-- MetaNC migration tests require no unsupported resources for its intended
-  public interface.
+- Return false from `opcua.publishComponent(component)`.
+- Roll back every node created for the candidate component.
+- Leave the object-model revision unchanged.
+- Emit one warning per unsupported resource when it first appears, without
+  repeating it during every reconciliation interval.
+- Store the same entries for
+  `opcua.unsupportedResources(component)`, including after failed publication.
+- Keep the last complete published revision if a later reconciliation candidate
+  is unsupported or cannot be committed.
+- Require an empty unsupported-resource report when the Deployer or another
+  component is initially published successfully.
 
 ## Registration And Error Rules
 
@@ -438,8 +459,14 @@ extension requirement. The runtime API must be proven first.
   NodeId.
 - Verify provider conflicts and missing dependencies fail deterministically.
 - Verify late registration is rejected.
-- Verify unsupported warnings are emitted once, queryable, and updated when the
-  interface changes.
+- Verify an unsupported type rejects the complete component, leaves no nodes or
+  revision change, and remains queryable through diagnostics.
+- Verify `start()` publishes only the complete Deployer and that
+  `Server=true` components require explicit publication.
+- Verify `RTT::ConnPolicy` round-trips through the proxy and exposes every
+  Deployer connection operation.
+- Verify unload waits for timed-out asynchronous calls to release their
+  component leases before destruction.
 - Verify no old sequence type names appear in the runtime type repository.
 - Run cross-process and sanitizer tests from a temporary install prefix.
 

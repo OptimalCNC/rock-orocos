@@ -26,6 +26,14 @@ is not MetaNC migration step 9. MetaNC migration steps 9 through 13 remain out
 of scope and are recorded in
 `/tmp/metanc-opcua-custom-datatype-migration-handoff.md`.
 
+> [!NOTE]
+> The queued-publication and automatic-start behavior recorded in Task 6 is a
+> description of the completed first implementation, not the current lifecycle
+> contract. It is superseded by
+> [OPC UA Deployer Lifecycle Design](./opcua-deployer-lifecycle-design.md).
+> A replacement implementation plan will be written after that specification
+> is reviewed.
+
 ## Global Constraints
 
 - Implement only generic migration steps 1 through 8. Do not modify MetaNC.
