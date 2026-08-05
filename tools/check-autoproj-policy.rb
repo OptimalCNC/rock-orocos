@@ -20,11 +20,11 @@ package_tests_ci_check_path = File.join(root, "tools", "check-package-tests-ci.r
 cpp20_policy_check_path = File.join(root, "tools", "check-cpp20-policy.rb")
 rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
 
-expected_forks = {
+expected_sources = {
   "farbot" => { "url" => "https://github.com/liufang-robot/farbot.git", "branch" => "master" },
   "rtlog-cpp" => { "url" => "https://github.com/liufang-robot/rtlog-cpp.git", "branch" => "main" },
-  "open62541" => { "url" => "https://github.com/liufang-robot/open62541.git", "branch" => "master" },
-  "open62541pp" => { "url" => "https://github.com/liufang-robot/open62541pp.git", "branch" => "master" },
+  "open62541" => { "url" => "https://github.com/open62541/open62541.git", "tag" => "v1.4.15" },
+  "open62541pp" => { "url" => "https://github.com/open62541pp/open62541pp.git", "tag" => "v0.21.2" },
   "rtt" => { "url" => "https://github.com/liufang-robot/rtt.git", "branch" => "dev" },
   "rtt_opcua" => { "url" => "https://github.com/liufang-robot/rtt_opcua.git", "branch" => "dev" },
   "ocl" => { "url" => "https://github.com/liufang-robot/ocl.git", "branch" => "dev" },
@@ -33,7 +33,6 @@ expected_forks = {
   "utilmm" => { "url" => "https://github.com/liufang-robot/utilmm.git", "branch" => "dev" },
   "rtt_typelib" => { "url" => "https://github.com/liufang-robot/tools-rtt_typelib.git", "branch" => "dev" }
 }
-expected_sources = expected_forks
 local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua]
 
 manifest = File.read(manifest_path)
@@ -100,10 +99,22 @@ unless local_autobuild_script.include?('cmake_package "open62541"') &&
   errors << "autoproj/local.autobuild: must define the reduced open62541 package"
 end
 
+unless local_autobuild_script.include?('pkg.define "UA_BUILD_UNIT_TESTS", "OFF"')
+  errors << "autoproj/local.autobuild: must disable open62541 dependency tests"
+end
+
 unless local_autobuild_script.include?('cmake_package "open62541pp"') &&
        local_autobuild_script.include?('pkg.depends_on "open62541"') &&
        local_autobuild_script.include?('pkg.define "UAPP_INTERNAL_OPEN62541", "OFF"')
   errors << "autoproj/local.autobuild: must build open62541pp against the selected open62541 package"
+end
+
+unless local_autobuild_script.include?('pkg.define "UAPP_BUILD_TESTS", "OFF"')
+  errors << "autoproj/local.autobuild: must disable open62541pp dependency tests"
+end
+
+unless local_autobuild_script.include?('pkg.define "UAPP_INTERNAL_OPEN62541", "OFF"')
+  errors << "autoproj/local.autobuild: must disable open62541pp's internal open62541 dependency"
 end
 
 unless local_autobuild_script.include?('cmake_package "rtt_opcua"') &&

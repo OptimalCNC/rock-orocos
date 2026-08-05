@@ -21,8 +21,8 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `farbot` | lock-free queue dependency for the future RT-safe logger core | Public maintenance fork while install/export rules are needed |
 | `rtlog-cpp` | RT-safe logging queue and bounded formatting implementation for the RTT logger core | Public maintenance fork while install/export rules are needed |
 | `rtt` | Orocos runtime | Public maintenance fork |
-| `open62541` | OPC UA C stack used by the native RTT transport | Public maintenance fork based on `v1.4.15` |
-| `open62541pp` | C++ API used by `rtt_opcua` | Public maintenance fork based on `v0.21.2` |
+| `open62541` | OPC UA C stack used by the native RTT transport | Upstream tag `v1.4.15` |
+| `open62541pp` | C++ API used by `rtt_opcua` | Upstream tag `v0.21.2` |
 | `rtt_opcua` | Generic native OPC UA server, RTT object model, proxy, and port transport | `liufang-robot` upstream |
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
 | `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
@@ -65,8 +65,6 @@ Initial public maintenance source set:
 
 - `farbot`
 - `rtlog-cpp`
-- `open62541`
-- `open62541pp`
 - `rtt`
 - `rtt_opcua`
 - `ocl`
@@ -86,6 +84,8 @@ Forks should carry focused portability work:
 
 Upstream by default:
 
+- `open62541` at the selected compatibility tag
+- `open62541pp` at the selected compatibility tag
 - `rtt_geometry`
 - `utilrb`
 
@@ -93,15 +93,10 @@ The workspace builds `open62541pp` against the separately selected
 `open62541` package. It does not depend on recursive Git submodules for this
 dependency.
 
-The `open62541` fork stays based on `v1.4.15` and releases the temporary string
-encoding NodeId created while reading a custom DataType definition. The
-`open62541pp` fork stays based on `v0.21.2` and owns copied custom-datatype
-NodeIds through server teardown. These focused lifetime fixes are required by
-the leak-sanitized custom-datatype contract.
-
-The wrapper may advance to a newer stable tag after its package and integration
-tests pass from a temporary prefix. A wrapper update does not independently
-advance the selected C stack.
+The workspace consumes the selected official `open62541` and `open62541pp`
+tags unchanged. Their dependency tests are disabled in the workspace build;
+maintained integration tests prove the behavior used by this toolchain.
+Experimental local dependency branches are neither selected nor published.
 
 ## Source Of Truth
 
