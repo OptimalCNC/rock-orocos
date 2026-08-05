@@ -1,1118 +1,476 @@
-# OPC UA Deployer Lifecycle Implementation Plan
+# OPC UA Static Publication Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > `superpowers:subagent-driven-development` (recommended) or
-> `superpowers:executing-plans` to implement this plan task-by-task. Steps use
-> checkbox (`- [ ]`) syntax for tracking.
+> `superpowers:executing-plans` to implement this plan task-by-task. Use
+> `superpowers:test-driven-development` for every behavior change and
+> `superpowers:verification-before-completion` before claiming a task or the
+> plan complete.
 
-**Goal:** Make `deployer-opcua` start only through the explicit local
-`opcua.start()` API, publish complete components strictly, map
-`RTT::ConnPolicy` generically, and expose RTT ports as best-effort latest-value
-OPC UA surfaces.
+**Goal:** Replace the current dynamic OPC UA registration and reconciliation
+model with the approved explicit-start, strict, publish-once component model,
+while preserving the generic datatype, proxy, operation, and latest-value port
+support already implemented.
 
-**Architecture:** `rtt_opcua` owns the generic `ConnPolicy` datatype and codec,
-strict component snapshots, transactional address-space reconciliation, and
-component leases. Its port bridge uses lock-free RTT DATA connections and a
-50 ms default proxy poll interval, so supervisory clients see the newest value
-rather than a queued backlog. OCL owns deployment lifecycle state,
-component-name resolution, failed-publication diagnostics, and the local
-service API. The executable creates a local Deployer and TaskBrowser with the
-endpoint stopped; an installed external fixture proves the import, load,
-start, publish, and remote browse flow without MetaNC dependencies.
+**Architecture:** `rtt_opcua::ObjectModel` validates and creates each complete
+component subtree once, owns it until endpoint teardown, and never reconciles,
+replaces, or publicly removes it. OCL's `OpcUaDeploymentComponent` freezes the
+datatype registry on the first explicit `opcua.start()` attempt, starts the
+loopback server, publishes only its Deployer, and explicitly publishes named
+local components. OCL rejects Deployer-managed unloads of published
+components. Timed-out OwnThread calls are reaped independently of graph
+maintenance and retain all RTT state until completion.
 
-**Tech Stack:** C++20, Orocos RTT/OCL, open62541 1.4.15, open62541pp 0.21.2,
-CMake, Boost.Test, mdBook, AddressSanitizer, UndefinedBehaviorSanitizer, and
-LeakSanitizer.
+**Tech Stack:** C++20, Orocos RTT/OCL, stock open62541 `v1.4.15`, stock
+open62541pp `v0.21.2`, CMake, Boost.Test, Ruby policy checks, mdBook,
+AddressSanitizer, UndefinedBehaviorSanitizer, and LeakSanitizer.
 
 ## Global Constraints
 
-- Work only in the root, RTT, `rtt_opcua`, and OCL
+- Work only in the linked root, RTT, `rtt_opcua`, and OCL
   `codex/orocos-opcua-custom-datatypes` worktrees.
-- Preserve unrelated worktree edits. In particular, retain OCL's existing
-  direct `<stdexcept>` include in
-  `deployment/OpcUaDeploymentComponent.cpp`.
-- Never install into, source from, or resolve artifacts from `~/.orocos` while
-  implementing or testing. Existing package build trees may be used only for
-  focused red/green compilation without installation; every authoritative
-  clean build, install prefix, isolated `HOME`, log, cache, and ready file must
-  be below a new `/tmp` directory.
-- Keep open62541 at `v1.4.15` and open62541pp at `v0.21.2`.
-- Before installed-prefix verification, set
-  `OROCOS_OPCUA_DEPENDENCY_PREFIX` to the existing open62541/open62541pp
-  dependency prefix below `/tmp`; the verifier rejects any other location.
-- Keep CORBA source available and configure `ENABLE_CORBA=OFF` in this
-  workspace.
-- Publish the full supported RTT interface. Do not add `Server=true`
-  auto-publication, queued publication, allowlists, publication modes, PKI,
-  non-loopback listening, RBAC, a public stop API, or live datatype
+- Preserve unrelated edits. In particular, retain the pre-existing direct
+  `<stdexcept>` include in OCL's `deployment/OpcUaDeploymentComponent.cpp`;
+  because Task 4 modifies that same file, keep the include in the resulting
+  OCL commit and call it out in the final review. Do not stage the user's
+  `docs/src/SUMMARY.md` or
+  `docs/src/opcua-web-gateway-plan.md` changes with this work.
+- Consume official open62541 `v1.4.15` and open62541pp `v0.21.2` source without
+  modification. Do not merge, push, or select the experimental dependency
+  worktree branches.
+- Configure `UA_BUILD_UNIT_TESTS=OFF` and `UAPP_BUILD_TESTS=OFF`. Maintained
+  RTT, `rtt_opcua`, OCL, executable, and external-fixture tests cover the
+  required behavior.
+- Never install into, source from, or resolve packages from `~/.orocos`.
+  Authoritative build trees, installs, isolated `HOME`, logs, caches, source
+  checkouts, ready files, and runtime data must be below one new `/tmp`
+  directory.
+- Build the maintained code as C++20 with its warning-as-error policy. Keep
+  CORBA source available but configure this workspace with `ENABLE_CORBA=OFF`.
+- Keep the already implemented generic `RTT::ConnPolicy` mapping and the
+  latest-value RTT port contract. Do not reinterpret an RTT object containing
+  `std::string` as an open62541 structure.
+- Publish the full supported RTT interface. Do not add an allowlist,
+  publication modes, `Server=true` auto-publication, queued publication, a
+  public stop operation, PKI, non-loopback listening, RBAC, or late datatype
   registration.
-- Replace `publishPeer` and `unpublishPeer` with `publishComponent` and
-  `unpublishComponent`; do not retain compatibility aliases.
-- Treat one component revision as the transaction boundary. Unsupported types
-  or node creation failures must never leave a partial component model.
-- RTT OPC UA ports are best-effort latest-value transport: use lock-free DATA,
-  default proxy polling to 50 ms, retain pending client writes until
-  `WriteSuccess`, and do not claim queued, lossless, exactly-once, PubSub, or
-  deterministic-control semantics.
-- Task numbers in this document are local lifecycle implementation tasks; they
-  are not the MetaNC migration steps 9 through 13, which remain out of scope.
-- Do not merge or push default branches until the final review has summarized
-  all package commits, fresh verification evidence, and remaining risks for
-  user approval.
+- Do not implement `unpublishComponent`, replacement, reconciliation, or
+  unload-after-publication in this version. Internal rollback of a failed
+  candidate publication is required and is not public unpublication.
+- A non-returning RTT OwnThread operation may delay shutdown. Never release
+  its component lease, arguments, result storage, or send handle early.
+- Commit changes in the owning package after each green task. Do not merge or
+  push default branches until Task 8 provides a package-by-package review and
+  the user approves integration.
+- These eight tasks are generic toolchain work. MetaNC migration work remains
+  excluded and will use a separate handoff/session.
+
+## Worktree And Temporary Environment
+
+Run all commands from the root feature worktree unless a step explicitly uses
+`git -C`. At the start of execution, create and retain one isolated root:
+
+```bash
+export OROCOS_OPCUA_VERIFY_ROOT="$(mktemp -d /tmp/orocos-opcua-static.XXXXXX)"
+export OROCOS_OPCUA_DEPENDENCY_PREFIX="$OROCOS_OPCUA_VERIFY_ROOT/dependencies"
+export OROCOS_OPCUA_INSTALL_PREFIX="$OROCOS_OPCUA_VERIFY_ROOT/install"
+export OROCOS_OPCUA_TEST_HOME="$OROCOS_OPCUA_VERIFY_ROOT/home"
+mkdir -p "$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
+  "$OROCOS_OPCUA_INSTALL_PREFIX" "$OROCOS_OPCUA_TEST_HOME"
+```
+
+Never substitute an existing non-empty prefix. Record the concrete generated
+path in the final verification evidence so another machine can distinguish
+source revisions from local artifacts.
+
+## File Responsibility Map
+
+| Layer | Owns | Must not own |
+|---|---|---|
+| Root policy | source pins, build options, verification harness, evidence | runtime publication logic |
+| `rtt_opcua` | strict snapshot, node creation transaction, codecs, callbacks, proxy | OCL component lookup or unload policy |
+| OCL deployment | explicit endpoint state, component lookup, publication registry, unload guard | OPC UA node construction |
+| External fixture | installed-package acceptance from a clean consumer | private source-tree linkage or MetaNC types |
 
 ---
 
-### Task 1: Add The Generic `RTT::ConnPolicy` Protocol
+## Task 1: Select Unmodified Stock OPC UA Dependencies
 
 **Files:**
 
-- Create: `toolchain/tools/rtt_opcua/src/conn_policy_protocol.hpp`
-- Create: `toolchain/tools/rtt_opcua/src/conn_policy_protocol.cpp`
-- Modify: `toolchain/tools/rtt_opcua/src/type_protocol.cpp`
-- Modify: `toolchain/tools/rtt_opcua/src/type_transport_plugin.cpp`
-- Modify: `toolchain/tools/rtt_opcua/tests/type_protocol_test.cpp`
-- Modify: `toolchain/tools/rtt_opcua/CMakeLists.txt`
+- Modify: `autoproj/overrides.yml`
+- Modify: `tools/check-autoproj-policy.rb`
+- Modify: `docs/src/package-policy.md`
 
-**Interfaces:**
+**Consumes:** the existing Autoproj package order and the already correct
+`UA_BUILD_UNIT_TESTS=OFF`, `UAPP_BUILD_TESTS=OFF`, and
+`UAPP_INTERNAL_OPEN62541=OFF` definitions in `autoproj/local.autobuild`.
 
-- Consumes: RTT's existing `StructTypeInfo<RTT::ConnPolicy>("ConnPolicy")`,
-  `DataTypeProvider`, `TypeProtocol`, `TypeCodec`, and endpoint registry.
-- Produces one canonical provider and type protocol:
+**Produces:** reproducible official tag selections:
 
-```text
-provider: rtt-foundation
-namespace URI: urn:orocos:rtt
-datatype NodeId: types/ConnPolicy
-binary encoding NodeId: encodings/ConnPolicy/Binary
-schema fingerprint: rtt-opcua/ConnPolicy/v1
+```yaml
+- open62541:
+  type: git
+  url: https://github.com/open62541/open62541.git
+  tag: v1.4.15
+
+- open62541pp:
+  type: git
+  url: https://github.com/open62541pp/open62541pp.git
+  tag: v0.21.2
 ```
 
-- [ ] **Step 1: Write the complete round-trip test first**
+- [ ] **Step 1: Make the policy check require official immutable tags**
 
-Add `conn_policy_protocol_round_trips_every_public_field` to
-`tests/type_protocol_test.cpp`. Initialize all eleven fields to non-default
-values and compare them field-by-field:
+In `tools/check-autoproj-policy.rb`, replace the two dependency entries in
+`expected_forks` with `tag` entries and rename the map to `expected_sources`.
+Keep every modified first-party package on its `liufang-robot` source and
+`dev` branch. Add explicit assertions that `local.autobuild` contains:
 
-```cpp
-RTT::ConnPolicy expected;
-expected.type = RTT::ConnPolicy::BUFFER;
-expected.size = 17;
-expected.lock_policy = RTT::ConnPolicy::LOCKED;
-expected.init = true;
-expected.pull = true;
-expected.buffer_policy = RTT::PerInputPort;
-expected.max_threads = 6;
-expected.mandatory = false;
-expected.transport = 42;
-expected.data_size = 4096;
-expected.name_id = "fixture/channel";
+```ruby
+'pkg.define "UA_BUILD_UNIT_TESTS", "OFF"'
+'pkg.define "UAPP_BUILD_TESTS", "OFF"'
+'pkg.define "UAPP_INTERNAL_OPEN62541", "OFF"'
 ```
 
-Assert that `codecForTypeName("ConnPolicy")` exists, is scalar and writable,
-uses `NodeId(1, "types/ConnPolicy")`, and round-trips the value through:
-
-- `toVariant`
-- `assignVariant`
-- `makeDataSource`
-- a writable proxy datasource
-- a read-only proxy datasource
-- an `RTT::OutputPort<RTT::ConnPolicy>`
-
-Also inspect the endpoint registry's custom datatype and assert its binary
-encoding NodeId is `encodings/ConnPolicy/Binary`.
-
-The codec portion of the test must include:
-
-```cpp
-const auto registry = makeRegistry();
-const RTT::opcua::TypeCodec *codec =
-    registry->codecForTypeName("ConnPolicy");
-BOOST_REQUIRE(codec != nullptr);
-BOOST_CHECK(codec->dataTypeNodeId() ==
-            ::opcua::NodeId(1, "types/ConnPolicy"));
-RTT::internal::ValueDataSource<RTT::ConnPolicy>::shared_ptr source =
-    new RTT::internal::ValueDataSource<RTT::ConnPolicy>(expected);
-::opcua::Variant encoded;
-BOOST_REQUIRE(codec->toVariant(source, &encoded));
-const auto decoded = codec->makeDataSource(encoded);
-const auto typed = boost::dynamic_pointer_cast<
-    RTT::internal::DataSource<RTT::ConnPolicy>>(decoded);
-BOOST_REQUIRE(typed);
-checkConnPolicy(typed->get(), expected);
-```
-
-Define this helper in the test's anonymous namespace:
-
-```cpp
-void checkConnPolicy(const RTT::ConnPolicy &actual,
-                     const RTT::ConnPolicy &expected) {
-  BOOST_TEST(actual.type == expected.type);
-  BOOST_TEST(actual.size == expected.size);
-  BOOST_TEST(actual.lock_policy == expected.lock_policy);
-  BOOST_TEST(actual.init == expected.init);
-  BOOST_TEST(actual.pull == expected.pull);
-  BOOST_TEST(actual.buffer_policy == expected.buffer_policy);
-  BOOST_TEST(actual.max_threads == expected.max_threads);
-  BOOST_TEST(actual.mandatory == expected.mandatory);
-  BOOST_TEST(actual.transport == expected.transport);
-  BOOST_TEST(actual.data_size == expected.data_size);
-  BOOST_TEST(actual.name_id == expected.name_id);
-}
-```
-
-- [ ] **Step 2: Run the test and observe the missing protocol**
+- [ ] **Step 2: Run the policy check and observe the source mismatch**
 
 ```bash
-cmake --build toolchain/tools/rtt_opcua/build --parallel \
-  --target rtt_opcua_type_protocol_test
-ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure \
-  -R '^rtt_opcua_type_protocol_test$'
+ruby tools/check-autoproj-policy.rb
 ```
 
-Expected: the new case fails because `codecForTypeName("ConnPolicy")` returns
-null or `registerCanonicalTypeProtocols()` cannot register the type.
+Expected: failure reports that open62541 and open62541pp still use the
+`liufang-robot` branch selections instead of the official tags.
 
-- [ ] **Step 3: Define an OPC UA-owned wire structure**
+- [ ] **Step 3: Change only the selected dependency sources**
 
-Keep the private interface in `src/conn_policy_protocol.hpp`:
+Update `autoproj/overrides.yml` to the exact official URLs and tags above.
+Do not change the `liufang-robot` selections for RTT, `rtt_opcua`, OCL,
+oroGen, Typelib, utilmm, or `rtt_typelib`.
 
-```cpp
-namespace RTT::opcua {
-bool registerConnPolicyProtocol(RTT::types::TypeInfo *type_info,
-                                std::string *error = nullptr);
-}
-```
+Rewrite the dependency paragraph in `docs/src/package-policy.md` so it states:
 
-In `src/conn_policy_protocol.cpp`, define a wire value with fixed-width
-integers and an OPC UA-owned string:
+- official tags are consumed unchanged;
+- dependency tests are disabled;
+- maintained integration tests prove the used behavior; and
+- experimental local dependency branches are neither selected nor published.
 
-```cpp
-struct ConnPolicyWire {
-  std::int32_t type;
-  std::int32_t size;
-  std::int32_t lock_policy;
-  bool init;
-  bool pull;
-  std::int32_t buffer_policy;
-  std::int32_t max_threads;
-  bool mandatory;
-  std::int32_t transport;
-  std::int32_t data_size;
-  ::opcua::String name_id;
-};
-```
-
-Build it with `opcua::DataTypeBuilder<ConnPolicyWire>::createStructure()` and
-eleven `.addField` calls in the exact order above. Register it through a
-`DataTypeProvider` named `rtt-foundation` with URI `urn:orocos:rtt`.
-
-```cpp
-DataTypeProvider makeConnPolicyProvider() {
-  CustomDataTypeDefinition definition;
-  definition.name = "ConnPolicy";
-  definition.id = connPolicyDataTypeId();
-  definition.schema_fingerprint = "rtt-opcua/ConnPolicy/v1";
-  definition.materialize = [](const DataTypeFactoryContext &context) {
-    return ::opcua::DataTypeBuilder<ConnPolicyWire>::createStructure(
-               "ConnPolicy", context.nodeId(connPolicyDataTypeId()),
-               {context.namespaceIndex("urn:orocos:rtt"),
-                "encodings/ConnPolicy/Binary"})
-        .addField<&ConnPolicyWire::type>("type")
-        .addField<&ConnPolicyWire::size>("size")
-        .addField<&ConnPolicyWire::lock_policy>("lock_policy")
-        .addField<&ConnPolicyWire::init>("init")
-        .addField<&ConnPolicyWire::pull>("pull")
-        .addField<&ConnPolicyWire::buffer_policy>("buffer_policy")
-        .addField<&ConnPolicyWire::max_threads>("max_threads")
-        .addField<&ConnPolicyWire::mandatory>("mandatory")
-        .addField<&ConnPolicyWire::transport>("transport")
-        .addField<&ConnPolicyWire::data_size>("data_size")
-        .addField<&ConnPolicyWire::name_id>("name_id")
-        .build();
-  };
-  DataTypeProvider provider;
-  provider.name = "rtt-foundation";
-  provider.namespace_uri = "urn:orocos:rtt";
-  provider.data_types.push_back(std::move(definition));
-  return provider;
-}
-```
-
-`connPolicyDataTypeId()` returns one static `LogicalDataTypeId` containing the
-three exact URI/NodeId strings in the Interfaces block.
-
-- [ ] **Step 4: Implement conversion without layout reinterpretation**
-
-Implement dedicated assignable and read-only proxy datasources, a
-`ConnPolicyTypeCodec`, and a `ConnPolicyTypeProtocol`, following the external
-fixture transport's ownership pattern. Encode by copying all RTT fields into a
-`ConnPolicyWire`; decode by copying each wire field back and converting
-`name_id` through `std::string_view`. Never cast `RTT::ConnPolicy *` to
-`ConnPolicyWire *` because the RTT object owns a `std::string`.
-
-Keep the field conversion explicit:
-
-```cpp
-ConnPolicyWire toWire(const RTT::ConnPolicy &policy) {
-  return ConnPolicyWire{
-      static_cast<std::int32_t>(policy.type),
-      static_cast<std::int32_t>(policy.size),
-      static_cast<std::int32_t>(policy.lock_policy),
-      policy.init,
-      policy.pull,
-      static_cast<std::int32_t>(policy.buffer_policy),
-      static_cast<std::int32_t>(policy.max_threads),
-      policy.mandatory,
-      static_cast<std::int32_t>(policy.transport),
-      static_cast<std::int32_t>(policy.data_size),
-      ::opcua::String(policy.name_id),
-  };
-}
-
-RTT::ConnPolicy fromWire(const ConnPolicyWire &wire) {
-  RTT::ConnPolicy policy;
-  policy.type = wire.type;
-  policy.size = wire.size;
-  policy.lock_policy = wire.lock_policy;
-  policy.init = wire.init;
-  policy.pull = wire.pull;
-  policy.buffer_policy = wire.buffer_policy;
-  policy.max_threads = wire.max_threads;
-  policy.mandatory = wire.mandatory;
-  policy.transport = wire.transport;
-  policy.data_size = wire.data_size;
-  policy.name_id = std::string(std::string_view(wire.name_id));
-  return policy;
-}
-```
-
-Use `rtt-opcua/ConnPolicy/v1` as both the provider schema fingerprint and the
-protocol registration fingerprint.
-
-The exported private helper validates the RTT-owned name before making both
-idempotent registrations:
-
-```cpp
-bool registerConnPolicyProtocol(RTT::types::TypeInfo *type_info,
-                                std::string *error) {
-  if (type_info == nullptr || type_info->getTypeName() != "ConnPolicy") {
-    return fail(error, "invalid OPC UA ConnPolicy protocol registration");
-  }
-  if (!registerDataTypeProvider(makeConnPolicyProvider(), error)) {
-    return false;
-  }
-  return registerTypeProtocol(
-      type_info,
-      std::make_unique<ConnPolicyTypeProtocol>(connPolicyDataTypeId()),
-      error);
-}
-```
-
-- [ ] **Step 5: Register `ConnPolicy` through both canonical paths**
-
-Change `registerCanonicalTypeProtocol()` so the exact RTT name `ConnPolicy`
-dispatches to `registerConnPolicyProtocol()`. Change
-`registerCanonicalTypeProtocols()` to register the descriptor-backed builtins
-one at a time and then obtain `Types()->type("ConnPolicy")` and register it.
-Avoid holding `registrationMutex()` while calling a helper that calls the
-public `registerTypeProtocol()` API.
-
-The RTT type transport plugin must consequently accept `ConnPolicy` and still
-reject noncanonical names. Add `src/conn_policy_protocol.cpp` to
-`orocos-rtt-opcua` in `CMakeLists.txt`.
-
-The canonical dispatcher must have this control flow:
-
-```cpp
-bool registerCanonicalTypeProtocol(std::string_view type_name,
-                                   RTT::types::TypeInfo *type_info,
-                                   std::string *error) {
-  if (type_name == "ConnPolicy") {
-    return registerConnPolicyProtocol(type_info, error);
-  }
-  if (type_info == nullptr || type_info->getTypeName() != type_name ||
-      descriptorForType(type_name) == nullptr) {
-    return fail(error, "invalid canonical OPC UA type protocol registration");
-  }
-  std::lock_guard<std::mutex> lock(registrationMutex());
-  return registerTypeProtocolUnlocked(
-      type_info, makeCanonicalProtocol(type_name), error);
-}
-
-bool registerCanonicalTypeProtocols(std::string *error) {
-  for (const TypeDescriptor &descriptor : canonicalTypeDescriptors()) {
-    RTT::types::TypeInfo *type_info =
-        RTT::types::Types()->type(std::string(descriptor.rtt_name));
-    if (!registerCanonicalTypeProtocol(descriptor.rtt_name, type_info, error)) {
-      return false;
-    }
-  }
-  return registerConnPolicyProtocol(
-      RTT::types::Types()->type("ConnPolicy"), error);
-}
-```
-
-- [ ] **Step 6: Run focused and complete `rtt_opcua` tests**
+- [ ] **Step 4: Prove the policy and working-tree boundary**
 
 ```bash
-cmake --build toolchain/tools/rtt_opcua/build --parallel
-ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure
+ruby tools/check-autoproj-policy.rb
+rg -n 'open62541(pp)?' autoproj/overrides.yml autoproj/local.autobuild \
+  docs/src/package-policy.md
+git status --short
+git diff --check
 ```
 
-Expected: every `rtt_opcua_*` test passes with warnings-as-errors, and the
-ConnPolicy case proves all eleven fields.
+Expected: policy check exits zero; both official tags are visible; both
+dependency test options are `OFF`; no open62541/open62541pp source file is
+staged or modified by this task.
 
-- [ ] **Step 7: Commit the package change**
+- [ ] **Step 5: Commit the root policy change**
 
 ```bash
-git -C toolchain/tools/rtt_opcua add \
-  CMakeLists.txt src/conn_policy_protocol.hpp src/conn_policy_protocol.cpp \
-  src/type_protocol.cpp src/type_transport_plugin.cpp \
-  tests/type_protocol_test.cpp
-git -C toolchain/tools/rtt_opcua commit \
-  -m "feat: add native OPC UA ConnPolicy mapping"
+git add autoproj/overrides.yml tools/check-autoproj-policy.rb \
+  docs/src/package-policy.md
+git commit -m "build: use stock pinned OPC UA dependencies"
 ```
 
-### Task 2: Reject Unsupported Components Before Publication
+---
+
+## Task 2: Replace Dynamic Registration With Static Publication
 
 **Files:**
 
 - Modify: `toolchain/tools/rtt_opcua/include/rtt/opcua/object_model.hpp`
+- Modify: `toolchain/tools/rtt_opcua/include/rtt/opcua/server.hpp`
 - Modify: `toolchain/tools/rtt_opcua/src/object_model.cpp`
-- Modify: `toolchain/tools/rtt_opcua/tests/object_model_test.cpp`
-
-**Interfaces:**
-
-- Extend registration without breaking existing callers:
-
-```cpp
-std::optional<ComponentRegistration>
-registerComponent(RTT::TaskContext &component, std::string *error = nullptr,
-                  std::vector<UnsupportedResource> *unsupported = nullptr);
-```
-
-- `unsupportedResources(component)` must return diagnostics for both the
-  latest rejected initial publication and the latest rejected reconciliation
-  candidate.
-- Add one private first-publication helper so validation and mutation use the
-  same snapshot:
-
-```cpp
-bool publishSnapshot(const std::shared_ptr<ComponentState> &state,
-                     const ComponentSnapshot &snapshot,
-                     std::string *error);
-```
-
-- Add rejected diagnostics beside the active diagnostic map:
-
-```cpp
-std::map<std::string, std::vector<UnsupportedResource>, std::less<>>
-    failed_publications;
-```
-
-- [ ] **Step 1: Convert the unsupported-resource test to strict semantics**
-
-Rename the current
-`unsupported_resources_are_queryable_deduplicated_and_recover` test to
-`unsupported_resources_reject_the_complete_initial_component`. Capture the
-model revision before registration, pass the output diagnostics vector, and
-assert:
-
-```text
-registration has no value
-componentCount() == 0
-revision is unchanged
-six deduplicated diagnostics are returned and queryable
-the component root does not exist
-no supported sibling resource from that component exists
-```
-
-Keep exact diagnostic checks for the unsupported property, attribute, input
-port, output port, consuming operation, and producing operation.
-
-The changed test's transaction assertions are:
-
-```cpp
-const std::uint64_t revision_before = model.revision();
-std::vector<RTT::opcua::UnsupportedResource> diagnostics;
-auto registration =
-    model.registerComponent(component, &error, &diagnostics);
-BOOST_TEST(!registration.has_value());
-BOOST_TEST(model.componentCount() == 0U);
-BOOST_TEST(model.revision() == revision_before);
-BOOST_TEST(diagnostics.size() == 6U);
-BOOST_TEST(model.unsupportedResources(component.getName()) == diagnostics,
-           boost::test_tools::per_element());
-BOOST_TEST(!::opcua::services::readBrowseName(client, component_root_id));
-BOOST_TEST(!::opcua::services::readBrowseName(client,
-                                              supported_property_id));
-```
-
-- [ ] **Step 2: Run the focused test and observe partial publication**
-
-```bash
-cmake --build toolchain/tools/rtt_opcua/build --parallel \
-  --target rtt_opcua_object_model_test
-ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure \
-  -R '^rtt_opcua_object_model_test$'
-```
-
-Expected: the old implementation returns a registration and publishes the
-supported subset, so the new strict assertions fail.
-
-- [ ] **Step 3: Snapshot before inserting component state**
-
-In `ObjectModelImpl::registerComponent`, validate options, construct the
-`ComponentState`, and call `snapshotComponent()` before adding the state to
-`components`. If `snapshot.unsupported` is nonempty:
-
-- store the sorted diagnostics by component name in a failed-publication map
-- copy them to the optional output parameter
-- emit each warning through the configured warning sink
-- set an error beginning `strict OPC UA publication rejected component`
-- return no registration without invoking node creation or changing revision
-
-On a successful publication, clear stale failed-publication diagnostics for
-that component name. Keep component-name/instance collision checks under the
-registry mutex.
-
-The strict branch must occur before `components.emplace` and `reconcile`:
-
-```cpp
-auto state = std::make_shared<ComponentState>(component);
-ComponentSnapshot snapshot =
-    snapshotComponent(state, component, dispatcher, type_registry,
-                      options.port_buffer_size);
-if (!snapshot.unsupported.empty()) {
-  {
-    std::lock_guard<std::mutex> lock(model_mutex);
-    failed_publications[state->component_name] = snapshot.unsupported;
-  }
-  if (unsupported != nullptr) {
-    *unsupported = snapshot.unsupported;
-  }
-  assignError(error, "strict OPC UA publication rejected component '" +
-                         state->component_name + "'");
-  std::vector<DiagnosticEvent> events;
-  events.reserve(snapshot.unsupported.size());
-  for (const UnsupportedResource &resource : snapshot.unsupported) {
-    events.push_back(DiagnosticEvent{false, resource});
-  }
-  emitDiagnosticEvents(events);
-  return {};
-}
-```
-
-While holding `registry_mutex`, recheck the component-name collision, insert
-the state as a registration reservation, and pass the accepted `snapshot` to
-`publishSnapshot()`. On failure erase the reservation and deactivate the
-state. This prevents the worker from taking a second, different snapshot
-between validation and first publication.
-
-`publishSnapshot()` invokes the server synchronously, takes `model_mutex`,
-calls `ensureRoots()`, passes `snapshot.nodes` directly to
-`reconcileComponent()`, and advances revision only after that call succeeds:
-
-```cpp
-bool component_changed = false;
-bool published_snapshot = false;
-const bool invoked = server.invoke(
-    [this, &state, &snapshot, &component_changed, &published_snapshot,
-     error](::opcua::Server &native) {
-      std::lock_guard<std::mutex> lock(model_mutex);
-      const auto index = server.namespaceIndex();
-      if (!index || !ensureRoots(native, *index, error) ||
-          !reconcileComponent(native, *index, state.get(), snapshot.nodes,
-                              &component_changed, error)) {
-        return;
-      }
-      if (component_changed) {
-        advanceRevision(native);
-      }
-      published_snapshot = true;
-    });
-if (!invoked && (error == nullptr || error->empty())) {
-  assignError(error, "failed to invoke initial OPC UA component publication");
-}
-return invoked && published_snapshot;
-```
-
-Task 3 replaces `reconcileComponent()` internals with transactional rollback;
-this helper and its accepted-snapshot boundary remain unchanged.
-
-- [ ] **Step 4: Make diagnostic lookup independent of registration**
-
-Have `ObjectModel::unsupportedResources(name)` consult active candidate
-diagnostics first and rejected-publication diagnostics second. Remove rejected
-diagnostics when the component is successfully registered or explicitly
-unregistered. Do not invent a public diagnostics-clear command.
-
-Use one locked lookup with deterministic precedence:
-
-```cpp
-std::vector<UnsupportedResource>
-diagnosticsFor(std::string_view component_name) const {
-  std::lock_guard<std::mutex> lock(model_mutex);
-  const auto active = unsupported.find(component_name);
-  if (active != unsupported.end()) {
-    return active->second;
-  }
-  const auto rejected = failed_publications.find(component_name);
-  return rejected == failed_publications.end()
-             ? std::vector<UnsupportedResource>{}
-             : rejected->second;
-}
-```
-
-- [ ] **Step 5: Re-run the object-model suite**
-
-```bash
-cmake --build toolchain/tools/rtt_opcua/build --parallel \
-  --target rtt_opcua_object_model_test
-ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure \
-  -R '^rtt_opcua_object_model_test$'
-```
-
-Expected: strict unsupported publication passes, existing supported components
-still publish, and no registration lifetime test regresses.
-
-- [ ] **Step 6: Commit the strict preflight**
-
-```bash
-git -C toolchain/tools/rtt_opcua add \
-  include/rtt/opcua/object_model.hpp src/object_model.cpp \
-  tests/object_model_test.cpp
-git -C toolchain/tools/rtt_opcua commit \
-  -m "fix: reject incomplete OPC UA component models"
-```
-
-### Task 3: Make Address-Space Reconciliation Transactional
-
-**Files:**
-
-- Modify: `toolchain/tools/rtt_opcua/src/object_model.cpp`
-- Modify: `toolchain/tools/rtt_opcua/tests/object_model_test.cpp`
-
-**Interfaces:**
-
-- Initial publication and later reconciliation share one transactional node
-  diff implementation.
-- A rejected runtime candidate preserves the last complete node set and model
-  revision while updating diagnostics.
-
-- [ ] **Step 1: Add a deterministic mid-publication failure fixture**
-
-Add a test-only input port whose codec exists but whose bridge cannot be
-created:
-
-```cpp
-class FailingInputPort final : public RTT::InputPort<std::int32_t> {
-public:
-  using RTT::InputPort<std::int32_t>::InputPort;
-  RTT::base::PortInterface *antiClone() const override { return nullptr; }
-};
-```
-
-Publish a component containing ordinary supported resources followed by this
-port. Assert registration fails, the component root and every already-created
-child are absent, `componentCount()` is zero, and revision is unchanged. This
-exercises rollback without adding a production test hook.
-
-The failure assertions mirror the strict preflight transaction boundary:
-
-```cpp
-const std::uint64_t revision_before = model.revision();
-auto registration = model.registerComponent(component, &error);
-BOOST_TEST(!registration.has_value());
-BOOST_TEST(!error.empty());
-BOOST_TEST(model.componentCount() == 0U);
-BOOST_TEST(model.revision() == revision_before);
-BOOST_TEST(!::opcua::services::readBrowseName(client, component_root_id));
-BOOST_TEST(!::opcua::services::readBrowseName(client,
-                                              ordinary_property_id));
-```
-
-- [ ] **Step 2: Add a last-good runtime candidate test**
-
-Publish a fully supported component and record its revision and a known node.
-Add the existing unsupported service at runtime and trigger reconciliation.
-Assert the old node set and revision remain, the unsupported candidate nodes
-are absent, and diagnostics become queryable. Remove the unsupported service,
-reconcile again, and assert diagnostics clear; if the supported node set did
-not change, revision remains unchanged.
-
-Expose deterministic mutation helpers on the test component:
-
-```cpp
-void addUnsupportedService() {
-  BOOST_REQUIRE(provides()->addService(unsupported_service));
-}
-
-void removeUnsupportedService() {
-  provides()->removeService("unsupported");
-}
-```
-
-Construct this fixture without adding the service initially; reuse its
-existing unsupported operation/property/attribute/port contents.
-
-Use the worker's bounded polling helper and keep the revision assertion around
-the diagnostic-only candidate:
-
-```cpp
-const std::uint64_t last_good_revision = model.revision();
-component.addUnsupportedService();
-BOOST_REQUIRE(waitUntil([&] {
-  return !model.unsupportedResources(component.getName()).empty();
-}));
-BOOST_TEST(model.revision() == last_good_revision);
-BOOST_TEST(::opcua::services::readBrowseName(client, known_good_node_id));
-BOOST_TEST(!::opcua::services::readBrowseName(client,
-                                              unsupported_service_node_id));
-component.removeUnsupportedService();
-BOOST_REQUIRE(waitUntil([&] {
-  return model.unsupportedResources(component.getName()).empty();
-}));
-BOOST_TEST(model.revision() == last_good_revision);
-```
-
-- [ ] **Step 3: Run the two cases and observe residual/partial changes**
-
-```bash
-cmake --build toolchain/tools/rtt_opcua/build --parallel \
-  --target rtt_opcua_object_model_test
-toolchain/tools/rtt_opcua/build/rtt_opcua_object_model_test \
-  --run_test='*rollback*'
-toolchain/tools/rtt_opcua/build/rtt_opcua_object_model_test \
-  --run_test='*last_good*'
-```
-
-Expected: the current incremental delete/create implementation either leaves
-candidate nodes behind or commits a partial runtime candidate.
-
-- [ ] **Step 4: Separate shared-root creation from strict node creation**
-
-Keep `ensureRoots()` idempotent by explicitly accepting
-`BadNodeIdExists` there. Make every component `NodeSpec::create` treat
-`BadNodeIdExists` as a collision and failure. This ensures a foreign or stale
-component NodeId cannot be silently adopted as part of a successful model.
-
-Use separate result policies rather than a boolean hidden in every caller:
-
-```cpp
-bool componentNodeCreated(const ::opcua::Result<::opcua::NodeId> &result,
-                          const std::string &path, std::string *error) {
-  if (result) {
-    return true;
-  }
-  assignError(error, "failed to create OPC UA component node '" + path +
-                         "': " + statusName(result.code()));
-  return false;
-}
-
-bool sharedRootEnsured(const ::opcua::Result<::opcua::NodeId> &result,
-                       const std::string &path, std::string *error) {
-  if (result || result.code() == UA_STATUSCODE_BADNODEIDEXISTS) {
-    return true;
-  }
-  assignError(error, "failed to ensure OPC UA root node '" + path +
-                         "': " + statusName(result.code()));
-  return false;
-}
-```
-
-Apply `componentNodeCreated` to object, variable, method, and port-bridge node
-factories. Use `sharedRootEnsured` only from `ensureRoots()`.
-
-- [ ] **Step 5: Apply and roll back one node diff inside one server invoke**
-
-In `reconcileComponent`, compute these collections before mutating the server:
-
-```text
-old nodes to remove or replace, leaf first
-candidate nodes to add or replace, parent first
-old NodeSpecs needed for rollback, parent first
-all candidate paths that may have been partially created, leaf first
-```
-
-Take `const NodeMap previous = published[state]` before computing the diff.
-Do not erase/insert entries in `published[state]` while applying it. After
-`invoked && applied`, assign `published[state] = expected` once and set
-`*changed = !old_remove_paths.empty() || !candidate_specs.empty()`; on failure
-leave the stored map untouched.
-
-Delete old changed/removed nodes, create new/changed candidate nodes, and only
-then replace the stored snapshot and increment revision. On any mutation
-failure:
-
-1. delete every affected candidate path, including the path whose creator
-   returned failure
-2. recreate every removed old NodeSpec parent first
-3. retain the old stored snapshot and revision
-4. return the original error, appending any rollback error explicitly
-
-Because all mutations occur in one `Server::invoke`, remote clients cannot
-observe the intermediate diff.
-
-The mutation portion must follow this shape, where each collection is fully
-computed before `Server::invoke`:
-
-```cpp
-void appendRollbackError(std::string *error, const std::string &rollback_error,
-                         bool restored) {
-  if (error == nullptr) {
-    return;
-  }
-  *error += restored ? "; rollback succeeded"
-                     : "; rollback failed: " + rollback_error;
-}
-```
-
-```cpp
-bool applied = false;
-const bool invoked = server.invoke(
-    [this, &old_remove_paths, &candidate_specs, &candidate_cleanup_paths,
-     &rollback_specs, &applied, error](::opcua::Server &native_server) {
-      std::set<std::string> deleted_old_paths;
-      auto restoreOld = [&](const std::set<std::string> &paths,
-                            std::string *rollback_error) {
-        bool restored = true;
-        for (const NodeSpec *old_spec : rollback_specs) {
-          if (!paths.contains(old_spec->path)) {
-            continue;
-          }
-          restored = old_spec->create(native_server, namespace_index,
-                                      rollback_error) &&
-                     restored;
-        }
-        return restored;
-      };
-
-      for (const std::string &path : old_remove_paths) {
-        const ::opcua::StatusCode result = ::opcua::services::deleteNode(
-            native_server, nodeId(namespace_index, path), true);
-        if (result.isBad() && result != UA_STATUSCODE_BADNODEIDUNKNOWN) {
-          assignError(error, "failed to delete OPC UA node '" + path +
-                                 "': " + statusName(result));
-          std::string rollback_error;
-          const bool restored =
-              restoreOld(deleted_old_paths, &rollback_error);
-          appendRollbackError(error, rollback_error, restored);
-          return;
-        }
-        deleted_old_paths.insert(path);
-      }
-      for (const NodeSpec *spec : candidate_specs) {
-        if (!spec->create(native_server, namespace_index, error)) {
-          std::string rollback_error;
-          const bool removed = deleteNodes(native_server, namespace_index,
-                                           candidate_cleanup_paths,
-                                           &rollback_error);
-          const bool restored =
-              restoreOld(deleted_old_paths, &rollback_error) && removed;
-          appendRollbackError(error, rollback_error, restored);
-          return;
-        }
-      }
-      applied = true;
-    });
-if (!invoked || !applied) {
-  return false;
-}
-```
-
-`candidate_specs` and `rollback_specs` are parent-first; both path vectors are
-leaf-first. `appendRollbackError` preserves the original error and appends
-either `rollback succeeded` or the concrete rollback failure.
-
-- [ ] **Step 6: Reject unsupported runtime candidates without node mutation**
-
-When `snapshotComponent()` reports unsupported resources for an active
-component, update and emit diagnostic events but skip the node diff and leave
-the old snapshot/revision intact. A later supported candidate may replace the
-old revision normally.
-
-Do this in the existing reconciliation loop before calling
-`reconcileComponent()`:
-
-```cpp
-self->updateDiagnostics(state->component_name, expected.unsupported,
-                        *diagnostic_events);
-if (!expected.unsupported.empty()) {
-  continue;
-}
-```
-
-Diagnostic-only changes do not advance `/rtt/model/revision`; advance it only
-after a complete node candidate commits or a published component is removed.
-
-- [ ] **Step 7: Run the complete package suite**
-
-```bash
-cmake --build toolchain/tools/rtt_opcua/build --parallel
-ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure
-```
-
-Expected: all package tests pass. Task 9 repeats the complete maintained graph
-from a fresh temporary install under ASan, UBSan, and LSan so this task does not
-depend on an implicit prerequisite prefix.
-
-- [ ] **Step 8: Commit atomic reconciliation**
-
-```bash
-git -C toolchain/tools/rtt_opcua add \
-  src/object_model.cpp tests/object_model_test.cpp
-git -C toolchain/tools/rtt_opcua commit \
-  -m "fix: reconcile OPC UA components atomically"
-```
-
-### Task 4: Make OPC UA Ports Best-Effort Latest-Value
-
-**Files:**
-
-- Modify: `toolchain/tools/rtt_opcua/include/rtt/opcua/task_context_proxy.hpp`
-- Modify: `toolchain/tools/rtt_opcua/include/rtt/opcua/object_model.hpp`
-- Modify: `toolchain/tools/rtt_opcua/src/port_bridge.hpp`
-- Modify: `toolchain/tools/rtt_opcua/src/port_bridge.cpp`
-- Modify: `toolchain/tools/rtt_opcua/src/object_model.cpp`
+- Modify: `toolchain/tools/rtt_opcua/src/server.cpp`
 - Modify: `toolchain/tools/rtt_opcua/tests/object_model_test.cpp`
 - Modify: `toolchain/tools/rtt_opcua/tests/task_context_proxy_test.cpp`
-- Modify: `toolchain/tools/rtt_opcua/README.md`
 
-**Interfaces:**
+**Consumes:** the existing strict snapshot builder, `UnsupportedResource`,
+component callback state and leases, operation dispatcher, port bridge,
+deterministic NodeIds, endpoint type registry, and `RTT::ConnPolicy` codec.
 
-Change the proxy's default supervisory polling cadence without changing its
-public shape:
+**Produces:** this public `rtt_opcua` API:
 
 ```cpp
-struct TaskContextProxyOptions {
-  std::chrono::milliseconds request_timeout{std::chrono::seconds(2)};
-  std::chrono::milliseconds port_poll_interval{std::chrono::milliseconds(50)};
+struct ObjectModelOptions {
+  std::chrono::milliseconds operation_timeout{std::chrono::seconds(5)};
+  std::size_t port_buffer_size{64U};
+  std::function<void(const std::string &)> warning_sink;
+};
+
+class ObjectModel final {
+public:
+  explicit ObjectModel(Server &server, ObjectModelOptions options = {});
+  ~ObjectModel();
+
+  bool publishComponent(
+      RTT::TaskContext &component,
+      std::string *error = nullptr,
+      std::vector<UnsupportedResource> *unsupported = nullptr);
+  std::uint64_t revision() const noexcept;
+  std::size_t componentCount() const noexcept;
+  std::size_t pendingOperationCount() const noexcept;
+  std::vector<UnsupportedResource>
+  unsupportedResources(std::string_view component) const;
+  std::string lastError() const;
 };
 ```
 
-Remove the transport buffer size from `ObjectModelOptions`, and reduce bridge
-creation to the inputs that affect its behavior:
+`ComponentRegistration`, `registerComponent`, `reconcile`,
+`reconcile_interval`, and `Server::retainUntilStopped` cease to exist.
 
-```cpp
-static std::shared_ptr<PortBridge>
-create(RTT::base::PortInterface &port,
-       std::shared_ptr<const EndpointTypeRegistry> type_registry,
-       std::string *error = nullptr);
+- [ ] **Step 1: Replace reconciliation cases with static-contract tests**
+
+Keep the canonical array, strict unsupported-type, invalid-option, complete
+snapshot, operation, port, and callback-failure coverage in
+`tests/object_model_test.cpp`. Delete tests whose required outcome is graph
+reconciliation, registration-reset removal, ownership abandonment,
+replacement, or live resource refresh. Add these cases:
+
+```text
+publish_component_creates_one_complete_static_snapshot
+publish_component_is_idempotent_for_the_same_instance
+publish_component_rejects_a_different_instance_with_the_same_name
+unsupported_resource_rejects_the_whole_component
+creation_failure_rolls_back_only_candidate_nodes
+resource_changes_after_publication_do_not_change_topology
 ```
 
-The OPC UA `read()` and `write(value)` method signatures are unchanged. The
-semantic contract becomes best-effort latest-value delivery: intermediate
-samples may be replaced, and this transport is neither queued nor lossless.
+Assertions shared by the cases:
 
-- [ ] **Step 1: Write failing latest-value output-port assertions**
+- a successful first publication increments revision once and component count
+  once;
+- same-instance publication returns true without changing revision;
+- same-name/different-pointer publication returns false and preserves the
+  first model;
+- strict preflight failure leaves no component root and caches every
+  diagnostic;
+- `UnsupportedResource::message()` says `rejected`, not `skipped`; and
+- adding an RTT resource later does not create a node or change revision.
 
-In
-`component_metadata_reconciles_and_registration_guards_lifetime`, replace the
-single `Feedback` sample with three writes before the first OPC UA call:
+For rollback, create a foreign OPC UA node whose NodeId equals a later
+candidate property NodeId, but parent it under `ObjectsFolder`. Publish a
+component containing that property. Assert that the collision makes
+publication fail, every earlier candidate node is gone, and the foreign node
+still exists with its original value and parent.
 
-```cpp
-BOOST_TEST(feedback.write(4.25) == RTT::WriteSuccess);
-BOOST_TEST(feedback.write(5.25) == RTT::WriteSuccess);
-BOOST_TEST(feedback.write(6.25) == RTT::WriteSuccess);
-const auto feedback_result =
-    ::opcua::services::call(client, feedback_id, feedback_read_id, {});
-BOOST_REQUIRE(feedback_result.statusCode().isGood());
-BOOST_REQUIRE_EQUAL(feedback_result.outputArguments().size(), 2U);
-BOOST_TEST(feedback_result.outputArguments()[0].to<std::string>() ==
-           "NewData");
-BOOST_TEST(feedback_result.outputArguments()[1].to<double>() == 6.25);
+Update `tests/task_context_proxy_test.cpp` to call `publishComponent`. Remove
+registration resets and republishing. Keep repeated
+`TaskContextProxy::synchronize()` calls as client-only synchronization against
+an unchanged server graph.
 
-const auto feedback_old_result =
-    ::opcua::services::call(client, feedback_id, feedback_read_id, {});
-BOOST_REQUIRE(feedback_old_result.statusCode().isGood());
-BOOST_TEST(feedback_old_result.outputArguments()[0].to<std::string>() ==
-           "OldData");
-BOOST_TEST(feedback_old_result.outputArguments()[1].to<double>() == 6.25);
-```
-
-This proves a real RTT `OutputPort` presents the newest sample on the first
-remote read and retains it as `OldData` until another write. The old circular
-buffer returns `4.25`, so the test must initially fail.
-
-- [ ] **Step 2: Write failing latest-value input-port assertions**
-
-Keep the wrong-type check, then replace the single valid `Command/write` call
-with three good calls before the real component reads its input:
-
-```cpp
-for (const std::uint16_t value : {std::uint16_t{71}, std::uint16_t{72},
-                                  std::uint16_t{73}}) {
-  const std::vector<::opcua::Variant> command_inputs{
-      ::opcua::Variant(value)};
-  const auto command_result = ::opcua::services::call(
-      client, command_id, command_write_id, command_inputs);
-  BOOST_REQUIRE(command_result.statusCode().isGood());
-  BOOST_REQUIRE_EQUAL(command_result.outputArguments().size(), 1U);
-  BOOST_TEST(command_result.outputArguments()[0].to<std::string>() ==
-             "WriteSuccess");
-}
-
-BOOST_TEST(command.read(commanded_value) == RTT::NewData);
-BOOST_TEST(commanded_value == 73U);
-```
-
-The old circular buffer exposes `71`, so this half must also fail before the
-bridge policy changes.
-
-- [ ] **Step 3: Pin the proxy's default polling cadence in a unit test**
-
-Add this next to the existing invalid-interval case:
-
-```cpp
-BOOST_AUTO_TEST_CASE(proxy_port_poll_default_is_supervisory_rate) {
-  const RTT::opcua::TaskContextProxyOptions options;
-  BOOST_TEST(options.port_poll_interval == std::chrono::milliseconds(50));
-}
-```
-
-Run both affected binaries:
+- [ ] **Step 2: Build the tests and observe the obsolete API failures**
 
 ```bash
 cmake --build toolchain/tools/rtt_opcua/build --parallel \
   --target rtt_opcua_object_model_test rtt_opcua_task_context_proxy_test
 ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure \
-  -R '^(rtt_opcua_object_model_test|rtt_opcua_task_context_proxy_test)$'
+  -R '^rtt_opcua_(object_model|task_context_proxy)_test$'
 ```
 
-Expected: the object-model case sees the oldest queued values, and the proxy
-options case sees `10ms`; both failures demonstrate the old behavior.
+Expected: compilation fails because `ObjectModel::publishComponent` does not
+exist and the old API still owns registration/reconciliation state.
 
-- [ ] **Step 4: Change only the default poll interval**
+- [ ] **Step 3: Reduce the public and internal state model**
 
-Update `TaskContextProxyOptions::port_poll_interval` to `50ms` and rewrite its
-comment as a supervisory sampling contract:
+Remove `ComponentRegistration` and its reset/unregister paths. Store successful
+publications in `ObjectModelImpl` by component name with the original
+`RTT::TaskContext*`, closed-capable callback state, port bridges, and immutable
+snapshot fingerprint. Do not run a worker thread.
+
+Implement the top-level decision in this order while holding the model command
+mutex:
 
 ```cpp
-// Remote ports are sampled at a supervisory cadence by default. Clients that
-// need faster observation may set an explicit positive interval.
-std::chrono::milliseconds port_poll_interval{std::chrono::milliseconds(50)};
+bool ObjectModelImpl::publishComponent(
+    RTT::TaskContext &component,
+    std::string *error,
+    std::vector<UnsupportedResource> *unsupported) {
+  // 1. Return true for the already-published same pointer.
+  // 2. Reject a name already bound to a different pointer.
+  // 3. Build and strictly validate the complete snapshot.
+  // 4. Create the candidate subtree transactionally.
+  // 5. Commit callback/bridge ownership and increment revision once.
+}
 ```
 
-Keep the existing validation for zero and overflowing durations. Keep every
-fixture-specific `5ms` or `10ms` setting explicit; those values shorten tests
-and do not define the product default.
+On any false result, set both the returned error and `lastError()`. On success,
+clear the cached error and the component's old unsupported diagnostics.
 
-- [ ] **Step 5: Replace the circular anti-port buffer with RTT `DATA`**
+- [ ] **Step 4: Implement creation-only transaction rollback**
 
-Remove `buffer_size` from the declaration and definition of
-`PortBridge::create`. Remove its range check and the now-unused `<limits>` and
-`<cstddef>` includes. Preserve the type-codec and `antiClone()` checks, then
-connect the port pair with:
+Replace reconciliation and adoption logic with a local creation ledger:
 
 ```cpp
-const RTT::ConnPolicy policy =
-    RTT::ConnPolicy::data(RTT::ConnPolicy::LOCK_FREE, false);
+struct CreatedNode {
+  ::opcua::NodeId id;
+  bool recursive_root{false};
+};
 ```
 
-The `false` argument avoids forced connection initialization. Preserve the
-existing `read(value, true)` behavior so the bridge reports `NewData` once for
-a new latest value and then reports `OldData` with the retained value.
+Apply these rules:
 
-- [ ] **Step 6: Remove the obsolete object-model option end to end**
+- shared namespace roots may accept `BadNodeIdExists`, but are never entered
+  into the ledger;
+- every component-owned NodeId treats `BadNodeIdExists` as failure and never
+  adopts the existing node;
+- record only nodes successfully created by the current attempt;
+- after method creation, browse and record its generated `InputArguments` and
+  `OutputArguments` property NodeIds;
+- rollback closes candidate callback state and deletes ledger entries in
+  reverse order; deleting the component root recursively covers its owned
+  descendants;
+- ignore `BadNodeIdUnknown` only while rolling back an already removed
+  descendant; report any other rollback failure; and
+- never delete or rewrite pre-existing nodes.
 
-Delete this field rather than retaining a no-op compatibility option:
+The successful model owns callback and bridge state until its destructor.
+Stock open62541pp callback adapter storage may remain inert until server
+destruction; callbacks capture weak/closed component state, not a naked usable
+component pointer.
 
-```cpp
-std::size_t port_buffer_size{64U};
-```
+- [ ] **Step 5: Remove server-side retention added for reconciliation**
 
-Remove the corresponding range validation from
-`ObjectModelImpl::registerComponent` and remove the parameter through the full
-call chain:
+Delete `Server::retainUntilStopped`, its retained-owner container, and every
+call site. The caller owns `ObjectModel` explicitly. Preserve `Server::invoke`
+semantics: once a task starts, a timeout must not invalidate synchronous
+captures.
 
-```text
-snapshotComponent
-appendServiceContents
-appendPortNodes
-portMethodSpec
-PortBridge::create
-```
-
-Remove `buffer_size` from creator captures and make each port-method
-fingerprint depend only on the port instance and direction:
-
-```cpp
-spec.fingerprint = "port-method|" + pointerFingerprint(&port) + "|" +
-                   method_name;
-```
-
-Search for the removed API to ensure no stale configuration path survives:
+- [ ] **Step 6: Prove the static model and absence of dynamic APIs**
 
 ```bash
-rg -n 'port_buffer_size|buffer_size.*PortBridge|PortBridge::create' \
+cmake --build toolchain/tools/rtt_opcua/build --parallel \
+  --target rtt_opcua_object_model_test rtt_opcua_task_context_proxy_test
+ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure \
+  -R '^rtt_opcua_(object_model|task_context_proxy)_test$'
+rg -n 'ComponentRegistration|registerComponent|reconcile_interval|reconcile\(|retainUntilStopped' \
   toolchain/tools/rtt_opcua/include toolchain/tools/rtt_opcua/src \
-  toolchain/tools/rtt_opcua/tests toolchain/tools/rtt_opcua/README.md
+  toolchain/tools/rtt_opcua/tests
+git -C toolchain/tools/rtt_opcua diff --check
 ```
 
-Expected: `port_buffer_size` has no matches, and every `PortBridge::create`
-call uses the reduced signature.
+Expected: both suites pass and `rg` returns no matches.
 
-- [ ] **Step 7: Document the delivery contract and retry boundary**
-
-Add a `Port transport semantics` subsection to the package README. State all
-of these points explicitly:
-
-```text
-- Remote output-port reads return the latest available sample as NewData.
-- A later read without another sample returns OldData and the same value.
-- Multiple remote input-port writes may replace one another before RTT reads.
-- TaskContextProxy polls ports every 50ms unless configured otherwise.
-- A proxy retains a pending input value until the server returns WriteSuccess.
-- There are no sample sequence numbers or exactly-once guarantees.
-- The bridge is not queued, lossless, OPC UA PubSub, or a deterministic loop.
-```
-
-Do not describe attributes, properties, operations, or custom datatype codecs
-as changed; their contracts remain independent of this port policy.
-
-- [ ] **Step 8: Review timing tests without inflating sleeps**
-
-Inspect proxy tests for fixed waits:
+- [ ] **Step 7: Commit the `rtt_opcua` static graph**
 
 ```bash
-rg -n 'sleep_for|sleep_until|wait_for|port_poll_interval' \
-  toolchain/tools/rtt_opcua/tests/task_context_proxy_test.cpp \
-  toolchain/tools/rtt_opcua/tests/object_model_test.cpp
+git -C toolchain/tools/rtt_opcua add include/rtt/opcua/object_model.hpp \
+  include/rtt/opcua/server.hpp src/object_model.cpp src/server.cpp \
+  tests/object_model_test.cpp tests/task_context_proxy_test.cpp
+git -C toolchain/tools/rtt_opcua commit -m \
+  "refactor: make OPC UA component publication static"
 ```
 
-Tests that need fast transfers must set a `5ms` or `10ms` interval and use an
-existing bounded `waitUntil` predicate. Do not compensate for the new default
-by increasing fixed sleeps.
+---
 
-- [ ] **Step 9: Run the focused and complete package suites**
+## Task 3: Reap Timed-Out Operations Without Graph Maintenance
+
+**Files:**
+
+- Modify: `toolchain/tools/rtt_opcua/src/operation_dispatcher.hpp`
+- Modify: `toolchain/tools/rtt_opcua/src/operation_dispatcher.cpp`
+- Modify: `toolchain/tools/rtt_opcua/tests/object_model_test.cpp`
+
+**Consumes:** `PendingInvocation`, which already owns the `ComponentLease`,
+`SendHandleC`, argument datasources, and result datasources needed after an OPC
+UA request returns `BadTimeout`.
+
+**Produces:** automatic pending-call cleanup independent of reconciliation and
+blocking lifetime-safe drain during object-model destruction.
+
+- [ ] **Step 1: Add the two operation-lifetime regression tests**
+
+Add:
+
+```text
+timed_out_operation_is_reaped_without_graph_activity
+shutdown_after_timeout_waits_for_operation_completion
+```
+
+The first test invokes a deliberately delayed OwnThread operation with a short
+OPC UA timeout, asserts `BadTimeout`, releases the operation, and waits with a
+bounded polling helper until `pendingOperationCount() == 0`. It must not call a
+model reconciliation or reaping method.
+
+The second test starts the delayed call, observes `BadTimeout`, immediately
+stops the server and destroys the model on another thread, and asserts that
+destruction remains blocked until the delayed RTT operation is released. Then
+join all threads and assert the operation completed exactly once.
+
+- [ ] **Step 2: Run the focused test and observe stale pending state**
 
 ```bash
 cmake --build toolchain/tools/rtt_opcua/build --parallel \
-  --target rtt_opcua_object_model_test rtt_opcua_task_context_proxy_test
-ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure \
-  -R '^(rtt_opcua_object_model_test|rtt_opcua_task_context_proxy_test)$'
-cmake --build toolchain/tools/rtt_opcua/build --parallel
-ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure
+  --target rtt_opcua_object_model_test
+toolchain/tools/rtt_opcua/build/rtt_opcua_object_model_test \
+  --run_test=timed_out_operation_is_reaped_without_graph_activity
 ```
 
-Expected: both focused tests and the full maintained package suite pass.
-Task 9 still repeats the complete graph from a new temporary prefix; this
-focused build is only the red/green development loop.
+Expected: the pending count does not return to zero because the removed graph
+worker was the only periodic reaper.
 
-- [ ] **Step 10: Commit latest-value port semantics**
+- [ ] **Step 3: Give `OperationDispatcher` a focused reaper**
+
+Add `std::condition_variable`, `std::jthread`, and a `draining` flag to
+`OperationDispatcher::Impl`. The reaper sleeps while no calls are pending,
+wakes after `retain`, probes `collectIfDone()`, erases completed handles, and
+never reads or mutates OPC UA topology.
+
+Use this shutdown order:
+
+```cpp
+void OperationDispatcher::Impl::drain() noexcept {
+  {
+    std::lock_guard lock(mutex);
+    draining = true;
+  }
+  reaper.request_stop();
+  wake.notify_all();
+  if (reaper.joinable()) {
+    reaper.join();
+  }
+  while (count() != 0U) {
+    reapOnce();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+```
+
+If `retain` races with `drain`, do not append after draining starts; wait on
+that invocation locally until its handle finishes. Keep all exception
+boundaries `noexcept` and treat a collect exception as a finished invocation.
+Remove public/internal `reapPending()` calls from ObjectModel; retain only the
+pending count observation needed by tests.
+
+- [ ] **Step 4: Run focused and complete maintained `rtt_opcua` tests**
 
 ```bash
-git -C toolchain/tools/rtt_opcua add \
-  include/rtt/opcua/task_context_proxy.hpp \
-  include/rtt/opcua/object_model.hpp \
-  src/port_bridge.hpp src/port_bridge.cpp src/object_model.cpp \
-  tests/object_model_test.cpp tests/task_context_proxy_test.cpp README.md
-git -C toolchain/tools/rtt_opcua commit \
-  -m "feat: use latest-value OPC UA port semantics"
+cmake --build toolchain/tools/rtt_opcua/build --parallel
+ctest --test-dir toolchain/tools/rtt_opcua/build --output-on-failure \
+  -R '^rtt_opcua_.*_test$'
+git -C toolchain/tools/rtt_opcua diff --check
 ```
 
-### Task 5: Refactor The OCL Service To Explicit Lifecycle And Publication
+Expected: both new lifetime cases and the full maintained suite pass; no test
+invokes reconciliation to release a timed-out call.
+
+- [ ] **Step 5: Commit the dispatcher lifetime change**
+
+```bash
+git -C toolchain/tools/rtt_opcua add src/operation_dispatcher.hpp \
+  src/operation_dispatcher.cpp tests/object_model_test.cpp
+git -C toolchain/tools/rtt_opcua commit -m \
+  "fix: retain timed out OPC UA calls through completion"
+```
+
+---
+
+## Task 4: Make OCL Startup And Publication Explicit
 
 **Files:**
 
@@ -1120,733 +478,313 @@ git -C toolchain/tools/rtt_opcua commit \
 - Modify: `toolchain/tools/ocl/deployment/OpcUaDeploymentComponent.cpp`
 - Modify: `toolchain/tools/ocl/deployment/tests/opcua_deployment_test.cpp`
 - Modify: `toolchain/tools/ocl/deployment/CMakeLists.txt`
+- Modify: `toolchain/tools/ocl/bin/deployer.cpp`
 
-**Interfaces:**
+**Consumes:** `RTT::opcua::Server`, the static `ObjectModel`, process-wide
+datatype registry, local Deployer peer map, and existing remote proxy methods.
 
-- Public C++ methods and `opcua` operations:
-
-```cpp
-bool startOpcUa();
-bool publishComponent(const std::string &component_name);
-bool unpublishComponent(const std::string &component_name);
-```
-
-- Internal helpers use distinct names:
-
-```cpp
-bool publishLocalComponent(RTT::TaskContext &component);
-void releaseComponent(RTT::TaskContext *component) noexcept;
-bool failLocked(const char *operation, std::string error) const;
-```
-
-- [ ] **Step 1: Rewrite the lifecycle tests before implementation**
-
-Replace the queued/partial-publication test with focused cases:
+**Produces:** the exact local `opcua` service:
 
 ```text
-explicit_start_publishes_only_the_complete_deployer
-server_metadata_requires_explicit_component_publication
-strict_publication_failure_is_queryable_and_leaves_no_proxy
-start_publish_and_unpublish_are_idempotent
-remote_components_remain_owned_as_aliased_peers
+bool start()
+bool isRunning()
+String endpointUrl()
+String lastError()
+bool publishComponent(String component)
+StringArray unsupportedResources(String component)
 ```
 
-The first case must prove construction leaves the endpoint stopped, a
-pre-start publish returns false with `OPC UA server is not running`, start
-creates a Deployer proxy, and no other local peer is remotely visible.
+There is no `ready`, `endpoint`, `publishPeer`, `unpublishPeer`, or
+`unpublishComponent` compatibility operation.
 
-Through the Deployer proxy, assert the full connection API is present:
+- [ ] **Step 1: Split the deployment tests into process-isolated cases**
+
+Replace the broad old lifecycle cases with:
 
 ```text
-connect
-stream
-createStream
+explicit_start_publishes_only_deployer
+strict_publication_is_static_and_idempotent
+server_metadata_does_not_auto_publish
+failed_start_freezes_registry_and_can_retry
+remote_components_remain_aliased_client_peers
 ```
 
-Through its `opcua` service, assert `publishComponent` and
-`unpublishComponent` exist and `publishPeer`/`unpublishPeer` do not.
-
-The main lifecycle case must contain this red/green spine:
-
-```cpp
-const std::string endpoint_before = deployer.opcUaEndpoint();
-BOOST_TEST(!deployer.opcUaReady());
-BOOST_REQUIRE(deployer.addPeer(&local));
-BOOST_TEST(!deployer.publishComponent(local.getName()));
-BOOST_TEST(deployer.opcUaLastError() == "OPC UA server is not running");
-BOOST_REQUIRE(deployer.startOpcUa());
-BOOST_TEST(deployer.opcUaReady());
-BOOST_TEST(deployer.opcUaEndpoint() == endpoint_before);
-auto deployer_proxy = RTT::opcua::TaskContextProxy::create(
-    endpoint_before, deployer.getName(), {}, &error);
-BOOST_REQUIRE_MESSAGE(deployer_proxy != nullptr, error);
-auto local_proxy = RTT::opcua::TaskContextProxy::create(
-    endpoint_before, local.getName(), {}, &error);
-BOOST_TEST(local_proxy == nullptr);
-BOOST_REQUIRE(deployer.publishComponent(local.getName()));
-local_proxy = RTT::opcua::TaskContextProxy::create(
-    endpoint_before, local.getName(), {}, &error);
-BOOST_REQUIRE_MESSAGE(local_proxy != nullptr, error);
-```
-
-- [ ] **Step 2: Split Boost cases into fresh CTest processes**
-
-Replace the aggregate OCL `add_test` with a `foreach(case ...)` that invokes:
+Register each Boost case as a separate CTest process because the datatype
+registry freezes process-wide:
 
 ```cmake
-add_test(
-  NAME ocl_opcua_deployment_${case}
-  COMMAND ocl_opcua_deployment_test --run_test=${case}
-)
+foreach(case IN ITEMS
+    explicit_start_publishes_only_deployer
+    strict_publication_is_static_and_idempotent
+    server_metadata_does_not_auto_publish
+    failed_start_freezes_registry_and_can_retry
+    remote_components_remain_aliased_client_peers)
+  add_test(
+    NAME ocl_opcua_deployment_${case}
+    COMMAND ocl_opcua_deployment_test --run_test=${case})
+endforeach()
 ```
 
-This isolates process-wide datatype freezing and makes failures attributable
-to one lifecycle contract.
+The first case asserts construction is stopped, `endpointUrl()` is already
+available, pre-start publication returns false without queueing, start
+publishes only `Deployer`, repeated start is a true no-op, and service
+introspection exposes exactly the six operations above.
 
-- [ ] **Step 3: Run the focused cases and observe old behavior**
+The strict case verifies supported publication, same-instance idempotency,
+remote value/operation access, complete rejection of an unsupported type,
+queryable diagnostics, no residual subtree, and fixed topology after adding a
+late RTT resource.
+
+The metadata case loads a site component with `Server=true`, starts the
+endpoint, proves the component is absent, then explicitly publishes it.
+
+The failed-start case occupies the configured loopback port, calls start,
+asserts the registry remains frozen, releases the port, and retries
+successfully with the same frozen registry.
+
+- [ ] **Step 2: Run the new tests and observe old lifecycle behavior**
 
 ```bash
 cmake --build toolchain/tools/ocl/build --parallel \
-  --target ocl_opcua_deployment_test
+  --target ocl_opcua_deployment_test deployer-opcua
 ctest --test-dir toolchain/tools/ocl/build --output-on-failure \
   -R '^ocl_opcua_deployment_.*$'
 ```
 
-Expected: pre-start publication queues, `Server=true` auto-publishes, unknown
-types publish partially, and the old operation names remain.
+Expected: cases fail to compile against the new method names or fail because
+construction queues publications and the executable still starts OPC UA
+automatically.
 
-- [ ] **Step 4: Remove constructor and `Server=true` publication**
+- [ ] **Step 3: Implement the explicit lifecycle state machine**
 
-Remove `Impl::pending`, constructor calls that publish the Deployer/site
-components, and publication from `componentLoaded()`. The load hook should
-only maintain existing OCL component/proxy bookkeeping. Construction must not
-throw because the OPC UA endpoint is intentionally stopped.
+Use internal states `created`, `starting`, `running`, `start_failed`,
+`stopping`, and `destroyed`. Serialize lifecycle and publication commands with
+one mutex. Store successful publications as
+`std::map<std::string, RTT::TaskContext*, std::less<>>`.
 
-Register exact service operation names `publishComponent` and
-`unpublishComponent`. Remove old aliases from both C++ and the RTT service.
-
-The constructor's publication-related work must reduce to service wiring:
+Expose these C++ backing methods:
 
 ```cpp
-opcua
-    ->addOperation("publishComponent",
-                   &OpcUaDeploymentComponent::publishComponent, this,
-                   RTT::ClientThread)
-    .arg("component", "Local RTT component name.");
-opcua
-    ->addOperation("unpublishComponent",
-                   &OpcUaDeploymentComponent::unpublishComponent, this,
-                   RTT::ClientThread)
-    .arg("component", "Local RTT component name.");
+bool startOpcUa();
+bool opcUaIsRunning() const;
+std::string opcUaEndpointUrl() const;
+std::string opcUaLastError() const;
+bool publishComponent(const std::string &component_name);
+std::vector<std::string>
+unsupportedResources(const std::string &component_name) const;
 ```
 
-There is no constructor call to either operation and no iteration over
-`compmap`.
+Constructor behavior is limited to creating the server configuration, adding
+the six service operations, and preserving remote-client services. It must not
+start the server, queue Deployer publication, iterate loaded peers, or inspect
+`Server=true`.
 
-- [ ] **Step 5: Implement serialized startup as one transaction**
+Implement `startOpcUa()` synchronously in this order:
 
-Under `Impl::mutex`, return true unchanged only when the server, model, and
-Deployer registration are all ready. Otherwise:
-
-1. call `registerCanonicalTypeProtocols()` (including `ConnPolicy`)
-2. call `freezeDataTypeRegistry()` explicitly, before endpoint binding
-3. call `server.start()`
-4. construct `ObjectModel`
-5. strictly register only `*this`, collecting unsupported diagnostics
-6. store the Deployer registration and mark ready
-
-On steps 3-4 failure, reset the registration/model, stop the server, retain the
-process-wide registry freeze, set a specific `last_error`, and return false.
-`opcUaReady()` must take the same mutex and require all three ready conditions,
-not only `server.isRunning()`.
-
-Represent the accepted transitions explicitly with an internal state enum for
-`Created`, `Starting`, `Running`, `StartFailed`, `Stopping`, and `Destroyed`.
-Set `Starting` before work, `Running` only after the Deployer registration is
-stored, and `StartFailed` after rollback. A retry from `StartFailed` uses the
-same frozen registry. `endpoint()`, `ready()`, and `lastError()` take the same
-mutex so no caller observes a half-built state.
-
-Define and store the state in `Impl`:
-
-```cpp
-enum class LifecycleState {
-  created,
-  starting,
-  running,
-  start_failed,
-  stopping,
-  destroyed,
-};
-
-LifecycleState lifecycle{LifecycleState::created};
+```text
+registerCanonicalTypeProtocols
+freezeDataTypeRegistry
+Server::start
+construct ObjectModel
+ObjectModel::publishComponent(*this)
+record Deployer publication
+state = running
 ```
 
-The synchronous transaction must use this failure cleanup on every path after
-the listener starts:
+On the first attempt, register the canonical protocols and freeze the
+registry. On retries, the same-registration checks and
+`freezeDataTypeRegistry()` must be idempotent; no retry may reopen or mutate
+the registry.
 
-```cpp
-auto rollbackStart = [this](std::string message) {
-  impl_->published.erase(this);
-  impl_->model.reset();
-  impl_->server.stop();
-  impl_->lifecycle = Impl::LifecycleState::start_failed;
-  impl_->last_error = std::move(message);
-  return false;
-};
+On a failure after the listener starts, stop the listener, destroy the
+candidate ObjectModel, leave the datatype registry frozen, set
+`state = start_failed`, and retain an exact `lastError`. A later start retries
+using the same configuration and frozen registry. Starting while running
+returns true without changing the model revision.
 
-impl_->lifecycle = Impl::LifecycleState::starting;
-const bool canonical_registered =
-    RTT::opcua::registerCanonicalTypeProtocols(&error);
-const std::string canonical_error = error;
-std::string freeze_error;
-const auto frozen_order = RTT::opcua::freezeDataTypeRegistry(&freeze_error);
-if (!canonical_registered) {
-  return rollbackStart(canonical_error);
-}
-if (!frozen_order) {
-  return rollbackStart(freeze_error);
-}
-if (!impl_->server.start(&error)) {
-  return rollbackStart(error);
-}
-impl_->model = std::make_unique<RTT::opcua::ObjectModel>(
-    impl_->server, impl_->options.object_model);
-std::vector<RTT::opcua::UnsupportedResource> diagnostics;
-auto registration =
-    impl_->model->registerComponent(*this, &error, &diagnostics);
-if (!registration) {
-  impl_->publication_diagnostics[getName()] = std::move(diagnostics);
-  return rollbackStart("failed to publish OPC UA Deployer: " + error);
-}
-impl_->published.emplace(this, std::move(*registration));
-impl_->lifecycle = Impl::LifecycleState::running;
-impl_->last_error.clear();
-return true;
-```
+- [ ] **Step 4: Implement strict named publication**
 
-Wrap model construction/registration in the existing exception boundary so a
-constructor or open62541pp exception becomes `lastError()` and false.
+Before running, return false with `OPC UA server is not running`. While
+running, resolve `Deployer` or a known local peer. Reject an unknown name and
+reject `RTT::opcua::TaskContextProxy` instances. Forward to
+`ObjectModel::publishComponent`, cache diagnostics, and record the pointer only
+after success. A successful command clears `lastError`.
 
-In destruction, set `stopping` under the mutex, swap registrations and remote
-peers into local containers, release them outside the mutex, reset the model,
-stop the server, then set `destroyed` under the mutex. Releasing registrations
-outside the lifecycle mutex allows in-flight callbacks to complete without a
-lock cycle while the public state remains non-running.
+`componentLoaded` continues only the existing remote-proxy bookkeeping. It
+does not publish local peers. Remove OPC UA auto-unpublication from
+`componentUnloaded`; Task 5 supplies the pre-unload safety guard.
 
-```cpp
-{
-  std::lock_guard<std::mutex> lock(impl_->mutex);
-  impl_->lifecycle = Impl::LifecycleState::stopping;
-  remote_peers.swap(impl_->remote_peers);
-  published.swap(impl_->published);
-}
-for (auto &[peer_name, remote] : remote_peers) {
-  RTT::TaskContext::removePeer(peer_name);
-  remote.proxy->disconnect();
-}
-remote_peers.clear();
-published.clear();
-impl_->model.reset();
-impl_->server.stop();
-{
-  std::lock_guard<std::mutex> lock(impl_->mutex);
-  impl_->lifecycle = Impl::LifecycleState::destroyed;
-}
-```
+- [ ] **Step 5: Remove executable auto-start**
 
-- [ ] **Step 6: Implement explicit component-name publication**
+Delete the `deployer.cpp` block that calls `dc.startOpcUa()` after processing
+the supplied `.ops`/site files. The deployment script or interactive local
+TaskBrowser must issue `opcua.start()` explicitly. A script containing only
+`import` and `loadComponent` must leave the configured port closed.
 
-Resolve `this`/the Deployer name or a local peer. Reject unknown names, a
-different instance with the same name, and `TaskContextProxy` peers. Before a
-successful start, fail without queuing. For a live registration of the same
-pointer, return true without changing revision.
-
-On strict failure, retain the returned diagnostics in
-`Impl::publication_diagnostics`; `unsupportedResources(name)` must query that
-cache even though the component is not published. Clear the cache after a
-successful publication.
-
-`unpublishComponent` must reject the Deployer, fail for unknown names, remove
-one active registration, and return true unchanged for a known local component
-that is already unpublished.
-
-`componentUnloaded()` calls `releaseComponent(component)`. That helper moves
-erases cached diagnostics and resets the registration while holding
-`Impl::mutex`. The potentially blocking reset is part of the serialized unload
-transition; keeping the lock prevents a concurrent publish from racing the old
-node teardown and component lease drain.
-
-Every successful service command clears `lastError()`. Expected failures set a
-specific error and return false without throwing across RTT or OPC UA callback
-boundaries. Add endpoint-before/after-start equality and last-error clearing to
-the lifecycle test.
-
-Use this lookup/publication ordering:
-
-```cpp
-std::lock_guard<std::mutex> lock(impl_->mutex);
-RTT::TaskContext *component =
-    component_name == getName() || component_name == "this"
-        ? this
-        : getPeer(component_name);
-if (component == nullptr) {
-  return failLocked("publishComponent",
-                    "unknown local component: " + component_name);
-}
-if (dynamic_cast<RTT::opcua::TaskContextProxy *>(component) != nullptr) {
-  return failLocked("publishComponent",
-                    "remote proxy cannot be published: " + component_name);
-}
-if (impl_->lifecycle != Impl::LifecycleState::running || !impl_->model) {
-  return failLocked("publishComponent", "OPC UA server is not running");
-}
-const auto existing = impl_->published.find(component);
-if (existing != impl_->published.end()) {
-  impl_->last_error.clear();
-  return true;
-}
-std::vector<RTT::opcua::UnsupportedResource> diagnostics;
-auto registration =
-    impl_->model->registerComponent(*component, &error, &diagnostics);
-if (!registration) {
-  impl_->publication_diagnostics[component_name] = std::move(diagnostics);
-  return failLocked("publishComponent", error);
-}
-impl_->published.emplace(component, std::move(*registration));
-impl_->publication_diagnostics.erase(component_name);
-impl_->last_error.clear();
-return true;
-```
-
-Before this block, also scan active registrations by `registration.name()` and
-reject a matching name owned by a different pointer.
-
-`fail()` acquires `Impl::mutex` and delegates to `failLocked()`; code that
-already holds the lifecycle mutex calls `failLocked()` directly. This avoids a
-recursive lock while keeping logging and `lastError()` formatting in one
-implementation.
-
-- [ ] **Step 7: Verify idempotency with the remote revision node**
-
-In the test, resolve `urn:orocos:rtt` in the client namespace array and read
-`/rtt/model/revision`. Assert repeated start and repeated publish do not change
-it; the first unpublish increments it once; repeated unpublish leaves it
-unchanged.
-
-- [ ] **Step 8: Run all OCL OPC UA tests**
+- [ ] **Step 6: Prove the service and executable contract**
 
 ```bash
 cmake --build toolchain/tools/ocl/build --parallel \
   --target ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
 ctest --test-dir toolchain/tools/ocl/build --output-on-failure \
   -R '^(ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
+rg -n 'publishPeer|unpublishPeer|ComponentRegistration|reconcile_interval' \
+  toolchain/tools/ocl/deployment toolchain/tools/ocl/bin
+git -C toolchain/tools/ocl diff --check
 ```
 
-Expected: all explicit lifecycle, remote-peer, and TaskBrowser CLI cases pass.
+Expected: tests pass and `rg` returns no matches. Strings asserting the absence
+of historical service names are allowed only in tests.
 
-- [ ] **Step 9: Commit the OCL lifecycle refactor**
+- [ ] **Step 7: Commit the OCL lifecycle change**
 
 ```bash
-git -C toolchain/tools/ocl add \
-  deployment/OpcUaDeploymentComponent.hpp \
+git -C toolchain/tools/ocl add deployment/OpcUaDeploymentComponent.hpp \
   deployment/OpcUaDeploymentComponent.cpp \
-  deployment/tests/opcua_deployment_test.cpp deployment/CMakeLists.txt
-git -C toolchain/tools/ocl commit \
-  -m "feat: make OPC UA deployment lifecycle explicit"
+  deployment/tests/opcua_deployment_test.cpp deployment/CMakeLists.txt \
+  bin/deployer.cpp
+git -C toolchain/tools/ocl commit -m \
+  "refactor: make OPC UA deployment startup explicit"
 ```
 
-### Task 6: Freeze On Failed Start And Block Unload While Busy
+---
+
+## Task 5: Reject Deployer-Managed Unload Of Published Components
 
 **Files:**
 
+- Modify: `toolchain/tools/ocl/deployment/DeploymentComponent.hpp`
+- Modify: `toolchain/tools/ocl/deployment/DeploymentComponent.cpp`
+- Modify: `toolchain/tools/ocl/deployment/OpcUaDeploymentComponent.hpp`
 - Modify: `toolchain/tools/ocl/deployment/OpcUaDeploymentComponent.cpp`
 - Modify: `toolchain/tools/ocl/deployment/tests/opcua_deployment_test.cpp`
 - Modify: `toolchain/tools/ocl/deployment/CMakeLists.txt`
-- Modify: `toolchain/tools/rtt_opcua/src/datatype_registry.cpp`
-- Modify: `toolchain/tools/rtt_opcua/src/type_protocol.cpp`
-- Modify: `toolchain/tools/rtt_opcua/tests/datatype_registry_test.cpp`
 
-- [ ] **Step 1: Add successful, bind-failed, and validation-failed freeze cases**
+**Consumes:** the ordinary `DeploymentComponent::unloadComponentImpl` path and
+the static publication pointer map from Task 4.
 
-Add `successful_start_freezes_registry` and
-`failed_start_keeps_registry_frozen` as separate CTest processes. Add a third
-`failed_registry_validation_keeps_registry_frozen` process that registers a
-provider with a missing dependency before calling start. The bind-failed case
-holds a loopback listening socket on the configured port so
-`startOpcUa()` reaches registry freeze and then fails endpoint binding.
-
-After each first start attempt, assert `dataTypeRegistryFrozen()` is true and
-attempt to register a uniquely named provider. Assert rejection includes the
-provider name, states registration is late/frozen, and tells the caller to
-restart the process. Release the occupied socket and retry with the same frozen
-registry and server configuration; the retry must succeed without reopening
-registration.
-
-The core failed-start assertions are:
+**Produces:** a default-allow unload hook used by all ordinary Deployer unload
+entry points:
 
 ```cpp
-BOOST_TEST(!deployer.startOpcUa());
-BOOST_TEST(!deployer.opcUaReady());
-BOOST_TEST(RTT::opcua::dataTypeRegistryFrozen());
-RTT::opcua::DataTypeProvider late_provider;
-late_provider.name = "ocl-failed-start-late-provider";
-late_provider.namespace_uri = "urn:orocos:rtt:test:late";
-std::string late_error;
-BOOST_TEST(!RTT::opcua::registerDataTypeProvider(
-    std::move(late_provider), &late_error));
-BOOST_TEST(late_error.find("ocl-failed-start-late-provider") !=
-           std::string::npos);
-BOOST_TEST(late_error.find("late") != std::string::npos);
-occupied_port.release();
-BOOST_REQUIRE(deployer.startOpcUa());
-BOOST_TEST(deployer.opcUaReady());
+protected:
+  virtual bool componentCanUnload(RTT::TaskContext *component);
 ```
 
-Update both late-registration errors to end with
-`the process must be restarted` and assert that text in the existing
-`datatype_registry_test` as well as both OCL freeze cases:
+- [ ] **Step 1: Add a factory-backed unload test**
 
-```cpp
-return fail(error, "late OPC UA datatype provider registration: '" +
-                       provider.name +
-                       "'; the process must be restarted");
-```
+Add `published_component_unload_is_rejected` as another isolated CTest case.
+Register an `EchoTask` factory with `ComponentLoader`, then assert:
 
-Use the same suffix for late type-protocol registration.
+1. an unpublished loaded component unloads successfully;
+2. a second loaded component publishes successfully;
+3. `unloadComponent` for the published component returns false;
+4. `lastError()` is exactly
+   `Cannot unload component 'ManagedEcho': it is published through OPC UA`;
+5. the component remains a Deployer peer; and
+6. its remote proxy still performs an operation after the rejection.
 
-Make registry freezing terminal even when dependency ordering fails. Store a
-`freeze_error` beside `provider_order`, set `frozen = true` before returning a
-validation failure, and return the same stored error from later freeze calls:
+Use fixture cleanup that unregisters the factory after the Deployer is
+destroyed. Do not directly delete a component still owned by
+`ComponentLoader`.
 
-```cpp
-if (state.frozen) {
-  if (!state.freeze_error.empty()) {
-    return failOptional(error, state.freeze_error);
-  }
-  if (error != nullptr) {
-    error->clear();
-  }
-  return state.provider_order;
-}
-state.frozen = true;
-auto order = computeProviderOrder(state, error);
-if (!order) {
-  state.freeze_error = error == nullptr
-                           ? "invalid OPC UA datatype provider graph"
-                           : *error;
-  return std::nullopt;
-}
-state.provider_order = *order;
-```
-
-Add a private `failOptional()` helper returning
-`std::optional<std::vector<std::string>>{}` after assigning its error. Move the
-existing-provider equality check in `registerDataTypeProvider()` before the
-`state.frozen` rejection so an identical provider remains idempotent on retry;
-a new or conflicting provider remains forbidden.
-
-```cpp
-std::optional<std::vector<std::string>>
-failOptional(std::string *error, const std::string &message) {
-  if (error != nullptr) {
-    *error = message;
-  }
-  return std::nullopt;
-}
-```
-
-Update the existing missing-dependency and cycle tests to expect `frozen ==
-true`, a stable repeated freeze error, identical registration success, and
-new-provider rejection. This is what makes `StartFailed -> Starting` retryable
-without reopening the registry.
-
-The OCL validation-failure case is:
-
-```cpp
-RTT::opcua::DataTypeProvider broken;
-broken.name = "ocl-broken-provider";
-broken.namespace_uri = "urn:orocos:rtt:test:broken";
-broken.dependencies = {"ocl-missing-provider"};
-BOOST_REQUIRE(RTT::opcua::registerDataTypeProvider(broken, &error));
-OCL::OpcUaDeploymentComponent deployer("Deployer", "", deploymentOptions());
-BOOST_TEST(!deployer.startOpcUa());
-const std::string first_error = deployer.opcUaLastError();
-BOOST_TEST(RTT::opcua::dataTypeRegistryFrozen());
-BOOST_TEST(RTT::opcua::registerDataTypeProvider(broken, &error));
-RTT::opcua::DataTypeProvider missing;
-missing.name = "ocl-missing-provider";
-missing.namespace_uri = "urn:orocos:rtt:test:missing";
-BOOST_TEST(!RTT::opcua::registerDataTypeProvider(
-    std::move(missing), &error));
-BOOST_TEST(!deployer.startOpcUa());
-BOOST_TEST(deployer.opcUaLastError() == first_error);
-```
-
-- [ ] **Step 2: Add an unload-after-`BadTimeout` component fixture**
-
-Register a `ComponentLoader` factory for a task with an `RTT::OwnThread`
-operation that sets `started`, sleeps for 200 ms, sets `completed`, and returns.
-Track its destructor with a third atomic flag. Configure the object-model
-operation timeout to 30 ms.
-
-The operation and destructor must expose the race directly:
-
-```cpp
-std::int32_t slow(std::uint32_t milliseconds) {
-  slow_started.store(true);
-  std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
-  slow_completed.store(true);
-  return 42;
-}
-
-~SlowTask() override { slow_destroyed.store(true); }
-```
-
-Load and explicitly publish the component, call the operation with a low-level
-open62541 client, and assert the response is `BadTimeout` while
-`pendingOperationCount` behavior remains covered in `rtt_opcua`.
-
-- [ ] **Step 3: Prove unload blocks on the retained lease**
-
-Call `deployer.unloadComponent(name)` through `std::async`. Before the slow
-operation finishes, assert the future is not ready and the destructor flag is
-false. Then assert the operation completes, unload returns true, the component
-is destroyed, and its OPC UA root is absent. Immediately load and publish a
-new instance with the same name to prove the old registration was fully reset.
-
-Use a bounded future assertion rather than a timing-only sleep:
-
-```cpp
-auto unload = std::async(std::launch::async, [&deployer] {
-  return deployer.unloadComponent("SlowComponent");
-});
-BOOST_TEST(unload.wait_for(std::chrono::milliseconds(40)) ==
-           std::future_status::timeout);
-BOOST_TEST(!slow_destroyed.load());
-BOOST_REQUIRE(unload.wait_for(std::chrono::seconds(2)) ==
-              std::future_status::ready);
-BOOST_TEST(unload.get());
-BOOST_TEST(slow_completed.load());
-BOOST_TEST(slow_destroyed.load());
-```
-
-- [ ] **Step 4: Run the new cases under ASan/UBSan/LSan**
+- [ ] **Step 2: Run the case and observe destructive unload**
 
 ```bash
+cmake --build toolchain/tools/ocl/build --parallel \
+  --target ocl_opcua_deployment_test
 ctest --test-dir toolchain/tools/ocl/build --output-on-failure \
-  -R '^ocl_opcua_deployment_(successful_start_freezes_registry|failed_start_keeps_registry_frozen|failed_registry_validation_keeps_registry_frozen|unload_waits_for_timed_out_operation)$'
+  -R '^ocl_opcua_deployment_published_component_unload_is_rejected$'
 ```
 
-Repeat these cases in the temporary sanitizer build created by the installed
-verification task. Expected: no use-after-free, leak, deadlock, or teardown
-crash.
+Expected: the old unload path destroys the published component or leaves the
+test unable to call it remotely.
 
-- [ ] **Step 5: Confirm the existing lifetime implementation is sufficient**
+- [ ] **Step 3: Add the pre-unload hook at the common boundary**
 
-The existing `ComponentRegistration::reset()` and retained pending invocation
-lease are the implementation under test; no additional lifetime production
-change is planned. If the new regression is red, stop this task and invoke
-`superpowers:systematic-debugging` to identify the violated lease boundary,
-then amend this plan with the evidence before editing production lifetime
-code. Do not add sleeps or extend the request timeout to hide the race.
+Implement `DeploymentComponent::componentCanUnload` to return true. In
+`unloadComponentImpl`, call it after confirming the component is loaded and
+not running, but before `componentUnloaded`, disconnect, activity deletion,
+connection-map changes, property removal, or `ComponentLoader` deletion:
 
-- [ ] **Step 6: Commit package changes by ownership**
+```cpp
+if (!componentCanUnload(it->instance)) {
+  return false;
+}
+```
+
+This location automatically covers `unloadComponent`, group unload, and
+`kickOut` flows that use `unloadComponentImpl`, without changing CORBA's
+existing `componentUnloaded` behavior.
+
+- [ ] **Step 4: Override the hook for static OPC UA publications**
+
+Under the deployment mutex, compare both component name and pointer with the
+publication map. Reject only an exact published local instance, set/log the
+required diagnostic, and return false. Allow unpublished local components and
+remote proxies.
+
+In `OpcUaDeploymentComponent` destruction, reject new callbacks, stop the
+server, wait for retained operations, reset the ObjectModel, and clear the
+publication map before the base `DeploymentComponent` destructor performs
+ordinary auto-unload.
+
+- [ ] **Step 5: Run OCL deployment and existing unload coverage**
 
 ```bash
-git -C toolchain/tools/ocl add \
+cmake --build toolchain/tools/ocl/build --parallel
+ctest --test-dir toolchain/tools/ocl/build --output-on-failure \
+  -R '^(ocl_opcua_deployment_.*|deployment.*|load.*component.*)$'
+git -C toolchain/tools/ocl diff --check
+```
+
+Expected: the new rejection case and maintained deployment unload cases pass;
+non-OPC-UA deployers retain default unload behavior.
+
+- [ ] **Step 6: Commit the unload guard**
+
+```bash
+git -C toolchain/tools/ocl add deployment/DeploymentComponent.hpp \
+  deployment/DeploymentComponent.cpp deployment/OpcUaDeploymentComponent.hpp \
   deployment/OpcUaDeploymentComponent.cpp \
   deployment/tests/opcua_deployment_test.cpp deployment/CMakeLists.txt
-git -C toolchain/tools/ocl commit \
-  -m "test: cover OPC UA freeze and unload lifetime"
+git -C toolchain/tools/ocl commit -m \
+  "fix: keep published OPC UA components loaded"
 ```
 
-Commit the frozen-registry diagnostics separately:
+---
 
-```bash
-git -C toolchain/tools/rtt_opcua add \
-  src/datatype_registry.cpp src/type_protocol.cpp \
-  tests/datatype_registry_test.cpp
-git -C toolchain/tools/rtt_opcua commit \
-  -m "fix: explain frozen OPC UA registration lifetime"
-```
-
-### Task 7: Stop `deployer-opcua` From Starting Automatically
+## Task 6: Prove The Installed Deployer Flow With An External Fixture
 
 **Files:**
 
-- Modify: `toolchain/tools/ocl/bin/deployer.cpp`
-- Modify: `tools/test-opcua-custom-datatypes.sh`
-
-- [ ] **Step 1: Add an installed executable regression check first**
-
-In `tools/test-opcua-custom-datatypes.sh`, launch the installed target-specific
-`deployer-opcua` on a fresh loopback port with no startup script. Give it an
-isolated `HOME` and the already constructed temporary runtime paths. Assert the
-process remains alive but a TCP connection to the configured port fails. Send
-`SIGTERM`, wait for clean shutdown, and print its log on failure.
-
-Add this check after OCL installation and before fixture startup:
-
-```bash
-DEPLOYER="$PREFIX/bin/deployer-opcua-$TARGET"
-STOPPED_LOG="$TEST_ROOT/deployer-stopped.log"
-STOPPED_PORT="$(ruby -rsocket -e \
-  'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]')"
-"$DEPLOYER" --opcua-port "$STOPPED_PORT" >"$STOPPED_LOG" 2>&1 &
-STOPPED_PID="$!"
-sleep 0.2
-kill -0 "$STOPPED_PID"
-if ruby -rsocket -e \
-  'TCPSocket.new("127.0.0.1", Integer(ARGV.fetch(0))).close' \
-  "$STOPPED_PORT" 2>/dev/null; then
-  orocos_rock_die "deployer-opcua started before opcua.start()"
-fi
-kill -TERM "$STOPPED_PID"
-wait "$STOPPED_PID"
-```
-
-- [ ] **Step 2: Run the check against the old executable**
-
-```bash
-OPCUA_VERIFY_ROOT="$(mktemp -d /tmp/orocos-opcua-explicit.XXXXXX)"
-./tools/test-opcua-custom-datatypes.sh \
-  --prefix "$OPCUA_VERIFY_ROOT/install" \
-  --dependency-prefix "$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
-  --target gnulinux
-```
-
-Expected: the stopped-endpoint assertion fails because the executable calls
-`dc.startOpcUa()` after processing scripts.
-
-- [ ] **Step 3: Remove only the automatic startup block**
-
-Delete the `#ifdef OCL_OPCUA_DEPLOYER` block after script processing that calls
-`dc.startOpcUa()` and logs `Listening on`. Keep script error propagation,
-interactive TaskBrowser creation, non-TTY `waitForInterrupt()`, and normal
-shutdown unchanged.
-
-After script processing, the next executable statement must be:
-
-```cpp
-rc = (result ? 0 : -1);
-```
-
-- [ ] **Step 4: Re-run the installed stopped-endpoint check**
-
-Expected: the Deployer remains usable locally, the process stays alive, and no
-listener exists until a script or the local TaskBrowser calls `opcua.start()`.
-
-- [ ] **Step 5: Commit executable and root regression independently**
-
-```bash
-git -C toolchain/tools/ocl add bin/deployer.cpp
-git -C toolchain/tools/ocl commit \
-  -m "fix: require explicit OPC UA deployer startup"
-git add tools/test-opcua-custom-datatypes.sh
-git commit -m "test: verify OPC UA deployer stays stopped"
-```
-
-### Task 8: Exercise Import, Load, Start, And Publish From The Installed Prefix
-
-**Files:**
-
-- Create: `tests/opcua-custom-datatypes/fixture_component.hpp`
-- Create: `tests/opcua-custom-datatypes/fixture_component_plugin.cpp`
-- Create: `tests/opcua-custom-datatypes/deployer-start.ops.in`
-- Create: `tests/opcua-custom-datatypes/deployer-no-start.ops.in`
-- Modify: `tests/opcua-custom-datatypes/fixture_component.cpp`
+- Create: `tests/opcua-custom-datatypes/fixture_components.hpp`
+- Create: `tests/opcua-custom-datatypes/fixture_components.cpp`
+- Create: `tests/opcua-custom-datatypes/fixture_plugin.cpp`
+- Rename: `tests/opcua-custom-datatypes/fixture_component.cpp` to
+  `tests/opcua-custom-datatypes/fixture_server.cpp`
+- Create: `tests/opcua-custom-datatypes/deployer-no-start.ops`
+- Create: `tests/opcua-custom-datatypes/deployer-start.ops`
 - Modify: `tests/opcua-custom-datatypes/fixture_types.hpp`
 - Modify: `tests/opcua-custom-datatypes/fixture_typekit.cpp`
+- Modify: `tests/opcua-custom-datatypes/fixture_transport.cpp`
 - Modify: `tests/opcua-custom-datatypes/fixture_client.cpp`
 - Modify: `tests/opcua-custom-datatypes/CMakeLists.txt`
+- Modify: `tests/opcua-custom-datatypes/package.xml`
 - Modify: `tools/test-opcua-custom-datatypes.sh`
 
-**Interfaces:**
+**Consumes:** installed RTT, `rtt_opcua`, and OCL packages only. The fixture
+must not include private source-tree headers or MetaNC code.
 
-- Loadable component type:
-  `orocos::opcua::fixture::FixtureComponent`
-- Intentionally unsupported component type:
-  `orocos::opcua::fixture::UnsupportedComponent`
-- Runtime instance names: `sample` and `unsupported`
+**Produces:** a loadable supported component, a loadable intentionally
+unsupported component, standalone server/client coverage, and an automated
+`deployer-opcua` acceptance flow.
 
-- [ ] **Step 1: Refactor the fixture component into shared test code**
+- [ ] **Step 1: Make the fixture expect the new installed API**
 
-Move the current `Surface<T>` and `FixtureComponent` definitions into
-`fixture_component.hpp`. Give `FixtureComponent` the normal loadable signature:
-
-```cpp
-explicit FixtureComponent(const std::string &name = "fixture/component");
-```
-
-Keep the standalone `fixture-server` using this class so the existing direct
-server/client custom-datatype test remains intact.
-
-The shared class keeps the existing publication loop and accepts the factory
-name:
-
-```cpp
-class FixtureComponent final : public RTT::TaskContext {
-public:
-  explicit FixtureComponent(
-      const std::string &name = "fixture/component")
-      : RTT::TaskContext(name, RTT::TaskContext::PreOperational),
-        float64_array_("Float64Array", {1.25, 2.5}),
-        int32_array_("Int32Array", {10, 20}),
-        string_array_("StringArray", {"alpha", "beta"}),
-        rt_string_("RtString", RTT::rt_string("initial")),
-        point_("Point", Point{1.0, 2.0}),
-        envelope_("Envelope", Envelope{{3.0, 4.0}, 5}),
-        point_array_("PointArray", {{6.0, 7.0}, {8.0, 9.0}}) {
-    publish(float64_array_);
-    publish(int32_array_);
-    publish(string_array_);
-    publish(rt_string_);
-    publish(point_);
-    publish(envelope_);
-    publish(point_array_);
-  }
-
-private:
-  template <typename T> void publish(Surface<T> &surface);
-  Surface<std::vector<double>> float64_array_;
-  Surface<std::vector<std::int32_t>> int32_array_;
-  Surface<std::vector<std::string>> string_array_;
-  Surface<RTT::rt_string> rt_string_;
-  Surface<Point> point_;
-  Surface<Envelope> envelope_;
-  Surface<PointArray> point_array_;
-};
-```
-
-Define the `publish` template body in the header using the same property,
-attribute, port, and OwnThread operation registrations already present in
-`fixture_component.cpp`.
-
-```cpp
-template <typename T>
-void FixtureComponent::publish(Surface<T> &surface) {
-  addProperty(surface.stem + "Property", surface.property);
-  addAttribute(surface.stem + "Attribute", surface.attribute);
-  addPort(surface.output);
-  addPort(surface.input);
-  addOperation(surface.stem + "Echo", &Surface<T>::echo, &surface,
-               RTT::OwnThread)
-      .arg("value", "Value to return.");
-  addOperation(surface.stem + "Emit", &Surface<T>::emit, &surface,
-               RTT::OwnThread)
-      .arg("value", "Value to publish.");
-  addOperation(surface.stem + "Take", &Surface<T>::take, &surface,
-               RTT::OwnThread);
-}
-```
-
-- [ ] **Step 2: Add a loadable component library and unknown RTT type**
-
-Define `UnsupportedValue` in `fixture_types.hpp` and register it in the fixture
-typekit without an OPC UA protocol. Define `UnsupportedComponent` with one
-property of that type. In `fixture_component_plugin.cpp`, export both component
-types:
+Use `git mv` for the standalone server source. Extract reusable
+`FixtureComponent` and `UnsupportedComponent` declarations/definitions into
+`fixture_components.hpp/.cpp`. Export both from `fixture_plugin.cpp`:
 
 ```cpp
 ORO_CREATE_COMPONENT_LIBRARY()
@@ -1854,61 +792,46 @@ ORO_LIST_COMPONENT_TYPE(orocos::opcua::fixture::FixtureComponent)
 ORO_LIST_COMPONENT_TYPE(orocos::opcua::fixture::UnsupportedComponent)
 ```
 
-Add an `orocos_component` target to the fixture CMake project and include it in
-the warnings-as-errors loop. Confirm installation places the library in the
-fixture package component path discoverable by OCL `import()`.
+Add `UnsupportedValue` to the fixture typekit, but deliberately omit its codec
+from `fixture_transport.cpp`. Update the standalone server to call
+`ObjectModel::publishComponent` and to stop the server before destroying its
+model.
 
-```cmake
-orocos_component(fixture-components fixture_component_plugin.cpp)
-target_compile_features(fixture-components PRIVATE cxx_std_20)
-target_include_directories(
-  fixture-components PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-)
+Extend `fixture_client` with mutually exclusive `--standalone` and
+`--deployer` modes plus `--component NAME`. Deployer mode must remotely assert:
+
+- the six exact `opcua` service operations;
+- the complete Deployer operations, including ConnPolicy-taking connection
+  operations;
+- supported component operation, writable property, writable attribute,
+  read-only constant, and latest-value ports;
+- repeated `publishComponent(component)` succeeds;
+- unsupported publication fails and diagnostics identify the exact resource;
+- unloading the supported published component fails; and
+- the supported component remains callable after unload rejection.
+
+- [ ] **Step 2: Configure against the old installed API and observe failure**
+
+```bash
+cmake -S tests/opcua-custom-datatypes \
+  -B "$OROCOS_OPCUA_VERIFY_ROOT/fixture-red" \
+  -DCMAKE_PREFIX_PATH="$OROCOS_OPCUA_INSTALL_PREFIX;$OROCOS_OPCUA_DEPENDENCY_PREFIX"
+cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/fixture-red" --parallel
 ```
 
-Add `fixture-components` to the existing target `foreach`; the Orocos package
-macro owns its component-library install destination.
+Expected: compilation fails until Tasks 2 through 5 have installed the new
+API and the fixture build defines the new component plugin.
 
-The unsupported type/component are exact:
+- [ ] **Step 3: Install the fixture component plugin and scripts**
 
-```cpp
-struct UnsupportedValue {
-  std::int32_t value{0};
-};
+In CMake, build `fixture-components` with `orocos_component`, link the reusable
+implementation into the plugin and standalone server, apply C++20 plus
+`-Wall -Wextra -Wpedantic -Werror`, and install both `.ops` scripts under
+`share/orocos-opcua-fixture`.
 
-class UnsupportedComponent final : public RTT::TaskContext {
-public:
-  explicit UnsupportedComponent(const std::string &name)
-      : RTT::TaskContext(name) {
-    addProperty("UnsupportedValue", value_);
-  }
-
-private:
-  UnsupportedValue value_{7};
-};
-```
-
-Register `UnsupportedValue` through
-`TemplateTypeInfo<UnsupportedValue, false>` in `FixtureTypekit::loadTypes()`;
-leave `FixtureTransport::registerTransport()` unchanged for that type so it
-returns false and no OPC UA codec exists. The component plugin contains:
-
-```cpp
-ORO_CREATE_COMPONENT_LIBRARY()
-ORO_LIST_COMPONENT_TYPE(orocos::opcua::fixture::FixtureComponent)
-ORO_LIST_COMPONENT_TYPE(orocos::opcua::fixture::UnsupportedComponent)
-```
-
-- [ ] **Step 3: Generate two exact startup scripts**
-
-`deployer-no-start.ops.in`:
-
-```text
-import("orocos_opcua_fixture")
-loadComponent("sample", "orocos::opcua::fixture::FixtureComponent")
-```
-
-`deployer-start.ops.in`:
+The scripts contain only ordinary TaskBrowser commands. The no-start script
+imports the fixture package and loads `sample` and `unsupported`; it never
+calls `opcua.start()`. The start script performs:
 
 ```text
 import("orocos_opcua_fixture")
@@ -1918,293 +841,443 @@ opcua.start()
 opcua.publishComponent("sample")
 ```
 
-The import deliberately precedes the first start so the fixture provider and
-protocols are registered before the process-wide registry freezes.
+Do not rely on `Server=true`.
 
-Configure and install both scripts from the fixture CMake project:
+- [ ] **Step 4: Extend the root harness with both endpoint states**
 
-```cmake
-configure_file(deployer-no-start.ops.in deployer-no-start.ops @ONLY)
-configure_file(deployer-start.ops.in deployer-start.ops @ONLY)
-install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/deployer-no-start.ops
-    ${CMAKE_CURRENT_BINARY_DIR}/deployer-start.ops
-  DESTINATION share/orocos_opcua_fixture
-)
-```
+Keep the existing prefix validation, empty-prefix requirement, isolated
+`HOME`, CMake registry disablement, CORBA-off RTT build, warning-as-error
+flags, standalone server/client run, and cleanup traps.
 
-- [ ] **Step 4: Extend the client to validate the Deployer and sample**
+After installing the fixture:
 
-Add `--component` and `--deployer` arguments to `fixture-client`. Connect to
-the Deployer proxy and assert its `connect`, `stream`, and `createStream`
-operations are present. On the `opcua` service, assert exact lifecycle
-operations, call `publishComponent("unsupported")`, and require false plus a
-diagnostic naming the unsupported property and RTT type. Confirm no proxy can
-be created for `unsupported`.
+1. launch `deployer-opcua` with the no-start script, chosen loopback port, and
+   non-TTY stdin so it waits for a signal;
+2. prove the TCP port refuses connections and the client cannot create the
+   Deployer proxy;
+3. stop that process cleanly;
+4. launch a new `deployer-opcua` with the start script and a fresh port;
+5. wait for a positive OPC UA client probe rather than a log substring;
+6. run `fixture-client --deployer --component sample`;
+7. stop the process cleanly; and
+8. write `$TEST_ROOT/runtime-env.sh` containing only the temporary prefix,
+   endpoint, binary, plugin, and script paths used for optional manual review.
 
-Then connect to `sample` and run the existing operation, property, attribute,
-and port round trips for canonical and fixture custom datatypes. Continue to
-validate custom DataType and encoding NodeIds from the server namespace table.
+Update the OCL CTest regex to `^ocl_opcua_deployment_.*$`.
 
-Use typed RTT callers for the remote service checks:
+- [ ] **Step 5: Run the complete isolated installed-prefix acceptance**
 
-```cpp
-auto deployer = RTT::opcua::TaskContextProxy::create(
-    endpoint, deployer_name, options, &error);
-require(deployer != nullptr, error);
-RTT::OperationCaller<bool(const std::string &, const std::string &,
-                          RTT::ConnPolicy)>
-    connect = deployer->getOperation("connect");
-RTT::OperationCaller<bool(const std::string &, RTT::ConnPolicy)> stream =
-    deployer->getOperation("stream");
-RTT::OperationCaller<bool(const std::string &, const std::string &,
-                          RTT::ConnPolicy)>
-    create_stream = deployer->getOperation("createStream");
-require(connect.ready(), "Deployer connect operation is missing");
-require(stream.ready(), "Deployer stream operation is missing");
-require(create_stream.ready(), "Deployer createStream operation is missing");
-RTT::Service::shared_ptr opcua_service = deployer->provides("opcua");
-require(opcua_service != nullptr, "Deployer opcua service is missing");
-RTT::OperationCaller<bool(const std::string &)> publish =
-    opcua_service->getOperation("publishComponent");
-RTT::OperationCaller<std::vector<std::string>(const std::string &)>
-    unsupported = opcua_service->getOperation("unsupportedResources");
-require(publish.ready(), "publishComponent operation is missing");
-require(!publish("unsupported"),
-        "unsupported component publication unexpectedly succeeded");
-require(!unsupported("unsupported").empty(),
-        "unsupported publication diagnostics are missing");
-```
-
-- [ ] **Step 5: Run both deployer modes in the root verifier**
-
-First launch with `deployer-no-start.ops` and prove the port stays closed.
-Then launch a fresh process with `deployer-start.ops`, wait for the loopback
-endpoint, and run `fixture-client --deployer Deployer --component sample`.
-Capture separate logs and always terminate/wait through the existing trap.
-
-The positive launch and client call use the installed artifacts only:
+First build the stock dependency prefix in Task 8, or point the variable to an
+already verified stock prefix below `/tmp`. Then use a new empty maintained
+install prefix:
 
 ```bash
-START_SCRIPT="$PREFIX/share/orocos_opcua_fixture/deployer-start.ops"
-DEPLOYER_LOG="$TEST_ROOT/deployer-start.log"
-"$DEPLOYER" --opcua-port "$PORT" --start "$START_SCRIPT" \
-  >"$DEPLOYER_LOG" 2>&1 &
-SERVER_PID="$!"
-ready=0
-for _ in $(seq 1 200); do
-  if ruby -rsocket -e \
-    'TCPSocket.new("127.0.0.1", Integer(ARGV.fetch(0))).close' \
-    "$PORT" 2>/dev/null; then
-    ready=1
-    break
-  fi
-  kill -0 "$SERVER_PID" 2>/dev/null || break
-  sleep 0.05
-done
-if [ "$ready" -ne 1 ]; then
-  sed -n '1,240p' "$DEPLOYER_LOG" >&2
-  orocos_rock_die "explicit OPC UA deployer did not become ready"
-fi
-"$CLIENT" --typekit "$TYPEKIT" --transport "$TRANSPORT" \
-  --endpoint "opc.tcp://127.0.0.1:$PORT/rtt" \
-  --deployer Deployer --component sample
-```
-
-Keep the original standalone `fixture-server` pass as a lower-level transport
-test; the deployer pass is additional coverage, not a replacement.
-
-At the end of a successful run, write
-`$TEST_ROOT/runtime-env.sh` with shell-quoted values for the temporary `HOME`,
-`OROCOS_TARGET`, `PATH`, `LD_LIBRARY_PATH`, `RTT_COMPONENT_PATH`,
-`CMAKE_PREFIX_PATH`, and `PKG_CONFIG_PATH` already used by the verifier. This
-file is evidence and a convenience for manual acceptance; it must refer only
-to the selected install/dependency prefixes below `/tmp`.
-
-Generate it with Bash's shell-quoting formatter:
-
-```bash
-RTT_COMPONENT_PATH="$PREFIX/lib/orocos/$TARGET:$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture"
-export RTT_COMPONENT_PATH
-{
-  printf 'export HOME=%q\n' "$TEST_HOME"
-  printf 'export OROCOS_TARGET=%q\n' "$TARGET"
-  printf 'export PATH=%q\n' "$PREFIX/bin:$PATH"
-  printf 'export LD_LIBRARY_PATH=%q\n' "$LD_LIBRARY_PATH"
-  printf 'export RTT_COMPONENT_PATH=%q\n' "$RTT_COMPONENT_PATH"
-  printf 'export CMAKE_PREFIX_PATH=%q\n' "$INSTALLED_PREFIX_PATH"
-  printf 'export PKG_CONFIG_PATH=%q\n' "$PKG_CONFIG_PATH"
-} >"$TEST_ROOT/runtime-env.sh"
-```
-
-- [ ] **Step 6: Run the complete installed-prefix verification**
-
-```bash
-OPCUA_VERIFY_ROOT="$(mktemp -d /tmp/orocos-opcua-deployer.XXXXXX)"
+OPCUA_ACCEPT_PREFIX="$(mktemp -d /tmp/orocos-opcua-accept.XXXXXX)"
 ./tools/test-opcua-custom-datatypes.sh \
-  --prefix "$OPCUA_VERIFY_ROOT/install" \
+  --prefix "$OPCUA_ACCEPT_PREFIX" \
   --dependency-prefix "$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
   --target gnulinux
 ```
 
-Expected terminal lines include both:
+Expected: RTT, `rtt_opcua`, OCL, and fixture build/install under `/tmp`; the
+stopped-endpoint negative case, standalone custom datatype case, explicit
+Deployer start, strict rejection, unload rejection, and client checks all pass.
 
-```text
-OPC UA external custom datatype fixture passed
-OPC UA deployer lifecycle fixture passed
-```
-
-The contamination scan must report no artifact resolved below `~/.orocos`.
-
-- [ ] **Step 7: Commit the external acceptance fixture**
+- [ ] **Step 6: Commit the root fixture change**
 
 ```bash
 git add tests/opcua-custom-datatypes tools/test-opcua-custom-datatypes.sh
-git commit -m "test: exercise explicit OPC UA deployer lifecycle"
+git commit -m "test: cover explicit OPC UA deployer publication"
 ```
 
-### Task 9: Run Final Sanitizer And Manual TaskBrowser Acceptance
+---
+
+## Task 7: Align CI Contracts And Operator Documentation
 
 **Files:**
 
-- Modify: `docs/src/opcua-deployer-lifecycle-design.md`
-- Modify: `docs/src/user-guide.md`
-- Modify: `docs/src/package-test-results.md`
 - Modify: `tools/check-package-tests-ci.rb`
 - Modify: `tools/test-package.sh`
+- Modify: `docs/src/user-guide.md`
+- Modify: `docs/src/opcua-custom-datatype-verification.md`
+- Modify: `docs/src/package-test-results.md`
+- Modify: `docs/src/orocos-opcua-custom-datatype-design.md`
+- Modify: `toolchain/tools/rtt_opcua/README.md`
+- Modify if present: OCL OPC UA documentation that names the removed service
+  operations
 
-- [ ] **Step 1: Run the verifier with warnings as errors**
+**Consumes:** green package and fixture behavior from Tasks 1 through 6.
 
-Create new directories; do not reuse evidence from an earlier task:
+**Produces:** one current operator contract and CI selectors that run every
+isolated OCL lifecycle case.
 
-```bash
-OPCUA_FINAL_ROOT="$(mktemp -d /tmp/orocos-opcua-final.XXXXXX)"
-./tools/test-opcua-custom-datatypes.sh \
-  --prefix "$OPCUA_FINAL_ROOT/install" \
-  --dependency-prefix "$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
-  --target gnulinux
-```
+- [ ] **Step 1: Make the CI contract require split OCL tests**
 
-Record the exact prefix, evidence directory, CTest totals, and fixture output.
+Change checks and `test-package.sh` from the single
+`^ocl_opcua_deployment_test$` CTest name to
+`^ocl_opcua_deployment_.*$`. Add a negative policy assertion that the custom
+datatype harness does not configure `UA_BUILD_UNIT_TESTS=ON` or
+`UAPP_BUILD_TESTS=ON`.
 
-- [ ] **Step 2: Repeat the maintained graph under ASan/UBSan/LSan**
-
-```bash
-OPCUA_SAN_ROOT="$(mktemp -d /tmp/orocos-opcua-sanitized.XXXXXX)"
-CXXFLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
-LDFLAGS='-fsanitize=address,undefined' \
-ASAN_OPTIONS='detect_leaks=1:halt_on_error=1' \
-UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1' \
-./tools/test-opcua-custom-datatypes.sh \
-  --prefix "$OPCUA_SAN_ROOT/install" \
-  --dependency-prefix "$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
-  --target gnulinux
-```
-
-Expected: all RTT, `rtt_opcua`, OCL, standalone fixture, and deployer fixture
-checks pass with no sanitizer report. If leak detection is unavailable on a
-target, record that as a gap rather than silently disabling it.
-
-- [ ] **Step 3: Manually validate local and remote TaskBrowsers**
-
-Using the fresh final prefix, source the generated temporary runtime file and
-start the target binary in a PTY:
+- [ ] **Step 2: Run the checker and observe the stale selector**
 
 ```bash
-. "$OPCUA_FINAL_ROOT/install-work/runtime-env.sh"
-"$OPCUA_FINAL_ROOT/install/bin/deployer-opcua-gnulinux" --opcua-port 4841
+ruby tools/check-package-tests-ci.rb
 ```
 
-In its local TaskBrowser, enter exactly:
+Expected before the script/test command update: failure reports the obsolete
+single OCL test selector.
+
+- [ ] **Step 3: Document the exact startup and lifetime rules**
+
+The user guide must show this sequence and explain why import precedes start:
 
 ```text
-import("orocos_opcua_fixture")
-loadComponent("sample", "orocos::opcua::fixture::FixtureComponent")
+import("sample_typekit")
+loadComponent("sample", "SampleComponent")
 opcua.start()
 opcua.publishComponent("sample")
 ```
 
-Before `opcua.start()`, verify a remote client cannot connect. After
-publication, open a second PTY with the same temporary runtime paths:
+Document that `endpointUrl()` is configuration, `isRunning()` is listener plus
+complete Deployer publication, `ctaskbrowser-opcua` cannot connect before
+start, publication is strict/static/idempotent, `Server=true` is ignored for
+OPC UA, and published components cannot be unloaded in this version.
+
+Update `rtt_opcua/README.md` to use `publishComponent` and state that model
+destruction is endpoint teardown, not public unpublish. Mark conflicting
+dynamic-lifetime portions of the older custom-datatype design as superseded by
+`opcua-deployer-lifecycle-design.md`; do not rewrite unrelated historical
+decisions.
+
+Remove claims that patched dependency forks or dependency unit-test totals are
+part of current evidence. Reserve the package-results table for the fresh Task
+8 results; do not carry forward old pass counts.
+
+- [ ] **Step 4: Check docs, policy, and stale API names**
 
 ```bash
-. "$OPCUA_FINAL_ROOT/install-work/runtime-env.sh"
-"$OPCUA_FINAL_ROOT/install/bin/ctaskbrowser-opcua-gnulinux" \
-  --import orocos_opcua_fixture \
-  opc.tcp://127.0.0.1:4841/rtt sample
-```
-
-Browse/call one operation and write/read one property or attribute. Connect a
-second `ctaskbrowser-opcua` to component `Deployer` and verify the `opcua`
-service plus the full `connect`/`stream`/`createStream` operations.
-
-- [ ] **Step 4: Update documentation and CI contract names**
-
-Set the lifecycle design status to `Accepted`. Update the user guide to show
-the import/load/start/publish order and state that the remote TaskBrowser
-cannot connect before start. Replace stale queued, automatic, `publishPeer`,
-and partial-publication claims in package results.
-
-The user-guide command sequence must be:
-
-```text
-deployer-opcua
-  import("sample_typekit")
-  loadComponent("sample", "SampleComponent")
-  opcua.start()
-  opcua.publishComponent("sample")
-
-ctaskbrowser-opcua opc.tcp://127.0.0.1:4840/rtt Deployer
-ctaskbrowser-opcua --import sample_typekit \
-  opc.tcp://127.0.0.1:4840/rtt sample
-```
-
-Update root package-test regexes to match
-`^ocl_opcua_deployment_.*$`. Keep the build target
-`ocl_opcua_deployment_test`; only CTest case names are split.
-
-- [ ] **Step 5: Build docs and run policy checks**
-
-```bash
-DOC_ROOT="$(mktemp -d /tmp/orocos-opcua-docs.XXXXXX)"
-mdbook build docs --dest-dir "$DOC_ROOT/book"
 ruby tools/check-package-tests-ci.rb
 ruby tools/check-autoproj-policy.rb
+rg -n 'publishPeer|unpublishPeer|reconcile_interval|maintenance fork|patched open62541' \
+  README.md docs/src toolchain/tools/rtt_opcua/README.md \
+  --glob '!opcua-deployer-lifecycle-plan.md'
+mdbook build docs --dest-dir "$OROCOS_OPCUA_VERIFY_ROOT/mdbook"
+git diff --check
 ```
 
-Expected: mdBook emits no warning, both policy scripts exit zero, and searches
-find no stale public API names:
+Expected: checkers and mdBook pass. Any remaining historical term is either
+removed or explicitly labeled superseded rather than presented as current
+behavior.
+
+- [ ] **Step 5: Commit package-local and root documentation**
 
 ```bash
-rg -n 'publishPeer|unpublishPeer|automatically starts|queued publication' \
-  docs/src toolchain/tools/ocl/deployment toolchain/tools/ocl/bin
+git -C toolchain/tools/rtt_opcua add README.md
+git -C toolchain/tools/rtt_opcua commit -m \
+  "docs: describe static OPC UA publication"
+
+git add tools/check-package-tests-ci.rb tools/test-package.sh \
+  docs/src/user-guide.md docs/src/opcua-custom-datatype-verification.md \
+  docs/src/package-test-results.md \
+  docs/src/orocos-opcua-custom-datatype-design.md
+git commit -m "docs: align OPC UA lifecycle verification"
 ```
 
-Only explicitly historical/superseded design text may remain.
+If OCL documentation changed, include it in a separate OCL documentation
+commit. Do not stage unrelated root documentation.
 
-- [ ] **Step 6: Commit root documentation and verification metadata**
+---
+
+## Task 8: Verify, Review, And Prepare Default-Branch Integration
+
+**Files:**
+
+- Modify after tests: `docs/src/package-test-results.md`
+- Modify after tests: `docs/src/opcua-custom-datatype-verification.md`
+- No third-party source files
+
+**Consumes:** committed Tasks 1 through 7 and the approved lifecycle design.
+
+**Produces:** reproducible evidence from unmodified stock dependencies,
+warning-clean maintained builds, sanitizer runs, manual TaskBrowser validation,
+and a package commit summary suitable for user approval before merging.
+
+- [ ] **Step 1: Audit source revisions before building**
 
 ```bash
-git add \
-  docs/src/opcua-deployer-lifecycle-design.md \
-  docs/src/user-guide.md docs/src/package-test-results.md \
-  tools/check-package-tests-ci.rb tools/test-package.sh
-git commit -m "docs: finalize explicit OPC UA deployer lifecycle"
+git status --short --branch
+git -C toolchain/tools/rtt_opcua status --short --branch
+git -C toolchain/tools/ocl status --short --branch
+git -C toolchain/open62541 rev-parse v1.4.15^{commit}
+git -C toolchain/open62541pp rev-parse v0.21.2^{commit}
+git diff --check
+git -C toolchain/tools/rtt_opcua diff --check
+git -C toolchain/tools/ocl diff --check
 ```
 
-- [ ] **Step 7: Perform the pre-merge review checkpoint**
+Expected tag commits are open62541
+`45e4cd3ef6c79a8e503d37c9f5c89fefe90d99db` and open62541pp
+`b1696768b26a12d0f40fdac5ec62ad78d25fa236`. Stop if maintained package
+changes are uncommitted except for the user's explicitly preserved unrelated
+root documentation changes.
 
-Invoke `superpowers:requesting-code-review`, inspect every package and root
-diff, and summarize:
+- [ ] **Step 2: Build stock dependencies into the isolated prefix**
 
-- commits per repository
-- behavior/API changes
-- fresh unit, integration, sanitizer, and manual evidence
-- dependency versions and CORBA-off configuration
-- proof that no test resolved `~/.orocos`
-- warnings or validation gaps, including Xenomai work still requiring the
-  user's other machine
+Create detached clean source worktrees below the verification root at the
+exact tags; do not use the dirty experimental dependency worktrees:
 
-Stop here. Do not merge or push default branches until the user reviews this
-summary and explicitly approves integration.
+```bash
+mkdir -p "$OROCOS_OPCUA_VERIFY_ROOT/src" \
+  "$OROCOS_OPCUA_VERIFY_ROOT/build"
+git -C toolchain/open62541 worktree add --detach \
+  "$OROCOS_OPCUA_VERIFY_ROOT/src/open62541" v1.4.15
+git -C toolchain/open62541pp worktree add --detach \
+  "$OROCOS_OPCUA_VERIFY_ROOT/src/open62541pp" v0.21.2
+```
+
+Clone the selected farbot and rtlog-cpp branches into the same temporary source
+root, record their resolved commits, and build them before the OPC UA
+dependencies:
+
+```bash
+git clone --branch master --single-branch \
+  https://github.com/liufang-robot/farbot.git \
+  "$OROCOS_OPCUA_VERIFY_ROOT/src/farbot"
+git clone --branch main --single-branch \
+  https://github.com/liufang-robot/rtlog-cpp.git \
+  "$OROCOS_OPCUA_VERIFY_ROOT/src/rtlog-cpp"
+
+cmake -S "$OROCOS_OPCUA_VERIFY_ROOT/src/farbot" \
+  -B "$OROCOS_OPCUA_VERIFY_ROOT/build/farbot" \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_INSTALL_PREFIX="$OROCOS_OPCUA_DEPENDENCY_PREFIX"
+cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/build/farbot" --parallel \
+  --target install
+
+cmake -S "$OROCOS_OPCUA_VERIFY_ROOT/src/rtlog-cpp" \
+  -B "$OROCOS_OPCUA_VERIFY_ROOT/build/rtlog-cpp" \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_INSTALL_PREFIX="$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
+  -DCMAKE_PREFIX_PATH="$OROCOS_OPCUA_DEPENDENCY_PREFIX"
+cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/build/rtlog-cpp" --parallel \
+  --target install
+```
+
+Configure the detached dependencies with:
+
+```text
+open62541:
+  BUILD_SHARED_LIBS=ON
+  UA_NAMESPACE_ZERO=REDUCED
+  UA_ENABLE_PUBSUB=OFF
+  UA_BUILD_EXAMPLES=OFF
+  UA_BUILD_UNIT_TESTS=OFF
+
+open62541pp:
+  BUILD_SHARED_LIBS=ON
+  UAPP_INTERNAL_OPEN62541=OFF
+  UAPP_BUILD_TESTS=OFF
+  UAPP_BUILD_EXAMPLES=OFF
+  UAPP_BUILD_DOCUMENTATION=OFF
+```
+
+Use `CMAKE_INSTALL_PREFIX=$OROCOS_OPCUA_DEPENDENCY_PREFIX` and build/install
+ordinary library targets only. Capture configure output proving both test
+options are off. The complete commands are:
+
+```bash
+cmake -S "$OROCOS_OPCUA_VERIFY_ROOT/src/open62541" \
+  -B "$OROCOS_OPCUA_VERIFY_ROOT/build/open62541" \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_INSTALL_PREFIX="$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
+  -DBUILD_SHARED_LIBS=ON -DUA_NAMESPACE_ZERO=REDUCED \
+  -DUA_ENABLE_PUBSUB=OFF -DUA_ENABLE_PUBSUB_INFORMATIONMODEL=OFF \
+  -DUA_BUILD_EXAMPLES=OFF -DUA_BUILD_UNIT_TESTS=OFF
+cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/build/open62541" --parallel \
+  --target install
+
+cmake -S "$OROCOS_OPCUA_VERIFY_ROOT/src/open62541pp" \
+  -B "$OROCOS_OPCUA_VERIFY_ROOT/build/open62541pp" \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_INSTALL_PREFIX="$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
+  -DCMAKE_PREFIX_PATH="$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
+  -DBUILD_SHARED_LIBS=ON -DUAPP_INTERNAL_OPEN62541=OFF \
+  -DUAPP_BUILD_TESTS=OFF -DUAPP_BUILD_EXAMPLES=OFF \
+  -DUAPP_BUILD_DOCUMENTATION=OFF
+cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/build/open62541pp" --parallel \
+  --target install
+```
+
+Do not invoke either dependency's CTest suite.
+
+- [ ] **Step 3: Run clean installed-prefix maintained acceptance**
+
+Use a new empty prefix distinct from the dependency prefix:
+
+```bash
+MAINTAINED_PREFIX="$(mktemp -d /tmp/orocos-opcua-maintained.XXXXXX)"
+HOME="$OROCOS_OPCUA_TEST_HOME" \
+  ./tools/test-opcua-custom-datatypes.sh \
+    --prefix "$MAINTAINED_PREFIX" \
+    --dependency-prefix "$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
+    --target gnulinux
+```
+
+Expected: C++20 warning-clean RTT, `rtt_opcua`, OCL, executable, and fixture
+builds pass, along with all maintained package tests and both automated
+Deployer endpoint states. Confirm `$OROCOS_OPCUA_TEST_HOME/.orocos` was not
+created and no configured prefix refers to the real home `.orocos`.
+
+- [ ] **Step 4: Run sanitizer builds for owned code**
+
+Configure fresh Debug `rtt_opcua` and OCL build trees below
+`$OROCOS_OPCUA_VERIFY_ROOT/sanitizers` with:
+
+```text
+-fsanitize=address,undefined
+-fno-omit-frame-pointer
+```
+
+Link against the temporary RTT/dependency installation, enable maintained
+tests, and retain warning-as-error options. Configure, build, and run with:
+
+```bash
+SANITIZER_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer'
+
+cmake -S toolchain/tools/rtt_opcua \
+  -B "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/rtt-opcua" \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_PREFIX_PATH="$MAINTAINED_PREFIX;$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
+  -DCMAKE_CXX_FLAGS="$SANITIZER_FLAGS" \
+  -DCMAKE_EXE_LINKER_FLAGS="$SANITIZER_FLAGS" \
+  -DCMAKE_SHARED_LINKER_FLAGS="$SANITIZER_FLAGS" \
+  -DBUILD_TESTING=ON -DRTT_OPCUA_WARNINGS_AS_ERRORS=ON
+cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/rtt-opcua" --parallel
+
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+ctest --test-dir "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/rtt-opcua" \
+  --output-on-failure -R '^rtt_opcua_.*_test$'
+
+cmake -S toolchain/tools/ocl \
+  -B "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/ocl" \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_PREFIX_PATH="$MAINTAINED_PREFIX;$OROCOS_OPCUA_DEPENDENCY_PREFIX" \
+  -DCMAKE_CXX_FLAGS="$SANITIZER_FLAGS" \
+  -DCMAKE_EXE_LINKER_FLAGS="$SANITIZER_FLAGS" \
+  -DCMAKE_SHARED_LINKER_FLAGS="$SANITIZER_FLAGS" \
+  -DBUILD_TESTING=ON -DBUILD_TESTS=ON -DBUILD_DEPLOYMENT=ON \
+  -DBUILD_TASKBROWSER=ON -DBUILD_OPCUA=ON
+cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/ocl" --parallel \
+  --target ocl_opcua_deployment_test
+
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+ctest --test-dir "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/ocl" \
+  --output-on-failure -R '^ocl_opcua_deployment_.*$'
+```
+
+The immediate-shutdown-after-`BadTimeout` case must execute in this run.
+Treat sanitizer errors, leaks in owned callback state, hangs, or skipped
+lifetime cases as failures. Do not build dependency tests to investigate an
+owned-code failure.
+
+- [ ] **Step 5: Perform the manual TaskBrowser acceptance**
+
+Source only the runtime environment emitted by the successful root harness.
+In terminal A, run the installed `deployer-opcua` with the installed start
+script and a fresh loopback port. In its local browser, confirm:
+
+```text
+opcua.isRunning()
+opcua.endpointUrl()
+opcua.publishComponent("sample")
+```
+
+In terminal B, connect the installed browser directly to the sample, importing
+its local typekit/transport first:
+
+```bash
+ctaskbrowser-opcua --import orocos_opcua_fixture \
+  "$ENDPOINT_URL" sample
+```
+
+At the `sample` prompt, verify:
+
+```text
+Gain = 9
+Status = "running"
+echo(42)
+```
+
+Read the values back. Confirm the constant remains read-only, supported
+attribute/property writes work, both Deployer and sample browse completely,
+and the unsupported component is absent after its strict publication failure.
+Terminate the deployer cleanly and record the commands and observations.
+
+- [ ] **Step 6: Run final policy, docs, and stale-surface checks**
+
+```bash
+ruby tools/check-autoproj-policy.rb
+ruby tools/check-package-tests-ci.rb
+ruby tools/check-cpp20-policy.rb
+mdbook build docs --dest-dir "$OROCOS_OPCUA_VERIFY_ROOT/final-book"
+rg -n 'ComponentRegistration|registerComponent|reconcile_interval|publishPeer|unpublishPeer|unpublishComponent' \
+  toolchain/tools/rtt_opcua/include toolchain/tools/rtt_opcua/src \
+  toolchain/tools/ocl/deployment toolchain/tools/ocl/bin \
+  tests/opcua-custom-datatypes
+git diff --check
+git -C toolchain/tools/rtt_opcua diff --check
+git -C toolchain/tools/ocl diff --check
+```
+
+Expected: all checks pass and `rg` returns no production matches.
+
+- [ ] **Step 7: Record fresh evidence and commit it**
+
+Update both evidence documents with:
+
+- exact root, RTT, `rtt_opcua`, OCL, open62541, and open62541pp commit IDs;
+- concrete temporary prefixes;
+- compiler and CMake versions;
+- configure flags proving dependency tests were off;
+- maintained CTest case counts and sanitizer results;
+- standalone and Deployer fixture results;
+- manual `ctaskbrowser-opcua` observations; and
+- the accepted non-returning-operation shutdown limitation.
+
+Do not report dependency unit-test pass counts because those tests were not
+built.
+
+```bash
+git add docs/src/package-test-results.md \
+  docs/src/opcua-custom-datatype-verification.md
+git commit -m "docs: record static OPC UA verification"
+```
+
+- [ ] **Step 8: Review every package before integration**
+
+```bash
+git log --oneline --decorate liufang/main..HEAD
+git -C toolchain/tools/rtt_opcua log --oneline --decorate liufang/dev..HEAD
+git -C toolchain/tools/ocl log --oneline --decorate liufang/dev..HEAD
+git diff --stat liufang/main...HEAD
+git -C toolchain/tools/rtt_opcua diff --stat liufang/dev...HEAD
+git -C toolchain/tools/ocl diff --stat liufang/dev...HEAD
+git status --short --branch
+git -C toolchain/tools/rtt_opcua status --short --branch
+git -C toolchain/tools/ocl status --short --branch
+```
+
+Summarize for the user:
+
+- commits and behavior by owning repository;
+- source pins and first-party upstream branches;
+- test/sanitizer/manual evidence;
+- preserved unrelated changes;
+- deferred unpublish/unload-after-publication/security scope; and
+- any remaining Xenomai-only validation for the other machine.
+
+Wait for explicit approval before merging the feature histories into their
+default branches and pushing those default branches to `liufang-robot`.
