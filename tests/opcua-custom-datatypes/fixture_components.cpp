@@ -65,6 +65,12 @@ struct FixtureComponent::Impl {
         point("Point", Point{1.0, 2.0}),
         envelope("Envelope", Envelope{{3.0, 4.0}, 5}),
         point_array("PointArray", {{6.0, 7.0}, {8.0, 9.0}}) {
+    owner.addProperty("Gain", gain);
+    owner.addAttribute("Status", status);
+    owner.addConstant("Limit", limit);
+    owner.addOperation("echo", &Impl::echo, this, RTT::OwnThread)
+        .arg("value", "Value to return.");
+
     publishSurface(owner, float64_array);
     publishSurface(owner, int32_array);
     publishSurface(owner, string_array);
@@ -73,6 +79,12 @@ struct FixtureComponent::Impl {
     publishSurface(owner, envelope);
     publishSurface(owner, point_array);
   }
+
+  std::int32_t echo(std::int32_t value) { return value; }
+
+  std::int32_t gain{1};
+  std::string status{"idle"};
+  const std::int32_t limit{100};
 
   Surface<std::vector<double>> float64_array;
   Surface<std::vector<std::int32_t>> int32_array;

@@ -335,6 +335,34 @@ void verifyDeployerInterface(RTT::TaskContext &deployer) {
 }
 
 void exerciseSupportedComponent(RTT::TaskContext &proxy) {
+  RTT::Service &service = *proxy.provides();
+  require(callOne<std::int32_t>(service, "echo", std::int32_t{42}) == 42,
+          "built-in echo operation round trip failed");
+
+  auto *gain = dynamic_cast<RTT::Property<std::int32_t> *>(
+      service.getProperty("Gain"));
+  require(gain != nullptr, "missing writable Gain property");
+  gain->set(9);
+  require(gain->get() == 9, "Gain property write failed");
+
+  RTT::base::AttributeBase *status = service.getAttribute("Status");
+  require(status != nullptr, "missing writable Status attribute");
+  auto *status_source = RTT::internal::AssignableDataSource<std::string>::narrow(
+      status->getDataSource().get());
+  require(status_source != nullptr, "Status attribute is not writable");
+  status_source->set("running");
+  require(status_source->get() == "running", "Status attribute write failed");
+
+  RTT::base::AttributeBase *limit = service.getAttribute("Limit");
+  require(limit != nullptr, "missing read-only Limit constant");
+  auto *limit_source = RTT::internal::DataSource<std::int32_t>::narrow(
+      limit->getDataSource().get());
+  require(limit_source != nullptr && limit_source->get() == 100,
+          "Limit constant has an unexpected value");
+  require(RTT::internal::AssignableDataSource<std::int32_t>::narrow(
+              limit->getDataSource().get()) == nullptr,
+          "Limit constant is unexpectedly writable");
+
   exercise(proxy, "Float64Array", std::vector<double>{1.25, 2.5},
            std::vector<double>{3.75, 5.0},
            std::vector<double>{6.25, 7.5},
