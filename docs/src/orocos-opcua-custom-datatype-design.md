@@ -1,7 +1,7 @@
 # Orocos OPC UA Custom Datatype And Sequence Type Design
 
 Date: 2026-08-03
-Updated: 2026-08-05
+Updated: 2026-08-06
 
 Status: The generic implementation now follows the explicit-start and static,
 strict-publication lifecycle specified in
@@ -51,6 +51,8 @@ for the reproducible test contract and current platform evidence.
 - Reject partial component publication and make unsupported resources visible
   and diagnosable.
 - Support the same custom types in server and RTT proxy client processes.
+- Preserve member-aware RTT type information so imported custom structures are
+  readable and writable through `ctaskbrowser-opcua` expressions.
 
 ## Non-Goals
 
@@ -99,6 +101,10 @@ for the reproducible test contract and current platform evidence.
 13. Automatic oroGen/typegen generation is a later improvement. The first
     MetaNC migration uses a small application-owned registration plugin around
     its existing metadata.
+14. An OPC UA datatype definition does not replace RTT type information. Every
+    transported custom structure must also provide member-aware RTT metadata;
+    intentionally opaque RTT types remain valid only when their client contract
+    does not require member access.
 
 ## Dependency Direction
 
@@ -337,6 +343,67 @@ MetaNC's non-RTT SDK links its contract metadata normally and installs the same
 custom datatypes into its own OPC UA client configuration. It does not load an
 Orocos transport plugin.
 
+## RTT Structured-Type And TaskBrowser Contract
+
+The OPC UA provider describes native wire layout, datatype NodeIds, and binary
+encoding. The RTT typekit separately describes how RTT scripting discovers and
+updates C++ members. These are complementary contracts. Registering a structure
+only with `TemplateTypeInfo` leaves it opaque to TaskBrowser even when its OPC
+UA codec can encode and decode the complete value.
+
+For a custom type intended for interactive RTT clients:
+
+- register structures with `StructTypeInfo` or an equivalent generated,
+  member-aware `TypeInfo`;
+- expose stable, case-sensitive member names matching the application
+  contract;
+- register variable-length collections with `SequenceTypeInfo` and ensure the
+  element type is itself member-aware;
+- provide a readable stream representation for direct TaskBrowser output; and
+- keep intentionally unsupported fixture types opaque only when testing strict
+  publication failure.
+
+The generic fixture therefore models these RTT types:
+
+| RTT type | RTT metadata | Required client behavior |
+| --- | --- | --- |
+| `/orocos/fixture/Point` | structure with `x` and `y` | display and nested read/write |
+| `/orocos/fixture/Envelope` | structure with `point` and `quality` | display and nested read/write |
+| `/orocos/fixture/PointArray` | sequence of `Point` | index plus nested element read/write |
+| `/orocos/fixture/UnsupportedValue` | intentionally opaque | reject complete component publication |
+
+A nested write through an assignable remote value follows this logical flow:
+
+```text
+ctaskbrowser-opcua parses EnvelopeAttribute.point.x = 10
+  -> local StructTypeInfo resolves point and x
+  -> the assignable proxy updates its cached Envelope
+  -> the proxy codec writes the complete Envelope OPC UA Variant
+  -> the server assigns the original RTT attribute
+  -> a new client session reads x == 10 from the server
+```
+
+The complete-value write is intentional. OPC UA transports the registered
+structure value; it does not expose a separate writable OPC UA variable for
+each C++ field. A failed conversion or server write must leave the proxy and
+server values unchanged and return a concrete error.
+
+Read-only behavior is transitive. A constant may be displayed and its nested
+members may be read, but an expression that writes any nested member must be
+rejected rather than modifying a temporary client-side copy.
+
+> [!IMPORTANT]
+> `ctaskbrowser-opcua` uses the locally imported RTT typekit for parsing,
+> display, and member discovery. The remote endpoint supplies values and
+> writability through the OPC UA proxy. Both halves must be correct; successful
+> binary round-trips alone do not satisfy the interactive client contract.
+
+The first implementation change belongs in the external fixture typekit. A
+generic `rtt_opcua` proxy change is permitted only when a failing end-to-end
+test proves that correct member-aware RTT metadata still cannot propagate a
+nested assignment. The transport must not synthesize RTT structure metadata
+from the OPC UA schema.
+
 ## Strict Publication And Unsupported-Type Diagnostics
 
 > [!IMPORTANT]
@@ -460,6 +527,13 @@ extension requirement. The runtime API must be proven first.
   operations, properties, attributes, and ports.
 - Round-trip a custom structure, a nested structure, and an array of custom
   structures through server and `TaskContextProxy`.
+- Run the installed `ctaskbrowser-opcua` against the fixture and verify direct
+  value display, nested reads, nested writes, custom-type operation arguments
+  and results, and indexed structure-array access.
+- Reconnect after nested attribute and array-element writes and verify that the
+  server, rather than only a client cache, contains the updated values.
+- Verify nested writes through custom constants are rejected and leave their
+  values unchanged.
 - Vary namespace registration order and prove that no test assumes index `1`.
 - Verify custom DataType and binary-encoding nodes by namespace URI and string
   NodeId.
