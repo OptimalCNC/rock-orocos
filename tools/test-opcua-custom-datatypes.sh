@@ -68,9 +68,15 @@ orocos_rock_validate_target "$TARGET"
 
 PREFIX="$(realpath -m -- "$PREFIX")"
 DEPENDENCY_PREFIX="$(realpath -m -- "$DEPENDENCY_PREFIX")"
-HOME_ROOT="$(cd "$HOME" && pwd -P)"
-HOME_OROCOS="$HOME_ROOT/.orocos"
-HOME_OROCOS_REAL="$(realpath -m -- "$HOME_OROCOS")"
+CALLER_HOME_ROOT="$(cd "$HOME" && pwd -P)"
+LOGIN_HOME_ROOT="$(getent passwd "$(id -u)" | cut -d: -f6)"
+[ -n "$LOGIN_HOME_ROOT" ] || \
+    orocos_rock_die "unable to resolve the login home directory"
+LOGIN_HOME_ROOT="$(cd "$LOGIN_HOME_ROOT" && pwd -P)"
+CALLER_HOME_OROCOS="$CALLER_HOME_ROOT/.orocos"
+CALLER_HOME_OROCOS_REAL="$(realpath -m -- "$CALLER_HOME_OROCOS")"
+LOGIN_HOME_OROCOS="$LOGIN_HOME_ROOT/.orocos"
+LOGIN_HOME_OROCOS_REAL="$(realpath -m -- "$LOGIN_HOME_OROCOS")"
 
 case "$PREFIX" in
     /tmp/*) ;;
@@ -82,12 +88,14 @@ case "$DEPENDENCY_PREFIX" in
         "dependency prefix must be below /tmp: $DEPENDENCY_PREFIX" ;;
 esac
 case "$PREFIX/" in
-    "$HOME_OROCOS/"*|"$HOME_OROCOS_REAL/"*)
+    "$CALLER_HOME_OROCOS/"*|"$CALLER_HOME_OROCOS_REAL/"*|\
+    "$LOGIN_HOME_OROCOS/"*|"$LOGIN_HOME_OROCOS_REAL/"*)
         orocos_rock_die "refusing home Orocos prefix: $PREFIX"
         ;;
 esac
 case "$DEPENDENCY_PREFIX/" in
-    "$HOME_OROCOS/"*|"$HOME_OROCOS_REAL/"*)
+    "$CALLER_HOME_OROCOS/"*|"$CALLER_HOME_OROCOS_REAL/"*|\
+    "$LOGIN_HOME_OROCOS/"*|"$LOGIN_HOME_OROCOS_REAL/"*)
         orocos_rock_die "refusing home Orocos dependency prefix: $DEPENDENCY_PREFIX"
         ;;
 esac
@@ -141,7 +149,10 @@ LIBRARY_PATHS=(
 LD_LIBRARY_PATH="$(IFS=:; printf '%s' "${LIBRARY_PATHS[*]}")"
 export LD_LIBRARY_PATH
 
-HOME_IGNORE="$HOME_OROCOS;$HOME_OROCOS/toolchain;$HOME_OROCOS_REAL;$HOME_OROCOS_REAL/toolchain"
+HOME_IGNORE="$CALLER_HOME_OROCOS;$CALLER_HOME_OROCOS/toolchain"
+HOME_IGNORE+=";$CALLER_HOME_OROCOS_REAL;$CALLER_HOME_OROCOS_REAL/toolchain"
+HOME_IGNORE+=";$LOGIN_HOME_OROCOS;$LOGIN_HOME_OROCOS/toolchain"
+HOME_IGNORE+=";$LOGIN_HOME_OROCOS_REAL;$LOGIN_HOME_OROCOS_REAL/toolchain"
 COMMON_CMAKE_ARGS=(
     -DCMAKE_BUILD_TYPE=RelWithDebInfo
     -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF
@@ -433,14 +444,17 @@ do
 done
 
 CONTAMINATION="$({
-    rg -F -e "$HOME_OROCOS" -e "$HOME_OROCOS_REAL" \
+    rg -F \
+        -e "$CALLER_HOME_OROCOS" -e "$CALLER_HOME_OROCOS_REAL" \
+        -e "$LOGIN_HOME_OROCOS" -e "$LOGIN_HOME_OROCOS_REAL" \
         "$TEST_ROOT" "$PREFIX" \
         --glob 'CMakeCache.txt' --glob '*.ldd' --glob '*.log' \
         --glob '*.pc' --glob '*.cmake' --glob '*.sh' || true
 } | rg -v 'CMAKE_IGNORE_PREFIX_PATH' || true)"
 if [ -n "$CONTAMINATION" ]; then
     printf '%s\n' "$CONTAMINATION" >&2
-    orocos_rock_die "isolated verification resolved an artifact below $HOME_OROCOS"
+    orocos_rock_die \
+        "isolated verification resolved an artifact below a home .orocos"
 fi
 
 orocos_rock_info "OPC UA custom datatype verification passed"

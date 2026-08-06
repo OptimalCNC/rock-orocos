@@ -130,6 +130,10 @@ else
       errors << "custom datatype verification must not configure #{setting}"
     end
   end
+  unless custom_datatype_test.include?('LOGIN_HOME_ROOT="$(getent passwd "$(id -u)" | cut -d: -f6)"') &&
+         custom_datatype_test.include?('LOGIN_HOME_OROCOS')
+    errors << "custom datatype verification must scan the login home even when HOME is isolated"
+  end
 end
 
 if !File.file?(results_path)
