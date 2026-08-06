@@ -37,12 +37,43 @@ target_link_libraries(
   open62541pp::open62541pp
 )
 
-add_executable(fixture-server fixture_component.cpp)
+add_library(fixture-component-implementation STATIC fixture_components.cpp)
+set_target_properties(
+  fixture-component-implementation
+  PROPERTIES POSITION_INDEPENDENT_CODE ON
+)
+target_compile_features(fixture-component-implementation PRIVATE cxx_std_20)
+target_include_directories(
+  fixture-component-implementation
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+  PRIVATE
+    ${OROCOS-RTT_INCLUDE_DIRS}
+)
+target_link_libraries(
+  fixture-component-implementation
+  PUBLIC
+    ${OROCOS-RTT_LIBRARIES}
+    ${OROCOS-RTT_TYPEKIT_LIBRARIES}
+)
+
+orocos_component(fixture-components fixture_plugin.cpp)
+target_compile_features(fixture-components PRIVATE cxx_std_20)
+target_include_directories(fixture-components PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(
+  fixture-components
+  fixture-component-implementation
+  ${OROCOS-RTT_LIBRARIES}
+  ${OROCOS-RTT_TYPEKIT_LIBRARIES}
+)
+
+add_executable(fixture-server fixture_server.cpp)
 orocos_configure_executable(fixture-server)
 target_compile_features(fixture-server PRIVATE cxx_std_20)
 target_include_directories(fixture-server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(
   fixture-server
+  fixture-component-implementation
   PkgConfig::RTT_OPCUA
   open62541pp::open62541pp
   ${OROCOS-RTT_TYPEKIT_LIBRARIES}
@@ -63,6 +94,8 @@ foreach(
   target
   fixture-types
   fixture-opcua-transport
+  fixture-component-implementation
+  fixture-components
   fixture-server
   fixture-client
 )
@@ -83,5 +116,13 @@ install(
   RUNTIME DESTINATION bin
 )
 install(FILES fixture_types.hpp DESTINATION include/orocos/orocos_opcua_fixture)
+install(
+  FILES fixture_components.hpp
+  DESTINATION include/orocos/orocos_opcua_fixture
+)
+install(
+  FILES deployer-no-start.ops deployer-start.ops
+  DESTINATION share/orocos-opcua-fixture
+)
 
 orocos_generate_package(orocos_opcua_fixture-${OROCOS_TARGET})

@@ -15,6 +15,8 @@ inline constexpr std::string_view kEnvelopeTypeName =
     "/orocos/fixture/Envelope";
 inline constexpr std::string_view kPointArrayTypeName =
     "/orocos/fixture/PointArray";
+inline constexpr std::string_view kUnsupportedTypeName =
+    "/orocos/fixture/UnsupportedValue";
 
 struct Point {
   double x{0.0};
@@ -32,12 +34,23 @@ struct Envelope {
 
 using PointArray = std::vector<Point>;
 
+struct UnsupportedValue {
+  std::int32_t value{0};
+
+  auto operator<=>(const UnsupportedValue &) const = default;
+};
+
 inline std::ostream &operator<<(std::ostream &stream, const Point &value) {
   return stream << "Point{" << value.x << ", " << value.y << '}';
 }
 
 inline std::ostream &operator<<(std::ostream &stream, const Envelope &value) {
   return stream << "Envelope{" << value.point << ", " << value.quality << '}';
+}
+
+inline std::ostream &operator<<(std::ostream &stream,
+                                const UnsupportedValue &value) {
+  return stream << "UnsupportedValue{" << value.value << '}';
 }
 
 } // namespace orocos::opcua::fixture

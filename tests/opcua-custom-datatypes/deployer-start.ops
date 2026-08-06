@@ -1,0 +1,5 @@
+import("orocos_opcua_fixture")
+loadComponent("sample", "orocos::opcua::fixture::FixtureComponent")
+loadComponent("unsupported", "orocos::opcua::fixture::UnsupportedComponent")
+opcua.start()
+opcua.publishComponent("sample")

@@ -1,0 +1,97 @@
+#include "fixture_components.hpp"
+
+#include <rtt/InputPort.hpp>
+#include <rtt/OutputPort.hpp>
+#include <rtt/rt_string.hpp>
+
+#include <cstdint>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace orocos::opcua::fixture {
+namespace {
+
+template <typename T> struct Surface {
+  Surface(std::string configured_stem, T initial)
+      : stem(std::move(configured_stem)), property(initial), attribute(initial),
+        constant(initial), output(stem + "Output"), input(stem + "Input") {}
+
+  T echo(T value) { return value; }
+
+  bool emit(T value) { return output.write(value) == RTT::WriteSuccess; }
+
+  T take() {
+    T value{};
+    static_cast<void>(input.read(value));
+    return value;
+  }
+
+  std::string stem;
+  T property;
+  T attribute;
+  const T constant;
+  RTT::OutputPort<T> output;
+  RTT::InputPort<T> input;
+};
+
+template <typename T>
+void publishSurface(RTT::TaskContext &owner, Surface<T> &surface) {
+  owner.addProperty(surface.stem + "Property", surface.property);
+  owner.addAttribute(surface.stem + "Attribute", surface.attribute);
+  owner.addConstant(surface.stem + "Constant", surface.constant);
+  owner.addPort(surface.output);
+  owner.addPort(surface.input);
+  owner
+      .addOperation(surface.stem + "Echo", &Surface<T>::echo, &surface,
+                    RTT::OwnThread)
+      .arg("value", "Value to return.");
+  owner
+      .addOperation(surface.stem + "Emit", &Surface<T>::emit, &surface,
+                    RTT::OwnThread)
+      .arg("value", "Value to publish.");
+  owner.addOperation(surface.stem + "Take", &Surface<T>::take, &surface,
+                     RTT::OwnThread);
+}
+
+} // namespace
+
+struct FixtureComponent::Impl {
+  explicit Impl(FixtureComponent &owner)
+      : float64_array("Float64Array", {1.25, 2.5}),
+        int32_array("Int32Array", {10, 20}),
+        string_array("StringArray", {"alpha", "beta"}),
+        rt_string("RtString", RTT::rt_string("initial")),
+        point("Point", Point{1.0, 2.0}),
+        envelope("Envelope", Envelope{{3.0, 4.0}, 5}),
+        point_array("PointArray", {{6.0, 7.0}, {8.0, 9.0}}) {
+    publishSurface(owner, float64_array);
+    publishSurface(owner, int32_array);
+    publishSurface(owner, string_array);
+    publishSurface(owner, rt_string);
+    publishSurface(owner, point);
+    publishSurface(owner, envelope);
+    publishSurface(owner, point_array);
+  }
+
+  Surface<std::vector<double>> float64_array;
+  Surface<std::vector<std::int32_t>> int32_array;
+  Surface<std::vector<std::string>> string_array;
+  Surface<RTT::rt_string> rt_string;
+  Surface<Point> point;
+  Surface<Envelope> envelope;
+  Surface<PointArray> point_array;
+};
+
+FixtureComponent::FixtureComponent(const std::string &name)
+    : RTT::TaskContext(name, RTT::TaskContext::PreOperational),
+      impl_(std::make_unique<Impl>(*this)) {}
+
+FixtureComponent::~FixtureComponent() = default;
+
+UnsupportedComponent::UnsupportedComponent(const std::string &name)
+    : RTT::TaskContext(name, RTT::TaskContext::PreOperational) {
+  addProperty("UnsupportedProperty", value_);
+}
+
+} // namespace orocos::opcua::fixture

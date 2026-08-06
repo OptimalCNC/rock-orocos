@@ -20,7 +20,10 @@ public:
            types->addType(new RTT::types::TemplateTypeInfo<Envelope, false>(
                std::string(kEnvelopeTypeName))) &&
            types->addType(new RTT::types::SequenceTypeInfo<PointArray>(
-               std::string(kPointArrayTypeName)));
+               std::string(kPointArrayTypeName))) &&
+           types->addType(new RTT::types::TemplateTypeInfo<UnsupportedValue,
+                                                           false>(
+               std::string(kUnsupportedTypeName)));
   }
 
   bool loadOperators() override { return true; }

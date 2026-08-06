@@ -11,8 +11,8 @@ usage() {
 Usage: ./tools/test-opcua-custom-datatypes.sh --prefix PREFIX --dependency-prefix PREFIX [--target TARGET]
 
 Build and install RTT, rtt_opcua, OCL, and an external custom-datatype fixture
-into an isolated temporary prefix, then run the fixture server and client as
-separate processes.
+into an isolated temporary prefix. Verify both the standalone server and the
+explicit-start deployer lifecycle with separate client processes.
 
 Options:
   --prefix PREFIX
@@ -177,9 +177,9 @@ configure_build_install \
     -DBUILD_TESTING=ON
 
 cmake --build "$TEST_ROOT/rtt-build" --parallel "$BUILD_PARALLEL" \
-    --target typekit_test
+    --target typekit_test scripting_test
 ctest --test-dir "$TEST_ROOT/rtt-build" --output-on-failure \
-    --timeout "$TEST_TIMEOUT" -R '^typekit_test$'
+    --timeout "$TEST_TIMEOUT" -R '^(typekit_test|scripting_test)$'
 
 INSTALLED_PREFIX_PATH="$PREFIX;$DEPENDENCY_PREFIX"
 configure_build_install \
@@ -202,7 +202,7 @@ cmake --build "$TEST_ROOT/ocl-build" --parallel "$BUILD_PARALLEL" \
     --target ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
 ctest --test-dir "$TEST_ROOT/ocl-build" --output-on-failure \
     --timeout "$TEST_TIMEOUT" \
-    -R '^(ocl_opcua_deployment_test|ctaskbrowser_opcua_.*)$'
+    -R '^(ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
 
 configure_build_install \
     fixture "$OROCOS_ROCK_ROOT/tests/opcua-custom-datatypes" \
@@ -216,26 +216,59 @@ pkg-config --exists "orocos_opcua_fixture-$TARGET"
 
 TYPEKIT="$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture/types/libfixture-types-$TARGET.so"
 TRANSPORT="$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture/plugins/libfixture-opcua-transport-$TARGET.so"
+COMPONENT="$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture/libfixture-components-$TARGET.so"
 SERVER="$PREFIX/bin/fixture-server"
 CLIENT="$PREFIX/bin/fixture-client"
-for artifact in "$TYPEKIT" "$TRANSPORT" "$SERVER" "$CLIENT"; do
+DEPLOYER="$PREFIX/bin/deployer-opcua"
+DEPLOYER_BINARY="$PREFIX/bin/deployer-opcua-$TARGET"
+NO_START_SCRIPT="$PREFIX/share/orocos-opcua-fixture/deployer-no-start.ops"
+START_SCRIPT="$PREFIX/share/orocos-opcua-fixture/deployer-start.ops"
+for artifact in \
+    "$TYPEKIT" "$TRANSPORT" "$COMPONENT" "$SERVER" "$CLIENT" \
+    "$DEPLOYER" "$DEPLOYER_BINARY" "$NO_START_SCRIPT" "$START_SCRIPT"
+do
     orocos_rock_require_file "$artifact"
 done
 
+OROCOS_PREFIX="$PREFIX"
+RTT_COMPONENT_PATH="$PREFIX/lib/orocos/$TARGET:$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture:$PREFIX/lib/orocos/$TARGET/ocl"
+export OROCOS_PREFIX RTT_COMPONENT_PATH
+
 cd "$TEST_ROOT"
 
-PORT="$(ruby -rsocket -e 'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]')"
+unused_port() {
+    ruby -rsocket -e \
+        'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]'
+}
+
+port_accepts_connections() {
+    ruby -rsocket -e '
+        begin
+          socket = TCPSocket.new("127.0.0.1", Integer(ARGV.fetch(0)))
+          socket.close
+        rescue SystemCallError
+          exit 1
+        end
+    ' "$1"
+}
+
+PORT="$(unused_port)"
 READY_FILE="$TEST_ROOT/server.ready"
 SERVER_LOG="$TEST_ROOT/server.log"
 SERVER_PID=""
+DEPLOYER_PID=""
 
-stop_server() {
+cleanup_processes() {
     if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
         kill -TERM "$SERVER_PID" 2>/dev/null || true
         wait "$SERVER_PID" 2>/dev/null || true
     fi
+    if [ -n "$DEPLOYER_PID" ] && kill -0 "$DEPLOYER_PID" 2>/dev/null; then
+        kill -TERM "$DEPLOYER_PID" 2>/dev/null || true
+        wait "$DEPLOYER_PID" 2>/dev/null || true
+    fi
 }
-trap stop_server EXIT INT TERM
+trap cleanup_processes EXIT INT TERM
 
 orocos_rock_info "Starting external fixture server on loopback port $PORT"
 "$SERVER" \
@@ -264,6 +297,8 @@ fi
 ENDPOINT="$(sed -n '1p' "$READY_FILE")"
 orocos_rock_info "Running external fixture client against $ENDPOINT"
 "$CLIENT" \
+    --standalone \
+    --component "fixture/component" \
     --typekit "$TYPEKIT" \
     --transport "$TRANSPORT" \
     --endpoint "$ENDPOINT"
@@ -276,9 +311,124 @@ if ! wait "$SERVER_PID"; then
     orocos_rock_die "fixture server failed during shutdown"
 fi
 SERVER_PID=""
+
+NO_START_PORT="$(unused_port)"
+NO_START_ENDPOINT="opc.tcp://127.0.0.1:$NO_START_PORT/rtt"
+NO_START_LOG="$TEST_ROOT/deployer-no-start.log"
+NO_START_CLIENT_LOG="$TEST_ROOT/deployer-no-start-client.log"
+orocos_rock_info "Starting deployer without opcua.start() on port $NO_START_PORT"
+"$DEPLOYER" \
+    --opcua-address 127.0.0.1 \
+    --opcua-port "$NO_START_PORT" \
+    --opcua-endpoint-path /rtt \
+    "$NO_START_SCRIPT" </dev/null >"$NO_START_LOG" 2>&1 &
+DEPLOYER_PID="$!"
+
+sleep 0.5
+if ! kill -0 "$DEPLOYER_PID" 2>/dev/null; then
+    sed -n '1,240p' "$NO_START_LOG" >&2
+    orocos_rock_die "no-start deployer exited unexpectedly"
+fi
+if port_accepts_connections "$NO_START_PORT"; then
+    orocos_rock_die "OPC UA port opened before opcua.start()"
+fi
+if "$CLIENT" \
+    --deployer \
+    --probe-only \
+    --component Deployer \
+    --typekit "$TYPEKIT" \
+    --transport "$TRANSPORT" \
+    --endpoint "$NO_START_ENDPOINT" \
+    >"$NO_START_CLIENT_LOG" 2>&1
+then
+    orocos_rock_die "client created a Deployer proxy before opcua.start()"
+fi
+
+kill -TERM "$DEPLOYER_PID"
+if ! wait "$DEPLOYER_PID"; then
+    sed -n '1,240p' "$NO_START_LOG" >&2
+    orocos_rock_die "no-start deployer failed during shutdown"
+fi
+DEPLOYER_PID=""
+
+START_PORT="$(unused_port)"
+while [ "$START_PORT" = "$NO_START_PORT" ]; do
+    START_PORT="$(unused_port)"
+done
+START_ENDPOINT="opc.tcp://127.0.0.1:$START_PORT/rtt"
+START_LOG="$TEST_ROOT/deployer-start.log"
+PROBE_LOG="$TEST_ROOT/deployer-probe.log"
+orocos_rock_info "Starting explicit OPC UA deployer on port $START_PORT"
+"$DEPLOYER" \
+    --opcua-address 127.0.0.1 \
+    --opcua-port "$START_PORT" \
+    --opcua-endpoint-path /rtt \
+    "$START_SCRIPT" </dev/null >"$START_LOG" 2>&1 &
+DEPLOYER_PID="$!"
+
+deployer_ready=0
+for _ in $(seq 1 60); do
+    if "$CLIENT" \
+        --deployer \
+        --probe-only \
+        --component Deployer \
+        --typekit "$TYPEKIT" \
+        --transport "$TRANSPORT" \
+        --endpoint "$START_ENDPOINT" \
+        >"$PROBE_LOG" 2>&1
+    then
+        deployer_ready=1
+        break
+    fi
+    if ! kill -0 "$DEPLOYER_PID" 2>/dev/null; then
+        break
+    fi
+    sleep 0.05
+done
+if [ "$deployer_ready" -ne 1 ]; then
+    sed -n '1,240p' "$START_LOG" >&2
+    sed -n '1,240p' "$PROBE_LOG" >&2
+    orocos_rock_die "explicit OPC UA deployer did not become ready"
+fi
+
+orocos_rock_info "Running installed deployer OPC UA acceptance client"
+"$CLIENT" \
+    --deployer \
+    --component sample \
+    --typekit "$TYPEKIT" \
+    --transport "$TRANSPORT" \
+    --endpoint "$START_ENDPOINT"
+
+kill -TERM "$DEPLOYER_PID"
+if ! wait "$DEPLOYER_PID"; then
+    sed -n '1,240p' "$START_LOG" >&2
+    orocos_rock_die "explicit OPC UA deployer failed during shutdown"
+fi
+DEPLOYER_PID=""
+
+RUNTIME_ENV="$TEST_ROOT/runtime-env.sh"
+{
+    printf 'export OROCOS_PREFIX=%q\n' "$PREFIX"
+    printf 'export OROCOS_TARGET=%q\n' "$TARGET"
+    printf 'export PKG_CONFIG_PATH=%q\n' "$PKG_CONFIG_PATH"
+    printf 'export LD_LIBRARY_PATH=%q\n' "$LD_LIBRARY_PATH"
+    printf 'export RTT_COMPONENT_PATH=%q\n' "$RTT_COMPONENT_PATH"
+    printf 'export OROCOS_OPCUA_ENDPOINT=%q\n' "$START_ENDPOINT"
+    printf 'export OROCOS_OPCUA_DEPLOYER=%q\n' "$DEPLOYER"
+    printf 'export OROCOS_OPCUA_CLIENT=%q\n' "$CLIENT"
+    printf 'export OROCOS_OPCUA_TYPEKIT=%q\n' "$TYPEKIT"
+    printf 'export OROCOS_OPCUA_TRANSPORT=%q\n' "$TRANSPORT"
+    printf 'export OROCOS_OPCUA_COMPONENT=%q\n' "$COMPONENT"
+    printf 'export OROCOS_OPCUA_NO_START_SCRIPT=%q\n' "$NO_START_SCRIPT"
+    printf 'export OROCOS_OPCUA_START_SCRIPT=%q\n' "$START_SCRIPT"
+} >"$RUNTIME_ENV"
+
 trap - EXIT INT TERM
 
-for binary in "$SERVER" "$CLIENT" "$TYPEKIT" "$TRANSPORT"; do
+for binary in \
+    "$SERVER" "$CLIENT" "$DEPLOYER_BINARY" "$TYPEKIT" "$TRANSPORT" \
+    "$COMPONENT"
+do
     ldd "$binary" >"$TEST_ROOT/$(basename "$binary").ldd"
 done
 
