@@ -24,6 +24,11 @@ writable attributes, read-only constants, input ports, and output ports:
 - `/orocos/fixture/Envelope`
 - `/orocos/fixture/PointArray`
 
+The installed Deployer fixture also exposes a built-in `Int32` `Gain`
+property, writable `String` `Status` attribute, read-only `Int32` `Limit`
+constant, and `echo(Int32)` operation. These make the expected remote
+assignability rules directly testable in `ctaskbrowser-opcua`.
+
 It also verifies custom DataType and binary-encoding nodes by namespace URI and
 stable string NodeId, forces the provider namespace away from index `1`, and
 requires an empty unsupported-resource report.
@@ -76,22 +81,13 @@ env -u OROCOS_PREFIX -u OROCOS_TARGET -u LD_LIBRARY_PATH \
       --target gnulinux
 ```
 
-The sanitizer run uses a different empty prefix:
-
-```bash
-env -u OROCOS_PREFIX -u OROCOS_TARGET -u LD_LIBRARY_PATH \
-    -u RTT_COMPONENT_PATH -u CMAKE_PREFIX_PATH -u PKG_CONFIG_PATH \
-    -u RUBYLIB \
-    JOBS=2 \
-    CXXFLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
-    LDFLAGS='-fsanitize=address,undefined' \
-    ASAN_OPTIONS='detect_leaks=1:halt_on_error=1' \
-    UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1' \
-    ./tools/test-opcua-custom-datatypes.sh \
-      --prefix /tmp/orocos-opcua-verification-sanitizer/prefix \
-      --dependency-prefix /tmp/orocos-opcua-dependencies/prefix \
-      --target gnulinux
-```
+Sanitizer verification uses fresh Debug build trees for owned `rtt_opcua` and
+OCL code after the release prefix has been installed. The exact configuration
+is in Task 8 of the
+[OPC UA Static Publication Implementation Plan](./opcua-deployer-lifecycle-plan.md).
+Run LeakSanitizer once without suppressions. A suppression is acceptable only
+after its stack has been reproduced in an unchanged pinned dependency; owned
+callback state, invocation lifetime, hangs, and every other leak remain fatal.
 
 The runner gives every build and test a temporary `HOME`, disables the CMake
 user package registry, rejects a home Orocos prefix, records dynamic-library
@@ -100,27 +96,65 @@ for accidental resolution from the real `~/.orocos`.
 
 ## Current Evidence
 
-On 2026-08-05, the Task 6 release run passed end to end on Ubuntu 24.04 x86-64
-with GCC 13.3 and CMake 3.28.3:
+The 2026-08-05 Task 8 gate passed on Ubuntu 24.04 x86-64 with GCC 13.3.0 and
+CMake 3.28.3. The exact verified source revisions are:
 
-- RTT canonical typekit and scripting tests: 2/2
-- `rtt_opcua`: 10/10
-- OCL lifecycle and `ctaskbrowser-opcua` CLI tests: 11/11
-- standalone server/client fixture: passed all seven representative types
-- stopped and explicit-start Deployer process cases: passed
-- strict unsupported publication and published-component unload rejection:
-  passed
-- installed metadata and dynamic linkage: no resolved artifact below
-  `~/.orocos`
+| Source | Revision |
+|---|---|
+| `orocos-rock` implementation | `d447800aa9b119f279624041f2b760e4e5e04609` |
+| RTT | `f529ac1d7c2ea74242883df91fafa599fcc208b8` |
+| `rtt_opcua` | `a94eee231fcae55ec8cc8774817e747d9ffd58d1` |
+| OCL | `fb018446af77d52c8a9466275cda984ce8f12ca2` |
+| farbot | `09fd406eef4778511e85b569e3e75cad3d5cf608` |
+| rtlog-cpp | `5842ca36c69ad4ba34321eda80891c832298f161` |
+| open62541 v1.4.15 | `45e4cd3ef6c79a8e503d37c9f5c89fefe90d99db` |
+| open62541pp v0.21.2 | `b1696768b26a12d0f40fdac5ec62ad78d25fa236` |
 
-The maintained install is `/tmp/orocos-opcua-task6-final.2tFntH`; logs, CMake
-caches, the generated manual runtime environment, and `ldd` records are in
-`/tmp/orocos-opcua-task6-final.2tFntH-work`.
+The dependency sources were detached, clean, and unchanged. open62541 used
+shared libraries, reduced namespace zero, PubSub disabled, examples disabled,
+and `UA_BUILD_UNIT_TESTS=OFF`. open62541pp used shared libraries, the external
+open62541 installation, examples and documentation disabled, and
+`UAPP_BUILD_TESTS=OFF`. No dependency unit tests were built or run.
 
-This gate uses unmodified open62541 v1.4.15 and open62541pp v0.21.2 artifacts.
-It does not build their unit tests. Fresh sanitizer, detached-tag dependency,
-manual TaskBrowser, and package-wide results belong to the Task 8 verification
-gate and are not claimed here.
+The fresh maintained matrix passed:
 
-Target Xenomai validation, cross-distribution CI, and downstream migration
-steps 9 through 13 remain separate gates.
+- RTT canonical typekit and scripting tests: 2/2 in 0.28 seconds;
+- `rtt_opcua`: 10/10 in 8.73 seconds;
+- OCL lifecycle and `ctaskbrowser-opcua` CLI tests: 11/11 in 4.59 seconds;
+- standalone server/client round trips for all seven representative types;
+- closed listener and rejected Deployer proxy before `opcua.start()`;
+- explicit-start Deployer, strict publication, unsupported-type rollback, and
+  published-component unload rejection; and
+- warning-clean C++20 builds with CORBA disabled and no maintained artifact
+  resolved from `~/.orocos`.
+
+The manual browser connected to the installed sample and changed `Gain` from
+`1` to `9` and `Status` from `idle` to `running`. `echo(42)` returned `42`.
+Assigning `Limit = 101` produced the expected constant-assignment error and a
+subsequent read remained `100`. The remote Deployer exposed exactly `start`,
+`isRunning`, `endpointUrl`, `lastError`, `publishComponent`, and
+`unsupportedResources`. Strict publication of the intentionally unsupported
+component returned false, reported its missing protocol, and left no remotely
+browsable component node.
+
+Fresh AddressSanitizer and UndefinedBehaviorSanitizer builds passed
+`rtt_opcua` 10/10 in 9.92 seconds and the six OCL lifecycle cases in 5.49
+seconds. The immediate-shutdown-after-timeout case ran explicitly and retained
+the asynchronous invocation through completion. An unsuppressed LeakSanitizer
+run found only two stack roots in the unchanged stock dependencies:
+open62541pp `opcua::detail::allocNativeString` and open62541 `UA_Array_copy`
+while reading a datatype definition. The passing matrix suppresses only those
+two frames; every other leak and all ASan/UBSan findings remain fatal. No
+third-party source was patched.
+
+The release install is `/tmp/orocos-opcua-maintained-final.z5XQfT`, and its
+build trees, runtime environment, logs, caches, and `ldd` records are in
+`/tmp/orocos-opcua-maintained-final.z5XQfT-work`. Detached sources, dependencies,
+sanitizer evidence, manual transcripts, and the final mdBook are below
+`/tmp/orocos-opcua-task8.iaxbIP`.
+
+A non-returning OwnThread operation can delay shutdown indefinitely; releasing
+its component lease or invocation storage early would be unsafe. Target
+Xenomai validation, cross-distribution CI, downstream migration steps 9 through
+13, PKI/non-loopback security, unpublication, and OPC UA PubSub port mapping
+remain separate future gates.

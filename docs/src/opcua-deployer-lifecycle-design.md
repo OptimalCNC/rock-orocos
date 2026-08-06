@@ -2,7 +2,7 @@
 
 Date: 2026-08-05
 
-Status: Approved design; implementation pending
+Status: Implemented and verified for the generic toolchain on 2026-08-05
 
 ## Purpose
 

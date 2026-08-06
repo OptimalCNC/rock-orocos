@@ -6,8 +6,8 @@ Updated: 2026-08-05
 Status: The generic implementation now follows the explicit-start and static,
 strict-publication lifecycle specified in
 [OPC UA Deployer Lifecycle Design](./opcua-deployer-lifecycle-design.md).
-Final Task 8 verification remains pending. MetaNC migration steps 9 through 13
-remain a separate delivery.
+The generic Task 8 gate passed on 2026-08-05. MetaNC migration steps 9 through
+13 remain a separate delivery.
 
 ## Purpose
 
