@@ -96,14 +96,14 @@ for accidental resolution from the real `~/.orocos`.
 
 ## Current Evidence
 
-The 2026-08-05 Task 8 gate passed on Ubuntu 24.04 x86-64 with GCC 13.3.0 and
+The 2026-08-06 Task 8 gate passed on Ubuntu 24.04 x86-64 with GCC 13.3.0 and
 CMake 3.28.3. The exact verified source revisions are:
 
 | Source | Revision |
 |---|---|
-| `orocos-rock` implementation | `d447800aa9b119f279624041f2b760e4e5e04609` |
+| `orocos-rock` implementation | `652ad0637d68c3e228ac298099445cdc3d1aa67b` |
 | RTT | `f529ac1d7c2ea74242883df91fafa599fcc208b8` |
-| `rtt_opcua` | `a94eee231fcae55ec8cc8774817e747d9ffd58d1` |
+| `rtt_opcua` | `f993906c251497af06e24c005ee4f9ee938203af` |
 | OCL | `fb018446af77d52c8a9466275cda984ce8f12ca2` |
 | farbot | `09fd406eef4778511e85b569e3e75cad3d5cf608` |
 | rtlog-cpp | `5842ca36c69ad4ba34321eda80891c832298f161` |
@@ -119,8 +119,8 @@ open62541 installation, examples and documentation disabled, and
 The fresh maintained matrix passed:
 
 - RTT canonical typekit and scripting tests: 2/2 in 0.28 seconds;
-- `rtt_opcua`: 10/10 in 8.73 seconds;
-- OCL lifecycle and `ctaskbrowser-opcua` CLI tests: 11/11 in 4.59 seconds;
+- `rtt_opcua`: 10/10 in 8.86 seconds;
+- OCL lifecycle and `ctaskbrowser-opcua` CLI tests: 11/11 in 4.54 seconds;
 - standalone server/client round trips for all seven representative types;
 - closed listener and rejected Deployer proxy before `opcua.start()`;
 - explicit-start Deployer, strict publication, unsupported-type rollback, and
@@ -138,20 +138,24 @@ component returned false, reported its missing protocol, and left no remotely
 browsable component node.
 
 Fresh AddressSanitizer and UndefinedBehaviorSanitizer builds passed
-`rtt_opcua` 10/10 in 9.92 seconds and the six OCL lifecycle cases in 5.49
+`rtt_opcua` 10/10 in 10.42 seconds and the six OCL lifecycle cases in 5.53
 seconds. The immediate-shutdown-after-timeout case ran explicitly and retained
-the asynchronous invocation through completion. An unsuppressed LeakSanitizer
-run found only two stack roots in the unchanged stock dependencies:
-open62541pp `opcua::detail::allocNativeString` and open62541 `UA_Array_copy`
-while reading a datatype definition. The passing matrix suppresses only those
-two frames; every other leak and all ASan/UBSan findings remain fatal. No
-third-party source was patched.
+the asynchronous invocation through completion. The server suite also covers
+two concurrent `start()` callers and verifies that they share one serialized
+startup. `ldd` records confirm that `rtt_opcua` and both OCL deployment
+libraries resolve from their sanitizer build trees; installed release copies
+cannot override the owned instrumented libraries. An unsuppressed
+LeakSanitizer run found only two stack roots in the unchanged stock
+dependencies: open62541pp `opcua::detail::allocNativeString` and open62541
+`UA_Array_copy` while reading a datatype definition. The passing matrix
+suppresses only those two frames; every other leak and all ASan/UBSan findings
+remain fatal. No third-party source was patched.
 
-The release install is `/tmp/orocos-opcua-maintained-final.z5XQfT`, and its
+The release install is `/tmp/orocos-opcua-maintained-final-review.LUHwJa`, and its
 build trees, runtime environment, logs, caches, and `ldd` records are in
-`/tmp/orocos-opcua-maintained-final.z5XQfT-work`. Detached sources, dependencies,
-sanitizer evidence, manual transcripts, and the final mdBook are below
-`/tmp/orocos-opcua-task8.iaxbIP`.
+`/tmp/orocos-opcua-maintained-final-review.LUHwJa-work`. Detached sources,
+dependencies, sanitizer evidence, manual transcripts, and the final mdBook are
+below `/tmp/orocos-opcua-task8.iaxbIP`.
 
 A non-returning OwnThread operation can delay shutdown indefinitely; releasing
 its component lease or invocation storage early would be unsafe. Target

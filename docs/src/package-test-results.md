@@ -28,7 +28,7 @@ its first cross-distribution CI run.
 
 | Surface | Task 8 result |
 |---|---|
-| Source and dependency revision audit | Passed at root `d447800aa9b119f279624041f2b760e4e5e04609`, RTT `f529ac1d7c2ea74242883df91fafa599fcc208b8`, `rtt_opcua` `a94eee231fcae55ec8cc8774817e747d9ffd58d1`, and OCL `fb018446af77d52c8a9466275cda984ce8f12ca2`. |
+| Source and dependency revision audit | Passed at root `652ad0637d68c3e228ac298099445cdc3d1aa67b`, RTT `f529ac1d7c2ea74242883df91fafa599fcc208b8`, `rtt_opcua` `f993906c251497af06e24c005ee4f9ee938203af`, and OCL `fb018446af77d52c8a9466275cda984ce8f12ca2`. |
 | Warning-clean maintained package builds | Passed with GCC 13.3, CMake 3.28.3, C++20, CORBA disabled, and `rtt_opcua` warnings treated as errors. |
 | Maintained package tests | RTT 2/2, `rtt_opcua` 10/10, and OCL lifecycle plus browser CLI 11/11 passed. |
 | Sanitizer tests | `rtt_opcua` 10/10 and OCL lifecycle 6/6 passed under AddressSanitizer and UndefinedBehaviorSanitizer, with LeakSanitizer suppressing only two reproduced stock dependency allocation frames. |
@@ -42,10 +42,10 @@ The verified stock dependency revisions are open62541 v1.4.15
 unchanged. `UA_BUILD_UNIT_TESTS` and `UAPP_BUILD_TESTS` were both `OFF`; no
 third-party test suite was built or run.
 
-The release install is `/tmp/orocos-opcua-maintained-final.z5XQfT`, with build
-evidence in `/tmp/orocos-opcua-maintained-final.z5XQfT-work`. Detached sources,
-the stock dependency prefix, sanitizer builds, raw and filtered sanitizer logs,
-manual transcripts, and the final mdBook are below
+The release install is `/tmp/orocos-opcua-maintained-final-review.LUHwJa`, with
+build evidence in `/tmp/orocos-opcua-maintained-final-review.LUHwJa-work`.
+Detached sources, the stock dependency prefix, sanitizer builds, raw and
+filtered sanitizer logs, manual transcripts, and the final mdBook are below
 `/tmp/orocos-opcua-task8.iaxbIP`.
 
 The raw LeakSanitizer run identifies allocations rooted only in unchanged stock
@@ -53,7 +53,10 @@ open62541pp `opcua::detail::allocNativeString` and open62541 `UA_Array_copy`.
 The passing sanitizer matrix uses a two-frame suppression file so all other
 leaks and every AddressSanitizer or UndefinedBehaviorSanitizer error remain
 fatal. In particular, the immediate shutdown after an operation timeout case
-ran and retained the invocation until completion.
+ran and retained the invocation until completion. The server test also proves
+that concurrent `start()` callers share one serialized startup. Loader records
+confirm that the `rtt_opcua` and OCL sanitizer tests use their build-tree
+libraries rather than installed release copies.
 
 The verification contract uses unmodified stock open62541 and open62541pp
 sources and does not build third-party unit tests. A non-returning RTT operation

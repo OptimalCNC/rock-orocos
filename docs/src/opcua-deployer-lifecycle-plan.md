@@ -1155,10 +1155,23 @@ cmake -S toolchain/tools/rtt_opcua \
   -DBUILD_TESTING=ON -DRTT_OPCUA_WARNINGS_AS_ERRORS=ON
 cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/rtt-opcua" --parallel
 
-ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
-UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
-ctest --test-dir "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/rtt-opcua" \
-  --output-on-failure -R '^rtt_opcua_.*_test$'
+SANITIZER_LIBRARY_PATH="$MAINTAINED_PREFIX/lib/orocos/gnulinux/rtt_opcua/plugins"
+SANITIZER_LIBRARY_PATH+=":$MAINTAINED_PREFIX/lib/orocos/gnulinux/types"
+SANITIZER_LIBRARY_PATH+=":$MAINTAINED_PREFIX/lib/orocos/gnulinux/plugins"
+SANITIZER_LIBRARY_PATH+=":$MAINTAINED_PREFIX/lib"
+SANITIZER_LIBRARY_PATH+=":$OROCOS_OPCUA_DEPENDENCY_PREFIX/lib"
+
+env -i \
+  HOME="$OROCOS_OPCUA_TEST_HOME" \
+  PATH=/usr/bin:/bin \
+  OROCOS_TARGET=gnulinux \
+  LD_LIBRARY_PATH="$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/rtt-opcua:$SANITIZER_LIBRARY_PATH" \
+  RTT_COMPONENT_PATH="$MAINTAINED_PREFIX/lib/orocos" \
+  ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+  UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+  /usr/bin/ctest \
+  --test-dir "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/rtt-opcua" \
+  --output-on-failure -R '^rtt_opcua_'
 
 cmake -S toolchain/tools/ocl \
   -B "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/ocl" \
@@ -1172,11 +1185,26 @@ cmake -S toolchain/tools/ocl \
 cmake --build "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/ocl" --parallel \
   --target ocl_opcua_deployment_test
 
-ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
-UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
-ctest --test-dir "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/ocl" \
+env -i \
+  HOME="$OROCOS_OPCUA_TEST_HOME" \
+  PATH=/usr/bin:/bin \
+  OROCOS_TARGET=gnulinux \
+  LD_LIBRARY_PATH="$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/ocl/deployment:$SANITIZER_LIBRARY_PATH" \
+  RTT_COMPONENT_PATH="$MAINTAINED_PREFIX/lib/orocos" \
+  ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+  UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+  /usr/bin/ctest \
+  --test-dir "$OROCOS_OPCUA_VERIFY_ROOT/sanitizers/ocl" \
   --output-on-failure -R '^ocl_opcua_deployment_.*$'
 ```
+
+Record `ldd` output for both sanitizer test executables before accepting the
+result. The `rtt_opcua` library must resolve from its sanitizer build tree, and
+both OCL deployment libraries must resolve from the OCL sanitizer build tree.
+RTT and stock dependency libraries must resolve only from the two temporary
+prefixes. A result that loads any maintained library from `~/.orocos` or
+substitutes an installed release library for an owned sanitizer library is
+invalid.
 
 The immediate-shutdown-after-`BadTimeout` case must execute in this run.
 Treat sanitizer errors, leaks in owned callback state, hangs, or skipped
