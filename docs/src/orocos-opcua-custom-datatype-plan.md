@@ -956,3 +956,7 @@ Report commits, tests, sanitizer results, remaining platform gaps, and the
 handoff path. Fast-forward local/default branches and push only after the user
 accepts the review evidence and the repository remote/default-branch policy is
 reconfirmed.
+
+---
+
+{{#include opcua-taskbrowser-custom-datatype-evaluation-plan.md}}

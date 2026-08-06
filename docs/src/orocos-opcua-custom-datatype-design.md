@@ -351,6 +351,10 @@ updates C++ members. These are complementary contracts. Registering a structure
 only with `TemplateTypeInfo` leaves it opaque to TaskBrowser even when its OPC
 UA codec can encode and decode the complete value.
 
+> [!NOTE]
+> The task-by-task implementation and verification sequence is recorded in the
+> [OPC UA TaskBrowser Custom Datatype Evaluation Plan](./orocos-opcua-custom-datatype-plan.md#opc-ua-taskbrowser-custom-datatype-evaluation-implementation-plan).
+
 For a custom type intended for interactive RTT clients:
 
 - register structures with `StructTypeInfo` or an equivalent generated,
