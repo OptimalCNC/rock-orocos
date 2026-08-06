@@ -192,8 +192,8 @@ case "$PACKAGE_TEST" in
             -DBUILD_OPCUA=ON
         orocos_rock_info "Building OCL OPC UA integration targets"
         build_targets toolchain/tools/ocl/build ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
-        orocos_rock_info "Running OCL OPC UA integration test"
-        run_ctest toolchain/tools/ocl/build '^ocl_opcua_deployment_test$'
+        orocos_rock_info "Running OCL OPC UA integration tests"
+        run_ctest toolchain/tools/ocl/build '^ocl_opcua_deployment_.*$'
 
         orocos_rock_info "Checking installed OPC UA pkg-config metadata"
         pkg-config --exists "rtt_opcua-$TARGET"

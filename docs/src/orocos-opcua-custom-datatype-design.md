@@ -1,14 +1,13 @@
 # Orocos OPC UA Custom Datatype And Sequence Type Design
 
 Date: 2026-08-03
-Updated: 2026-08-04
+Updated: 2026-08-05
 
-Status: Generic migration steps 1 through 8 are implemented and verified on
-`gnulinux`. The accepted explicit-start and strict-publication lifecycle is
-specified in
-[OPC UA Deployer Lifecycle Design](./opcua-deployer-lifecycle-design.md)
-and remains to be implemented. MetaNC migration steps 9 through 13 remain a
-separate delivery.
+Status: The generic implementation now follows the explicit-start and static,
+strict-publication lifecycle specified in
+[OPC UA Deployer Lifecycle Design](./opcua-deployer-lifecycle-design.md).
+Final Task 8 verification remains pending. MetaNC migration steps 9 through 13
+remain a separate delivery.
 
 ## Purpose
 
@@ -340,6 +339,13 @@ Orocos transport plugin.
 
 ## Strict Publication And Unsupported-Type Diagnostics
 
+> [!IMPORTANT]
+> The lifecycle design linked above supersedes the original dynamic
+> reconciliation and revision-replacement parts of this section. Publication
+> now validates and commits one static snapshot. There is no periodic graph
+> reconciliation, component replacement, or public unpublish operation in this
+> version.
+
 Publication validates a complete component snapshot before committing its
 address-space nodes. Every operation, property, attribute, constant, and port
 must use a type bound in the endpoint protocol registry. A missing protocol
@@ -357,7 +363,7 @@ For each unsupported resource, log a warning containing:
 Example:
 
 ```text
-[Warning] OPC UA: component 'rt_api' skipped operation
+[Warning] OPC UA: component 'rt_api' rejected operation
 'resources.axes_groups.command' because RTT type
 '/meta_nc/rt_api/CommandWire' has no registered OPC UA protocol.
 ```
@@ -367,12 +373,12 @@ Diagnostic behavior:
 - Return false from `opcua.publishComponent(component)`.
 - Roll back every node created for the candidate component.
 - Leave the object-model revision unchanged.
-- Emit one warning per unsupported resource when it first appears, without
-  repeating it during every reconciliation interval.
+- Emit a concrete warning for each unsupported resource found by the explicit
+  publication attempt. No background process repeats diagnostics.
 - Store the same entries for
   `opcua.unsupportedResources(component)`, including after failed publication.
-- Keep the last complete published revision if a later reconciliation candidate
-  is unsupported or cannot be committed.
+- Treat repeated publication of the same component instance as an idempotent
+  success. Runtime replacement and republishing are deferred.
 - Require an empty unsupported-resource report when the Deployer or another
   component is initially published successfully.
 
@@ -465,8 +471,9 @@ extension requirement. The runtime API must be proven first.
   `Server=true` components require explicit publication.
 - Verify `RTT::ConnPolicy` round-trips through the proxy and exposes every
   Deployer connection operation.
-- Verify unload waits for timed-out asynchronous calls to release their
-  component leases before destruction.
+- Verify endpoint teardown waits for timed-out asynchronous calls to release
+  their component leases, and that the Deployer rejects unload of a published
+  component while no unpublish operation exists.
 - Verify no old sequence type names appear in the runtime type repository.
 - Run cross-process and sanitizer tests from a temporary install prefix.
 

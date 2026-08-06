@@ -42,11 +42,11 @@ package_test_contracts = {
       'build_targets toolchain/tools/rtt_opcua/build "${RTT_OPCUA_TEST_TARGETS[@]}"',
       "run_ctest toolchain/tools/rtt_opcua/build '^rtt_opcua_.*_test$'",
       "build_targets toolchain/tools/ocl/build ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua",
-      "run_ctest toolchain/tools/ocl/build '^ocl_opcua_deployment_test$'",
+      "run_ctest toolchain/tools/ocl/build '^ocl_opcua_deployment_.*$'",
       'pkg-config --exists "rtt_opcua-$TARGET"',
       'pkg-config --exists "ocl-deployment-$TARGET"'
     ],
-    result_tokens: ["`rtt_opcua_*_test`", "`ocl_opcua_deployment_test`", "`rtt_opcua-gnulinux`"]
+    result_tokens: ["`rtt_opcua_*_test`", "`ocl_opcua_deployment_*`", "`rtt_opcua-gnulinux`"]
   },
   "ocl-basic" => {
     script_tokens: [
@@ -116,6 +116,18 @@ else
   package_test_contracts.each do |package_test, contract|
     contract.fetch(:script_tokens).each do |token|
       errors << "tools/test-package.sh: #{package_test} must include #{token}" unless test_package.include?(token)
+    end
+  end
+end
+
+custom_datatype_path = File.join(root, "tools", "test-opcua-custom-datatypes.sh")
+if !File.file?(custom_datatype_path)
+  errors << "missing tools/test-opcua-custom-datatypes.sh"
+else
+  custom_datatype_test = File.read(custom_datatype_path)
+  ["UA_BUILD_UNIT_TESTS=ON", "UAPP_BUILD_TESTS=ON"].each do |setting|
+    if custom_datatype_test.include?(setting)
+      errors << "custom datatype verification must not configure #{setting}"
     end
   end
 end

@@ -94,11 +94,21 @@ deployer-xenomai --version
 
 ## Use The OPC UA Deployer
 
-Start a deployer on the default loopback endpoint:
+Create a startup script that imports every required typekit before starting the
+endpoint, then explicitly publishes each custom component:
+
+```text
+import("sample_typekit")
+loadComponent("sample", "SampleComponent")
+opcua.start()
+opcua.publishComponent("sample")
+```
+
+Start the deployer with that script:
 
 ```bash
 source ~/.orocos/env.sh
-deployer-opcua
+deployer-opcua site.ops
 ```
 
 The default endpoint is `opc.tcp://127.0.0.1:4840/rtt`. In another sourced
@@ -111,6 +121,28 @@ ctaskbrowser-opcua opc.tcp://127.0.0.1:4840/rtt Deployer
 Use `--opcua-port` or `--opcua-endpoint-path` when a different local endpoint
 is needed. The unsuffixed commands dispatch to the executable for the selected
 `OROCOS_TARGET`.
+
+> [!IMPORTANT]
+> `deployer-opcua` constructs the local Deployer with its OPC UA listener
+> stopped. Import typekits and their OPC UA transport plugins before
+> `opcua.start()`: the first start freezes the process-wide datatype registry.
+> `ctaskbrowser-opcua` cannot connect until start succeeds and the complete
+> Deployer interface has been published.
+
+`opcua.endpointUrl()` reports the configured URL even while stopped.
+`opcua.isRunning()` becomes true only after the listener is running and the
+Deployer publication is complete. Starting an already running endpoint and
+publishing the same component instance again are successful no-ops.
+
+Publication is strict and static. The complete supported RTT interface is
+published, including nested services, operations, properties, attributes,
+constants, and ports. One unsupported resource rejects the whole component and
+leaves diagnostics available through `opcua.unsupportedResources(name)`.
+Resources added after publication are not added to the endpoint.
+
+`Server=true` does not publish a component through OPC UA. This version has no
+unpublish operation, so a component that has been published cannot be unloaded
+through the Deployer while the endpoint exists.
 
 > [!WARNING]
 > The remote deployer can load components and invoke exported operations.

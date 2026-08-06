@@ -14,7 +14,7 @@ The fixture is a separate RTT typekit and OPC UA transport plugin. It registers
 explicitly load both fixture plugins before constructing an OPC UA endpoint.
 
 The test round-trips these types through operations, writable properties,
-writable attributes, input ports, and output ports:
+writable attributes, read-only constants, input ports, and output ports:
 
 - `Float64Array`
 - `Int32Array`
@@ -27,6 +27,37 @@ writable attributes, input ports, and output ports:
 It also verifies custom DataType and binary-encoding nodes by namespace URI and
 stable string NodeId, forces the provider namespace away from index `1`, and
 requires an empty unsupported-resource report.
+
+## Endpoint Lifecycle
+
+The installed Deployer fixture executes this sequence:
+
+```text
+import("orocos_opcua_fixture")
+loadComponent("sample", "orocos::opcua::fixture::FixtureComponent")
+loadComponent("unsupported", "orocos::opcua::fixture::UnsupportedComponent")
+opcua.start()
+opcua.publishComponent("sample")
+```
+
+The runner first launches the same deployment without the last two commands
+and proves that the TCP port remains closed and a remote Deployer proxy cannot
+be created. It then starts a fresh process with the complete script and checks:
+
+- `endpointUrl()` is configuration, while `isRunning()` reports a live
+  listener plus complete Deployer publication;
+- the remote `opcua` service has exactly six operations;
+- whole-component publication includes every supported Deployer operation,
+  including the `RTT::ConnPolicy` connection methods;
+- publication is strict, static, and idempotent;
+- an intentionally untransported type rejects the complete component with the
+  exact resource diagnostic; and
+- a published component cannot be unloaded in this version.
+
+> [!IMPORTANT]
+> Import all required typekits and OPC UA transport plugins before
+> `opcua.start()`. The first start freezes the datatype registry for the rest of
+> the process. `Server=true` does not cause OPC UA publication.
 
 ## Running The Verification
 
@@ -69,41 +100,27 @@ for accidental resolution from the real `~/.orocos`.
 
 ## Current Evidence
 
-On 2026-08-04, the final release run passed end to end on Ubuntu 24.04 x86-64
+On 2026-08-05, the Task 6 release run passed end to end on Ubuntu 24.04 x86-64
 with GCC 13.3 and CMake 3.28.3:
 
-- RTT canonical typekit test: 1/1 in 0.03 seconds
-- `rtt_opcua`: 10/10 in 7.83 seconds
-- OCL OPC UA deployment and CLI subset: 6/6 in 4.94 seconds
-- external server/client fixture: passed all seven representative types
+- RTT canonical typekit and scripting tests: 2/2
+- `rtt_opcua`: 10/10
+- OCL lifecycle and `ctaskbrowser-opcua` CLI tests: 11/11
+- standalone server/client fixture: passed all seven representative types
+- stopped and explicit-start Deployer process cases: passed
+- strict unsupported publication and published-component unload rejection:
+  passed
 - installed metadata and dynamic linkage: no resolved artifact below
   `~/.orocos`
 
-The fresh release install is
-`/tmp/orocos-opcua-installed-fixture-release-final-20260803/prefix`;
-supporting logs, CMake caches, and `ldd` records are in the sibling
-`prefix-work` directory.
+The maintained install is `/tmp/orocos-opcua-task6-final.2tFntH`; logs, CMake
+caches, the generated manual runtime environment, and `ldd` records are in
+`/tmp/orocos-opcua-task6-final.2tFntH-work`.
 
-The ASan/UBSan/LSan verification used
-`/tmp/orocos-opcua-installed-fixture-sanitizer-complete-20260803/prefix`.
-RTT passed 1/1 in 0.47 seconds, `rtt_opcua` passed 10/10 in 10.35 seconds,
-OCL passed 6/6 in 9.44 seconds, and the external fixture's server and client
-both exited without sanitizer findings. That run found and fixed two harness
-issues: the installed package-specific plugin directory was missing from the
-temporary runtime path, and the fixture processes bypassed RTT's ordered
-shutdown by using plain `main` instead of `ORO_main`.
+This gate uses unmodified open62541 v1.4.15 and open62541pp v0.21.2 artifacts.
+It does not build their unit tests. Fresh sanitizer, detached-tag dependency,
+manual TaskBrowser, and package-wide results belong to the Task 8 verification
+gate and are not claimed here.
 
-The prerequisite stack was also checked directly. The patched
-`open62541pp v0.21.2` suite passed 225/225 under ASan/UBSan/LSan, and the
-patched `open62541 v1.4.15` attribute suite passed 31/31 under the same
-sanitizers. These regressions cover string NodeId ownership, server custom
-datatype teardown, and temporary `DataTypeDefinition` encoding identifiers.
-
-GCC still emits `-Wmaybe-uninitialized` diagnostics from Boost.Spirit Classic
-headers while compiling optimized sanitizer RTT tests. Changed maintained
-targets compile with strict warnings as errors; no project-source warning
-remains in this gate.
-
-Target Xenomai validation and cross-distribution CI remain separate platform
-gates. MetaNC migration steps 9 through 13 are not exercised by this generic
-fixture.
+Target Xenomai validation, cross-distribution CI, and downstream migration
+steps 9 through 13 remain separate gates.
