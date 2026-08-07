@@ -231,9 +231,9 @@ Rendering constants are internal and fixed for this version:
 
 ## Error Handling
 
-- If the root snapshot update fails, TaskBrowser reports the existing expression
-  evaluation error. It must not print `{}`, `[]`, or a partially initialized
-  value as if the read succeeded.
+- If the root snapshot update fails, TaskBrowser prints
+  ` = (evaluation failed)`. It must not print `{}`, `[]`, or a partially
+  initialized value as if the read succeeded.
 - If one member cannot be resolved from an otherwise valid local snapshot, that
   member renders as `<unavailable>` and sibling rendering continues.
 - Null member data sources are treated as unavailable.
