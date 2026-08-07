@@ -6,9 +6,11 @@
 #include <cstdint>
 #include <ios>
 #include <istream>
+#include <locale>
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <streambuf>
 #include <vector>
 
 namespace orocos::opcua::fixture {
@@ -59,33 +61,83 @@ inline bool consume(std::istream &stream, std::string_view expected) {
   return true;
 }
 
+inline bool consumeTrailingWhitespaceAndEnd(std::istream &stream) {
+  using traits_type = std::streambuf::traits_type;
+
+  std::streambuf *const buffer = stream.rdbuf();
+  const std::ctype<char> &character_type =
+      std::use_facet<std::ctype<char>>(stream.getloc());
+  std::streambuf::int_type next = buffer->sgetc();
+  while (!traits_type::eq_int_type(next, traits_type::eof()) &&
+         character_type.is(std::ctype_base::space,
+                           traits_type::to_char_type(next))) {
+    next = buffer->snextc();
+  }
+  if (!traits_type::eq_int_type(next, traits_type::eof())) {
+    stream.setstate(std::ios::failbit);
+    return false;
+  }
+  return true;
+}
+
+inline bool parsePoint(std::istream &stream, Point &value, bool strict_end) {
+  Point parsed;
+  stream >> std::ws;
+  if (!consume(stream, "Point{")) {
+    return false;
+  }
+  if (!(stream >> parsed.x)) {
+    return false;
+  }
+  stream >> std::ws;
+  if (!consume(stream, ",")) {
+    return false;
+  }
+  if (!(stream >> parsed.y)) {
+    return false;
+  }
+  stream >> std::ws;
+  if (!consume(stream, "}")) {
+    return false;
+  }
+  if (strict_end && !consumeTrailingWhitespaceAndEnd(stream)) {
+    return false;
+  }
+  value = parsed;
+  return true;
+}
+
 } // namespace detail
 
 inline std::istream &operator>>(std::istream &stream, Point &value) {
-  stream >> std::ws;
-  if (!detail::consume(stream, "Point{")) {
-    return stream;
-  }
-  stream >> value.x >> std::ws;
-  if (!detail::consume(stream, ",")) {
-    return stream;
-  }
-  stream >> value.y >> std::ws;
-  detail::consume(stream, "}");
+  detail::parsePoint(stream, value, true);
   return stream;
 }
 
 inline std::istream &operator>>(std::istream &stream, Envelope &value) {
+  Envelope parsed;
   stream >> std::ws;
   if (!detail::consume(stream, "Envelope{")) {
     return stream;
   }
-  stream >> value.point >> std::ws;
+  if (!detail::parsePoint(stream, parsed.point, false)) {
+    return stream;
+  }
+  stream >> std::ws;
   if (!detail::consume(stream, ",")) {
     return stream;
   }
-  stream >> value.quality >> std::ws;
-  detail::consume(stream, "}");
+  if (!(stream >> parsed.quality)) {
+    return stream;
+  }
+  stream >> std::ws;
+  if (!detail::consume(stream, "}")) {
+    return stream;
+  }
+  if (!detail::consumeTrailingWhitespaceAndEnd(stream)) {
+    return stream;
+  }
+  value = parsed;
   return stream;
 }
 

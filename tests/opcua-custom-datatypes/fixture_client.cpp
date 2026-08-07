@@ -108,8 +108,15 @@ void verifyTypeInfoContract() {
   require(point_info->fromString("Point{7, 8}", point),
           "Point stream input failed");
   require(point->get() == Point{7.0, 8.0}, "Point stream value mismatch");
+  const Point point_before_invalid = point->get();
+  require(!point_info->fromString("Point{9, 10}garbage", point),
+          "Point trailing input was accepted");
+  require(point->get() == point_before_invalid,
+          "Point trailing input changed the destination");
   require(!point_info->fromString("Point{9; 10}", point),
           "Point malformed delimiter was accepted");
+  require(point->get() == point_before_invalid,
+          "Point malformed input changed the destination");
 
   RTT::internal::AssignableDataSource<Envelope>::shared_ptr envelope =
       new RTT::internal::ValueDataSource<Envelope>(Envelope{{1.0, 2.0}, 3});
@@ -120,8 +127,16 @@ void verifyTypeInfoContract() {
           "Envelope stream input failed");
   require(envelope->get() == Envelope{{4.0, 5.0}, 6},
           "Envelope stream value mismatch");
+  const Envelope envelope_before_invalid = envelope->get();
+  require(!envelope_info->fromString(
+              "Envelope{Point{7, 8}, 9}garbage", envelope),
+          "Envelope trailing input was accepted");
+  require(envelope->get() == envelope_before_invalid,
+          "Envelope trailing input changed the destination");
   require(!envelope_info->fromString("Envelope{Point{7, 8}; 9}", envelope),
           "Envelope malformed delimiter was accepted");
+  require(envelope->get() == envelope_before_invalid,
+          "Envelope malformed input changed the destination");
 
   RTT::internal::DataSource<Envelope>::shared_ptr constant =
       new RTT::internal::ConstantDataSource<Envelope>(Envelope{{3.0, 4.0}, 5});
@@ -131,6 +146,11 @@ void verifyTypeInfoContract() {
   RTT::base::DataSourceBase::shared_ptr constant_x =
       constant_point->getMember("x");
   require(constant_x != nullptr, "Envelope constant member is missing");
+  auto *readable_x =
+      RTT::internal::DataSource<double>::narrow(constant_x.get());
+  require(readable_x != nullptr, "Envelope constant member is not readable");
+  require(readable_x->get() == 3.0,
+          "Envelope constant member has an unexpected value");
   require(!constant_x->isAssignable(),
           "Envelope constant member is unexpectedly writable");
 }
