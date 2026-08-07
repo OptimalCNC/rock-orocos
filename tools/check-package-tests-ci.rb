@@ -1,5 +1,47 @@
 #!/usr/bin/env ruby
 
+def package_test_case_arm(script, package_test)
+  case_match = script.match(
+    /^[ \t]*case\s+"\$PACKAGE_TEST"\s+in\s*$\n(?<body>.*?)(?=^[ \t]*esac\s*$)/m
+  )
+  return unless case_match
+
+  arm_match = case_match[:body].match(
+    /^[ \t]*#{Regexp.escape(package_test)}\)\s*$\n(?<body>.*?)(?=^[ \t]*;;\s*$)/m
+  )
+  arm_match && arm_match[:body]
+end
+
+def active_shell_commands(body)
+  return [] unless body
+
+  commands = []
+  continued_command = +""
+  body.each_line do |line|
+    statement = line.strip
+    next if statement.empty? || statement.start_with?("#")
+
+    if statement.end_with?("\\")
+      continued_command << statement.delete_suffix("\\").rstrip << " "
+    else
+      continued_command << statement
+      commands << continued_command
+      continued_command = +""
+    end
+  end
+  commands << continued_command.rstrip unless continued_command.empty?
+  commands
+end
+
+def shell_contract_command?(command, token)
+  return true if command == token
+  return true if token.start_with?("-D") &&
+                 command.start_with?("reconfigure ") &&
+                 command.split.include?(token)
+
+  command == "if #{token}; then"
+end
+
 root = File.expand_path("..", __dir__)
 workflow_path = File.join(root, ".github", "workflows", "package-tests.yml")
 results_path = File.join(root, "docs", "src", "package-test-results.md")
@@ -120,8 +162,17 @@ else
   test_package = File.read(test_package_path)
   errors << "OCL integration CI subset must not run interactive state-machine browser test" if test_package.include?("testWithStateMachine")
   package_test_contracts.each do |package_test, contract|
+    case_arm = package_test_case_arm(test_package, package_test)
+    unless case_arm
+      errors << "tools/test-package.sh: must define the #{package_test} case arm"
+      next
+    end
+
+    case_commands = active_shell_commands(case_arm)
     contract.fetch(:script_tokens).each do |token|
-      errors << "tools/test-package.sh: #{package_test} must include #{token}" unless test_package.include?(token)
+      unless case_commands.any? { |command| shell_contract_command?(command, token) }
+        errors << "tools/test-package.sh: #{package_test} must include #{token}"
+      end
     end
   end
 end

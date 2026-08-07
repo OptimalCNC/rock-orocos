@@ -2,6 +2,22 @@
 
 require "yaml"
 
+def setup_package_body(script, package)
+  match = script.match(
+    /^[ \t]*setup_package\s+["']#{Regexp.escape(package)}["']\s+do(?:\s+\|[^|]+\|)?\s*$\n(?<body>.*?)(?=^[ \t]*end\s*$)/m
+  )
+  match && match[:body]
+end
+
+def active_ruby_statements(body)
+  return [] unless body
+
+  body.each_line.filter_map do |line|
+    statement = line.strip
+    statement unless statement.empty? || statement.start_with?("#")
+  end
+end
+
 root = File.expand_path("..", __dir__)
 manifest_path = File.join(root, "autoproj", "manifest")
 overrides_path = File.join(root, "autoproj", "overrides.yml")
@@ -165,29 +181,26 @@ elsif build && osdeps > build
   errors << "install.sh: Autoproj osdeps refresh must happen before build"
 end
 
-unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
-       overrides_script.include?("use_package_xml = true")
+rtt_setup = active_ruby_statements(setup_package_body(overrides_script, "rtt"))
+unless rtt_setup.include?("pkg.use_package_xml = true")
   errors << "autoproj/overrides.rb: rtt must opt into package.xml manifest loading"
 end
 
-unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
-       overrides_script.include?('pkg.depends_on "rtlog-cpp"')
+unless rtt_setup.include?('pkg.depends_on "rtlog-cpp"')
   errors << "autoproj/overrides.rb: rtt must depend on rtlog-cpp for the bounded logger backend"
 end
 
-unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
-       overrides_script.include?('pkg.define "ENABLE_MQ", "ON"')
+unless rtt_setup.include?('pkg.define "ENABLE_MQ", "ON"')
   errors << "autoproj/overrides.rb: rtt must build the mqueue transport"
 end
 
-unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
-       overrides_script.include?('pkg.define "ENABLE_CORBA", "OFF"')
+unless rtt_setup.include?('pkg.define "ENABLE_CORBA", "OFF"')
   errors << "autoproj/overrides.rb: rtt must keep CORBA disabled"
 end
 
-unless overrides_script.match?(/setup_package\s+["']ocl["']/) &&
-       overrides_script.include?('pkg.depends_on "rtt_opcua"') &&
-       overrides_script.include?('pkg.define "BUILD_OPCUA", "ON"')
+ocl_setup = active_ruby_statements(setup_package_body(overrides_script, "ocl"))
+unless ocl_setup.include?('pkg.depends_on "rtt_opcua"') &&
+       ocl_setup.include?('pkg.define "BUILD_OPCUA", "ON"')
   errors << "autoproj/overrides.rb: ocl must build against rtt_opcua"
 end
 
