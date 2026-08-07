@@ -16,6 +16,7 @@
 #include <rtt/Service.hpp>
 #include <rtt/base/AttributeBase.hpp>
 #include <rtt/internal/DataSource.hpp>
+#include <rtt/internal/DataSources.hpp>
 #include <rtt/internal/GlobalEngine.hpp>
 #include <rtt/internal/OperationCallerC.hpp>
 #include <rtt/os/main.h>
@@ -80,6 +81,58 @@ void loadTypesAndTransports(const std::string &typekit,
   if (!RTT::plugin::PluginLoader::Instance()->loadLibrary(transport)) {
     throw std::runtime_error("unable to load fixture transport: " + transport);
   }
+}
+
+void verifyTypeInfoContract() {
+  const auto point_name =
+      std::string(orocos::opcua::fixture::kPointTypeName);
+  const auto envelope_name =
+      std::string(orocos::opcua::fixture::kEnvelopeTypeName);
+
+  const RTT::types::TypeInfo *point_info = RTT::types::Types()->type(point_name);
+  const RTT::types::TypeInfo *envelope_info =
+      RTT::types::Types()->type(envelope_name);
+  require(point_info != nullptr, "Point TypeInfo is missing");
+  require(envelope_info != nullptr, "Envelope TypeInfo is missing");
+  require(point_info->getMemberNames() ==
+              std::vector<std::string>({"x", "y"}),
+          "Point member names mismatch");
+  require(envelope_info->getMemberNames() ==
+              std::vector<std::string>({"point", "quality"}),
+          "Envelope member names mismatch");
+
+  RTT::internal::AssignableDataSource<Point>::shared_ptr point =
+      new RTT::internal::ValueDataSource<Point>(Point{1.0, 2.0});
+  require(point_info->toString(point) == "Point{1, 2}",
+          "Point stream output mismatch");
+  require(point_info->fromString("Point{7, 8}", point),
+          "Point stream input failed");
+  require(point->get() == Point{7.0, 8.0}, "Point stream value mismatch");
+  require(!point_info->fromString("Point{9; 10}", point),
+          "Point malformed delimiter was accepted");
+
+  RTT::internal::AssignableDataSource<Envelope>::shared_ptr envelope =
+      new RTT::internal::ValueDataSource<Envelope>(Envelope{{1.0, 2.0}, 3});
+  require(envelope_info->toString(envelope) ==
+              "Envelope{Point{1, 2}, 3}",
+          "Envelope stream output mismatch");
+  require(envelope_info->fromString("Envelope{Point{4, 5}, 6}", envelope),
+          "Envelope stream input failed");
+  require(envelope->get() == Envelope{{4.0, 5.0}, 6},
+          "Envelope stream value mismatch");
+  require(!envelope_info->fromString("Envelope{Point{7, 8}; 9}", envelope),
+          "Envelope malformed delimiter was accepted");
+
+  RTT::internal::DataSource<Envelope>::shared_ptr constant =
+      new RTT::internal::ConstantDataSource<Envelope>(Envelope{{3.0, 4.0}, 5});
+  RTT::base::DataSourceBase::shared_ptr constant_point =
+      constant->getMember("point");
+  require(constant_point != nullptr, "Envelope constant point is missing");
+  RTT::base::DataSourceBase::shared_ptr constant_x =
+      constant_point->getMember("x");
+  require(constant_x != nullptr, "Envelope constant member is missing");
+  require(!constant_x->isAssignable(),
+          "Envelope constant member is unexpectedly writable");
 }
 
 template <typename Predicate>
@@ -445,6 +498,7 @@ int ORO_main(int argc, char **argv) {
             "select exactly one of --standalone or --deployer");
 
     loadTypesAndTransports(typekit, transport);
+    verifyTypeInfoContract();
 
     RTT::opcua::TaskContextProxyOptions options;
     options.request_timeout = std::chrono::milliseconds(1000);

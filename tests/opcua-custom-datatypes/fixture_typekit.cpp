@@ -1,6 +1,7 @@
 #include "fixture_types.hpp"
 
 #include <rtt/types/SequenceTypeInfo.hpp>
+#include <rtt/types/StructTypeInfo.hpp>
 #include <rtt/types/TemplateTypeInfo.hpp>
 #include <rtt/types/TypekitPlugin.hpp>
 #include <rtt/types/Types.hpp>
@@ -15,9 +16,9 @@ public:
   bool loadTypes() override {
     const RTT::types::TypeInfoRepository::shared_ptr types =
         RTT::types::Types();
-    return types->addType(new RTT::types::TemplateTypeInfo<Point, false>(
+    return types->addType(new RTT::types::StructTypeInfo<Point, true>(
                std::string(kPointTypeName))) &&
-           types->addType(new RTT::types::TemplateTypeInfo<Envelope, false>(
+           types->addType(new RTT::types::StructTypeInfo<Envelope, true>(
                std::string(kEnvelopeTypeName))) &&
            types->addType(new RTT::types::SequenceTypeInfo<PointArray>(
                std::string(kPointArrayTypeName))) &&
