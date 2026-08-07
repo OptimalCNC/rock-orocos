@@ -160,11 +160,15 @@ case "$PACKAGE_TEST" in
         ;;
     rtt-core)
         orocos_rock_info "Configuring RTT core tests"
-        reconfigure toolchain/tools/rtt toolchain/tools/rtt/build -DENABLE_TESTS=ON -DBUILD_TESTING=ON
+        reconfigure toolchain/tools/rtt toolchain/tools/rtt/build \
+            -DENABLE_TESTS=ON \
+            -DBUILD_TESTING=ON \
+            -DENABLE_MQ=ON \
+            -DENABLE_CORBA=OFF
         orocos_rock_info "Building RTT core tests"
-        build_targets toolchain/tools/rtt/build main-test list-test core-test task-test
+        build_targets toolchain/tools/rtt/build main-test list-test core-test task-test mqueue-test mqueue_archive_test
         orocos_rock_info "Running RTT core CTest subset"
-        run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test|task-test)$'
+        run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test|task-test|mqueue-test|mqueue_archive_test)$'
         ;;
     rtt-opcua)
         orocos_rock_info "Configuring native RTT OPC UA tests"

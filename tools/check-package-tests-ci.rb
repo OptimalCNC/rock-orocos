@@ -31,10 +31,15 @@ package_test_contracts = {
   },
   "rtt-core" => {
     script_tokens: [
-      "build_targets toolchain/tools/rtt/build main-test list-test core-test task-test",
-      "run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test|task-test)$'"
+      "-DENABLE_MQ=ON",
+      "-DENABLE_CORBA=OFF",
+      "build_targets toolchain/tools/rtt/build main-test list-test core-test task-test mqueue-test mqueue_archive_test",
+      "run_ctest toolchain/tools/rtt/build '^(main-test|list-test|core-test|task-test|mqueue-test|mqueue_archive_test)$'"
     ],
-    result_tokens: ["`main-test`", "`list-test`", "`core-test`", "`task-test`"]
+    result_tokens: [
+      "`main-test`", "`list-test`", "`core-test`", "`task-test`",
+      "`mqueue-test`", "`mqueue_archive_test`"
+    ]
   },
   "rtt-opcua" => {
     script_tokens: [

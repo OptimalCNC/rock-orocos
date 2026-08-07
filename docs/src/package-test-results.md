@@ -19,7 +19,7 @@ its first cross-distribution CI run.
 | `utilmm` | `Suite` from `utilmm_testsuite` | Passes in CI after fixes on `liufang-robot/utilmm` `dev`. |
 | `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Passes in CI after fixes on `liufang-robot/tools-typelib` `dev`. |
 | `rtt-typelib` | Rebuilds `rtt-typelib`, runs `get_marshaller_for_test`, and checks `rtt_typelib-gnulinux` metadata | Passes in CI after fixes on `liufang-robot/tools-rtt_typelib` `dev`. |
-| `rtt-core` | `main-test`, `list-test`, `core-test`, and `task-test` | Passes in CI after scheduler-capability fixes on `liufang-robot/rtt` `dev`; CORBA and mqueue tests remain outside this subset. |
+| `rtt-core` | `main-test`, `list-test`, `core-test`, `task-test`, `mqueue-test`, and `mqueue_archive_test` | Existing CI evidence covers the core/task subset after scheduler-capability fixes on `liufang-robot/rtt` `dev`; the maintained contract configures mqueue with CORBA disabled. |
 | `rtt-opcua` | All `rtt_opcua_*_test` and split `ocl_opcua_deployment_*` cases, OPC UA deployer/browser targets, and `rtt_opcua-gnulinux` plus OCL pkg-config metadata | Passes the local loopback installed-prefix gate; cross-distribution CI remains pending. |
 | `ocl-basic` | `timer` and `taskb` | Passes in CI after standalone CTest fixes on `liufang-robot/ocl` `dev`. |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` | Passes in CI on `dev`; `ncreport` is optional when NetCDF is unavailable, and the interactive state-machine browser remains outside this subset. |
