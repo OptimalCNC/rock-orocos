@@ -188,9 +188,11 @@ configure_build_install \
     -DBUILD_TESTING=ON
 
 cmake --build "$TEST_ROOT/rtt-build" --parallel "$BUILD_PARALLEL" \
-    --target typekit_test scripting_test
+    --target typekit_test scripting_test \
+    type_discovery_struct_test type_discovery_container_test
 ctest --test-dir "$TEST_ROOT/rtt-build" --output-on-failure \
-    --timeout "$TEST_TIMEOUT" -R '^(typekit_test|scripting_test)$'
+    --timeout "$TEST_TIMEOUT" \
+    -R '^(typekit_test|scripting_test|type_discovery_struct_test|type_discovery_container_test)$'
 
 INSTALLED_PREFIX_PATH="$PREFIX;$DEPENDENCY_PREFIX"
 configure_build_install \
@@ -232,11 +234,16 @@ SERVER="$PREFIX/bin/fixture-server"
 CLIENT="$PREFIX/bin/fixture-client"
 DEPLOYER="$PREFIX/bin/deployer-opcua"
 DEPLOYER_BINARY="$PREFIX/bin/deployer-opcua-$TARGET"
+TASKBROWSER="$PREFIX/bin/ctaskbrowser-opcua"
+TASKBROWSER_BINARY="$PREFIX/bin/ctaskbrowser-opcua-$TARGET"
+TASKBROWSER_ACCEPTANCE="$OROCOS_ROCK_ROOT/tests/opcua-custom-datatypes/ctaskbrowser_acceptance.rb"
 NO_START_SCRIPT="$PREFIX/share/orocos-opcua-fixture/deployer-no-start.ops"
 START_SCRIPT="$PREFIX/share/orocos-opcua-fixture/deployer-start.ops"
 for artifact in \
     "$TYPEKIT" "$TRANSPORT" "$COMPONENT" "$SERVER" "$CLIENT" \
-    "$DEPLOYER" "$DEPLOYER_BINARY" "$NO_START_SCRIPT" "$START_SCRIPT"
+    "$DEPLOYER" "$DEPLOYER_BINARY" "$TASKBROWSER" \
+    "$TASKBROWSER_BINARY" "$TASKBROWSER_ACCEPTANCE" \
+    "$NO_START_SCRIPT" "$START_SCRIPT"
 do
     orocos_rock_require_file "$artifact"
 done
@@ -410,6 +417,12 @@ orocos_rock_info "Running installed deployer OPC UA acceptance client"
     --transport "$TRANSPORT" \
     --endpoint "$START_ENDPOINT"
 
+orocos_rock_info "Running installed ctaskbrowser-opcua custom datatype acceptance"
+ruby "$TASKBROWSER_ACCEPTANCE" \
+    --client "$TASKBROWSER" \
+    --endpoint "$START_ENDPOINT" \
+    --component sample
+
 kill -TERM "$DEPLOYER_PID"
 if ! wait "$DEPLOYER_PID"; then
     sed -n '1,240p' "$START_LOG" >&2
@@ -437,8 +450,8 @@ RUNTIME_ENV="$TEST_ROOT/runtime-env.sh"
 trap - EXIT INT TERM
 
 for binary in \
-    "$SERVER" "$CLIENT" "$DEPLOYER_BINARY" "$TYPEKIT" "$TRANSPORT" \
-    "$COMPONENT"
+    "$SERVER" "$CLIENT" "$DEPLOYER_BINARY" "$TASKBROWSER_BINARY" \
+    "$TYPEKIT" "$TRANSPORT" "$COMPONENT"
 do
     ldd "$binary" >"$TEST_ROOT/$(basename "$binary").ldd"
 done
