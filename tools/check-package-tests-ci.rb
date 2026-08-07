@@ -130,6 +130,24 @@ if !File.file?(custom_datatype_path)
   errors << "missing tools/test-opcua-custom-datatypes.sh"
 else
   custom_datatype_test = File.read(custom_datatype_path)
+  [
+    "-DENABLE_MQ=ON",
+    "-DENABLE_CORBA=OFF",
+    "mqueue-test mqueue_archive_test",
+    "mqueue-test|mqueue_archive_test",
+    'librtt-transport-mqueue-$TARGET.so'
+  ].each do |fragment|
+    unless custom_datatype_test.include?(fragment)
+      errors << "custom datatype verification must include #{fragment}"
+    end
+  end
+  unless custom_datatype_test.include?('MQUEUE_TRANSPORT="$PREFIX/lib/orocos/$TARGET/types/librtt-transport-mqueue-$TARGET.so"') &&
+         custom_datatype_test.include?('orocos_rock_require_file "$MQUEUE_TRANSPORT"')
+    errors << "custom datatype verification must require the installed target-specific mqueue transport"
+  end
+  if custom_datatype_test.include?("-DENABLE_MQ=OFF")
+    errors << "custom datatype verification must not disable the mqueue transport"
+  end
   ["UA_BUILD_UNIT_TESTS=ON", "UAPP_BUILD_TESTS=ON"].each do |setting|
     if custom_datatype_test.include?(setting)
       errors << "custom datatype verification must not configure #{setting}"

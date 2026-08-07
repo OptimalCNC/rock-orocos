@@ -11,10 +11,12 @@ on explicit branches, and installed to an explicit prefix such as
 
 ## Current Build Status
 
-The local Xenomai 3 build is a no-CORBA build. `orocos-rock` writes
-`rtt_corba_implementation: none` into `.autoproj/config.yml`, which makes RTT
-configure with `-DENABLE_CORBA=OFF`. OmniORB is not required for the default
-Xenomai 3 toolchain build.
+The Xenomai 3 build contract configures RTT with `-DENABLE_MQ=ON` and
+`-DENABLE_CORBA=OFF`. `orocos-rock` writes `rtt_corba_implementation: none`
+into `.autoproj/config.yml`, so OmniORB is not required for the default
+Xenomai 3 toolchain build. Install validation requires
+`lib/orocos/xenomai/types/librtt-transport-mqueue-xenomai.so`; runtime evidence
+for this target remains deferred to the Xenomai host gates below.
 
 The verified local build uses Xenomai 3.3.3 from `/usr/xenomai` and exports:
 

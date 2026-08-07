@@ -251,6 +251,12 @@ unless validate_install_script.include?('OPCUA_DEPLOYER="$(orocos_rock_target_op
   errors << "tools/validate-install.sh: must smoke-test the installed OPC UA transport"
 end
 
+mqueue_transport = 'MQUEUE_TRANSPORT="$PREFIX/lib/orocos/$TARGET/types/librtt-transport-mqueue-$TARGET.so"'
+unless validate_install_script.include?(mqueue_transport) &&
+       validate_install_script.include?('orocos_rock_require_file "$MQUEUE_TRANSPORT"')
+  errors << "tools/validate-install.sh: must require the installed target-specific mqueue transport"
+end
+
 unless common_script.include?("orocos_rock_validate_deployer_version_output") &&
        common_script.include?("OROCOS Toolchain version") &&
        common_script.include?("Xenomai/cobalt")

@@ -4,7 +4,9 @@ The generic custom-datatype delivery is verified without MetaNC and without
 installing or resolving artifacts from `~/.orocos`. The verification runner
 rebuilds and installs RTT, `rtt_opcua`, and OCL into a required empty prefix
 below `/tmp`, then builds an external fixture solely against that installed
-prefix.
+prefix. Its RTT gate runs `mqueue-test` and `mqueue_archive_test` and requires
+the installed target-specific mqueue transport plugin before starting any
+server.
 
 ## Covered Contract
 

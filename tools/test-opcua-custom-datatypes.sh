@@ -183,16 +183,17 @@ configure_build_install \
     rtt "$OROCOS_ROCK_ROOT/toolchain/tools/rtt" "$DEPENDENCY_PREFIX" \
     -DOROCOS_TARGET="$TARGET" \
     -DENABLE_CORBA=OFF \
-    -DENABLE_MQ=OFF \
+    -DENABLE_MQ=ON \
     -DENABLE_TESTS=ON \
     -DBUILD_TESTING=ON
 
 cmake --build "$TEST_ROOT/rtt-build" --parallel "$BUILD_PARALLEL" \
     --target typekit_test scripting_test \
-    type_discovery_struct_test type_discovery_container_test
+    type_discovery_struct_test type_discovery_container_test \
+    mqueue-test mqueue_archive_test
 ctest --test-dir "$TEST_ROOT/rtt-build" --output-on-failure \
     --timeout "$TEST_TIMEOUT" \
-    -R '^(typekit_test|scripting_test|type_discovery_struct_test|type_discovery_container_test)$'
+    -R '^(typekit_test|scripting_test|type_discovery_struct_test|type_discovery_container_test|mqueue-test|mqueue_archive_test)$'
 
 INSTALLED_PREFIX_PATH="$PREFIX;$DEPENDENCY_PREFIX"
 configure_build_install \
@@ -231,6 +232,7 @@ pkg-config --exists "orocos_opcua_fixture-$TARGET"
 TYPEKIT="$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture/types/libfixture-types-$TARGET.so"
 TRANSPORT="$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture/plugins/libfixture-opcua-transport-$TARGET.so"
 COMPONENT="$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture/libfixture-components-$TARGET.so"
+MQUEUE_TRANSPORT="$PREFIX/lib/orocos/$TARGET/types/librtt-transport-mqueue-$TARGET.so"
 SERVER="$PREFIX/bin/fixture-server"
 CLIENT="$PREFIX/bin/fixture-client"
 DEPLOYER="$PREFIX/bin/deployer-opcua"
@@ -248,6 +250,7 @@ for artifact in \
 do
     orocos_rock_require_file "$artifact"
 done
+orocos_rock_require_file "$MQUEUE_TRANSPORT"
 
 OROCOS_PREFIX="$PREFIX"
 RTT_COMPONENT_PATH="$PREFIX/lib/orocos/$TARGET:$PREFIX/lib/orocos/$TARGET/orocos_opcua_fixture:$PREFIX/lib/orocos/$TARGET/ocl"
