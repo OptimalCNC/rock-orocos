@@ -48,9 +48,13 @@ flowchart TD
     I --> J["validate-install.sh"]
 ```
 
-The normal host prefix is `~/.orocos`. The Docker image uses `/opt/orocos`.
-In Docker builds, root is used only for OS package installation, `ubuntu` user
-creation, and ownership setup. The wrapper scripts run as the `ubuntu` user.
+The production default prefix is `~/.orocos`. Host CI and local verification
+must use a fresh prefix below `/tmp` (CI uses `/tmp/orocos`) so they do not
+install into or test a maintainer's production prefix. The final clean-room
+Docker image uses `/opt/orocos`; this distribution image prefix is separate
+from host validation. In Docker builds, root is used only for OS package
+installation, `ubuntu` user creation, and ownership setup. The wrapper scripts
+run as the `ubuntu` user.
 
 The native CI workflow runs the wrapper scripts in standard Linux containers.
 The required CI matrix currently covers Ubuntu 22.04, Ubuntu 24.04, and Debian
