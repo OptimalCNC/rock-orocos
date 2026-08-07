@@ -6,6 +6,8 @@
 setup_package "rtt" do |pkg|
   pkg.use_package_xml = true
   pkg.depends_on "rtlog-cpp"
+  pkg.define "ENABLE_MQ", "ON"
+  pkg.define "ENABLE_CORBA", "OFF"
 end
 
 setup_package "ocl" do |pkg|

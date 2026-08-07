@@ -175,6 +175,16 @@ unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
   errors << "autoproj/overrides.rb: rtt must depend on rtlog-cpp for the bounded logger backend"
 end
 
+unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
+       overrides_script.include?('pkg.define "ENABLE_MQ", "ON"')
+  errors << "autoproj/overrides.rb: rtt must build the mqueue transport"
+end
+
+unless overrides_script.match?(/setup_package\s+["']rtt["']/) &&
+       overrides_script.include?('pkg.define "ENABLE_CORBA", "OFF"')
+  errors << "autoproj/overrides.rb: rtt must keep CORBA disabled"
+end
+
 unless overrides_script.match?(/setup_package\s+["']ocl["']/) &&
        overrides_script.include?('pkg.depends_on "rtt_opcua"') &&
        overrides_script.include?('pkg.define "BUILD_OPCUA", "ON"')
