@@ -16,23 +16,23 @@ ANSI_ESCAPE = /\e\[[0-?]*[ -\/]*[@-~]/
 SESSION_TIMEOUT = 30
 TERMINATION_TIMEOUT = 2
 
-def scalar_result_pattern(value, allow_zero_decimal:)
-  suffix = allow_zero_decimal ? "(?:\\.0+)?" : ""
+def scalar_result_pattern(value, require_zero_decimal:)
+  suffix = require_zero_decimal ? "\\.0+" : ""
   /^[ \t]*=[ \t]*#{Regexp.escape(value.to_s)}#{suffix}[ \t]*$/
 end
 
 def verify_scalar_result_patterns
-  float_pattern = scalar_result_pattern(10, allow_zero_decimal: true)
-  persisted_pattern = scalar_result_pattern(101, allow_zero_decimal: true)
-  integer_pattern = scalar_result_pattern(30, allow_zero_decimal: false)
+  float_pattern = scalar_result_pattern(10, require_zero_decimal: true)
+  persisted_pattern = scalar_result_pattern(101, require_zero_decimal: true)
+  integer_pattern = scalar_result_pattern(30, require_zero_decimal: false)
 
   valid = [
-    [float_pattern, " = 10"],
     [float_pattern, " = 10.0"],
     [float_pattern, " = 10.000   "],
     [integer_pattern, " = 30"]
   ]
   invalid = [
+    [float_pattern, " = 10"],
     [float_pattern, " = 10.5"],
     [float_pattern, " = 10e0"],
     [float_pattern, " = 10value"],
@@ -157,7 +157,8 @@ def command_segments(transcript, component, commands)
 end
 
 def expect_segment(segments, command, pattern, transcript)
-  return if segments.fetch(command).match?(pattern)
+  result = segments.fetch(command).strip
+  return if result.match?(pattern)
 
   abort(
     "unexpected result for #{command}: expected #{pattern.inspect}\n" \
@@ -181,6 +182,7 @@ first_commands = [
   "EnvelopeProperty.point.y = 103",
   "PointArrayAttribute[0].x = 201",
   "EnvelopeConstant.point.x = 999",
+  "LargePointArrayAttribute",
   "EnvelopeConstant.point.x",
   "quit"
 ]
@@ -190,41 +192,41 @@ first = command_segments(
   first_transcript, options.fetch(:component), first_commands
 )
 expect_segment(first, "PointAttribute",
-               /^[ \t]*=[ \t]*Point\{[ \t]*10(?:\.0+)?,[ \t]*20(?:\.0+)?\}[ \t]*$/,
+               /^[ \t]*=[ \t]*\{x: 10\.0, y: 20\.0\}[ \t]*$/,
                first_transcript)
 expect_segment(
   first, "EnvelopeAttribute",
-  /^[ \t]*=[ \t]*Envelope\{[ \t]*Point\{[ \t]*10(?:\.0+)?,[ \t]*20(?:\.0+)?\},[ \t]*30\}[ \t]*$/,
+  /^[ \t]*=[ \t]*\{point: \{x: 10\.0, y: 20\.0\}, quality: 30\}[ \t]*$/,
   first_transcript
 )
 expect_segment(
   first, "EnvelopeConstant",
-  /^[ \t]*=[ \t]*Envelope\{[ \t]*Point\{[ \t]*3(?:\.0+)?,[ \t]*4(?:\.0+)?\},[ \t]*5\}[ \t]*$/,
+  /^[ \t]*=[ \t]*\{point: \{x: 3\.0, y: 4\.0\}, quality: 5\}[ \t]*$/,
   first_transcript
 )
 expect_segment(
   first, "PointArrayAttribute",
-  /^[ \t]*=[ \t]*\{[ \t]*\[Point\{[ \t]*10(?:\.0+)?,[ \t]*11(?:\.0+)?\},[ \t]*Point\{[ \t]*12(?:\.0+)?,[ \t]*13(?:\.0+)?\}[ \t]*\],[ \t]*size[ \t]*=[ \t]*2,[ \t]*capacity[ \t]*=[ \t]*2[ \t]*\}[ \t]*$/,
+  /^[ \t]*=[ \t]*\[\[0\]: \{x: 10\.0, y: 11\.0\}, \[1\]: \{x: 12\.0, y: 13\.0\}\][ \t]*$/,
   first_transcript
 )
 expect_segment(first, "PointAttribute.x",
-               scalar_result_pattern(10, allow_zero_decimal: true),
+               scalar_result_pattern(10, require_zero_decimal: true),
                first_transcript)
 expect_segment(first, "EnvelopeAttribute.point.x",
-               scalar_result_pattern(10, allow_zero_decimal: true),
+               scalar_result_pattern(10, require_zero_decimal: true),
                first_transcript)
 expect_segment(first, "EnvelopeAttribute.quality",
-               scalar_result_pattern(30, allow_zero_decimal: false),
+               scalar_result_pattern(30, require_zero_decimal: false),
                first_transcript)
 expect_segment(first, "EnvelopeProperty.point.y",
-               scalar_result_pattern(20, allow_zero_decimal: true),
+               scalar_result_pattern(20, require_zero_decimal: true),
                first_transcript)
 expect_segment(first, "PointArrayAttribute[0].x",
-               scalar_result_pattern(10, allow_zero_decimal: true),
+               scalar_result_pattern(10, require_zero_decimal: true),
                first_transcript)
 expect_segment(
   first, "EnvelopeEcho(EnvelopeAttribute)",
-  /^[ \t]*=[ \t]*Envelope\{[ \t]*Point\{[ \t]*10(?:\.0+)?,[ \t]*20(?:\.0+)?\},[ \t]*30\}[ \t]*$/,
+  /^[ \t]*=[ \t]*\{point: \{x: 10\.0, y: 20\.0\}, quality: 30\}[ \t]*$/,
   first_transcript
 )
 expect_segment(
@@ -232,8 +234,19 @@ expect_segment(
   /Fatal Semantic error:.*Cannot assign constant/m, first_transcript
 )
 expect_segment(first, "EnvelopeConstant.point.x",
-               scalar_result_pattern(3, allow_zero_decimal: true),
+               scalar_result_pattern(3, require_zero_decimal: true),
                first_transcript)
+expect_segment(
+  first, "LargePointArrayAttribute",
+  Regexp.new(
+    "\\A[ \\t]*=[ \\t]*" \
+    "\\[\\[0\\]: \\{x: 1\\.0, y: 2\\.0\\}, " \
+    "\\[1\\]: \\{x: 3\\.0, y: 4\\.0\\}, " \
+    "\\[2\\]: \\{x: 5\\.0, y: 6\\.0\\}, " \
+    "\\.\\.\\. 997 items omitted\\][ \\t]*\\z"
+  ),
+  first_transcript
+)
 
 second_commands = [
   "EnvelopeAttribute.point.x",
@@ -249,19 +262,19 @@ second = command_segments(
   second_transcript, options.fetch(:component), second_commands
 )
 expect_segment(second, "EnvelopeAttribute.point.x",
-               scalar_result_pattern(101, allow_zero_decimal: true),
+               scalar_result_pattern(101, require_zero_decimal: true),
                second_transcript)
 expect_segment(second, "EnvelopeAttribute.quality",
-               scalar_result_pattern(102, allow_zero_decimal: false),
+               scalar_result_pattern(102, require_zero_decimal: false),
                second_transcript)
 expect_segment(second, "EnvelopeProperty.point.y",
-               scalar_result_pattern(103, allow_zero_decimal: true),
+               scalar_result_pattern(103, require_zero_decimal: true),
                second_transcript)
 expect_segment(second, "PointArrayAttribute[0].x",
-               scalar_result_pattern(201, allow_zero_decimal: true),
+               scalar_result_pattern(201, require_zero_decimal: true),
                second_transcript)
 expect_segment(second, "EnvelopeConstant.point.x",
-               scalar_result_pattern(3, allow_zero_decimal: true),
+               scalar_result_pattern(3, require_zero_decimal: true),
                second_transcript)
 
 puts "ctaskbrowser-opcua custom datatype acceptance passed"

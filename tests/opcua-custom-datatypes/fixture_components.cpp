@@ -4,6 +4,7 @@
 #include <rtt/OutputPort.hpp>
 #include <rtt/rt_string.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -54,6 +55,16 @@ void publishSurface(RTT::TaskContext &owner, Surface<T> &surface) {
                      RTT::OwnThread);
 }
 
+PointArray makeLargePointArray() {
+  PointArray points;
+  points.reserve(1000);
+  for (std::size_t index = 0; index < 1000; ++index) {
+    const double x = static_cast<double>(index * 2 + 1);
+    points.push_back(Point{x, x + 1.0});
+  }
+  return points;
+}
+
 } // namespace
 
 struct FixtureComponent::Impl {
@@ -64,7 +75,8 @@ struct FixtureComponent::Impl {
         rt_string("RtString", RTT::rt_string("initial")),
         point("Point", Point{1.0, 2.0}),
         envelope("Envelope", Envelope{{3.0, 4.0}, 5}),
-        point_array("PointArray", {{6.0, 7.0}, {8.0, 9.0}}) {
+        point_array("PointArray", {{6.0, 7.0}, {8.0, 9.0}}),
+        large_point_array(makeLargePointArray()) {
     owner.addProperty("Gain", gain);
     owner.addAttribute("Status", status);
     owner.addConstant("Limit", limit);
@@ -78,6 +90,7 @@ struct FixtureComponent::Impl {
     publishSurface(owner, point);
     publishSurface(owner, envelope);
     publishSurface(owner, point_array);
+    owner.addAttribute("LargePointArrayAttribute", large_point_array);
   }
 
   std::int32_t echo(std::int32_t value) { return value; }
@@ -93,6 +106,7 @@ struct FixtureComponent::Impl {
   Surface<Point> point;
   Surface<Envelope> envelope;
   Surface<PointArray> point_array;
+  PointArray large_point_array;
 };
 
 FixtureComponent::FixtureComponent(const std::string &name)

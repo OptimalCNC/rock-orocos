@@ -212,10 +212,11 @@ configure_build_install \
     -DBUILD_TASKBROWSER=ON \
     -DBUILD_OPCUA=ON
 cmake --build "$TEST_ROOT/ocl-build" --parallel "$BUILD_PARALLEL" \
-    --target ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
+    --target taskbrowser_value_renderer_test \
+    ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
 ctest --test-dir "$TEST_ROOT/ocl-build" --output-on-failure \
     --timeout "$TEST_TIMEOUT" \
-    -R '^(ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
+    -R '^(taskbrowser_value_renderer_test|ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
 
 configure_build_install \
     fixture "$OROCOS_ROCK_ROOT/tests/opcua-custom-datatypes" \
