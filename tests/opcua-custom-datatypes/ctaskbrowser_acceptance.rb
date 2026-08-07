@@ -9,15 +9,53 @@ OptionParser.new do |parser|
   parser.on("--client PATH") { |value| options[:client] = value }
   parser.on("--endpoint URL") { |value| options[:endpoint] = value }
   parser.on("--component NAME") { |value| options[:component] = value }
+  parser.on("--self-check") { options[:self_check] = true }
 end.parse!
-
-%i[client endpoint component].each do |key|
-  abort("missing --#{key.to_s.tr('_', '-')}") unless options[key]
-end
 
 ANSI_ESCAPE = /\e\[[0-?]*[ -\/]*[@-~]/
 SESSION_TIMEOUT = 30
 TERMINATION_TIMEOUT = 2
+
+def scalar_result_pattern(value, allow_zero_decimal:)
+  suffix = allow_zero_decimal ? "(?:\\.0+)?" : ""
+  /^[ \t]*=[ \t]*#{Regexp.escape(value.to_s)}#{suffix}[ \t]*$/
+end
+
+def verify_scalar_result_patterns
+  float_pattern = scalar_result_pattern(10, allow_zero_decimal: true)
+  persisted_pattern = scalar_result_pattern(101, allow_zero_decimal: true)
+  integer_pattern = scalar_result_pattern(30, allow_zero_decimal: false)
+
+  valid = [
+    [float_pattern, " = 10"],
+    [float_pattern, " = 10.0"],
+    [float_pattern, " = 10.000   "],
+    [integer_pattern, " = 30"]
+  ]
+  invalid = [
+    [float_pattern, " = 10.5"],
+    [float_pattern, " = 10e0"],
+    [float_pattern, " = 10value"],
+    [persisted_pattern, " = 101.9"],
+    [integer_pattern, " = 30.25"]
+  ]
+
+  abort("scalar result pattern rejected an exact value") unless
+    valid.all? { |pattern, text| pattern.match?(text) }
+  abort("scalar result pattern accepted a numeric suffix") if
+    invalid.any? { |pattern, text| pattern.match?(text) }
+
+  puts "ctaskbrowser scalar result pattern self-check passed"
+end
+
+if options[:self_check]
+  verify_scalar_result_patterns
+  exit 0
+end
+
+%i[client endpoint component].each do |key|
+  abort("missing --#{key.to_s.tr('_', '-')}") unless options[key]
+end
 
 def normalize_transcript(transcript)
   transcript.gsub(ANSI_ESCAPE, "").delete("\r")
@@ -152,43 +190,49 @@ first = command_segments(
   first_transcript, options.fetch(:component), first_commands
 )
 expect_segment(first, "PointAttribute",
-               /=\s*Point\{\s*10(?:\.0+)?,\s*20(?:\.0+)?\}/,
+               /^[ \t]*=[ \t]*Point\{[ \t]*10(?:\.0+)?,[ \t]*20(?:\.0+)?\}[ \t]*$/,
                first_transcript)
 expect_segment(
   first, "EnvelopeAttribute",
-  /=\s*Envelope\{\s*Point\{\s*10(?:\.0+)?,\s*20(?:\.0+)?\},\s*30\}/,
+  /^[ \t]*=[ \t]*Envelope\{[ \t]*Point\{[ \t]*10(?:\.0+)?,[ \t]*20(?:\.0+)?\},[ \t]*30\}[ \t]*$/,
   first_transcript
 )
 expect_segment(
   first, "EnvelopeConstant",
-  /=\s*Envelope\{\s*Point\{\s*3(?:\.0+)?,\s*4(?:\.0+)?\},\s*5\}/,
+  /^[ \t]*=[ \t]*Envelope\{[ \t]*Point\{[ \t]*3(?:\.0+)?,[ \t]*4(?:\.0+)?\},[ \t]*5\}[ \t]*$/,
   first_transcript
 )
 expect_segment(
   first, "PointArrayAttribute",
-  /Point\{\s*10(?:\.0+)?,\s*11(?:\.0+)?\}.*Point\{\s*12(?:\.0+)?,\s*13(?:\.0+)?\}/m,
+  /^[ \t]*=[ \t]*\{[ \t]*\[Point\{[ \t]*10(?:\.0+)?,[ \t]*11(?:\.0+)?\},[ \t]*Point\{[ \t]*12(?:\.0+)?,[ \t]*13(?:\.0+)?\}[ \t]*\],[ \t]*size[ \t]*=[ \t]*2,[ \t]*capacity[ \t]*=[ \t]*2[ \t]*\}[ \t]*$/,
   first_transcript
 )
-expect_segment(first, "PointAttribute.x", /=\s*10(?:\.0+)?\b/,
+expect_segment(first, "PointAttribute.x",
+               scalar_result_pattern(10, allow_zero_decimal: true),
                first_transcript)
-expect_segment(first, "EnvelopeAttribute.point.x", /=\s*10(?:\.0+)?\b/,
+expect_segment(first, "EnvelopeAttribute.point.x",
+               scalar_result_pattern(10, allow_zero_decimal: true),
                first_transcript)
-expect_segment(first, "EnvelopeAttribute.quality", /=\s*30\b/,
+expect_segment(first, "EnvelopeAttribute.quality",
+               scalar_result_pattern(30, allow_zero_decimal: false),
                first_transcript)
-expect_segment(first, "EnvelopeProperty.point.y", /=\s*20(?:\.0+)?\b/,
+expect_segment(first, "EnvelopeProperty.point.y",
+               scalar_result_pattern(20, allow_zero_decimal: true),
                first_transcript)
-expect_segment(first, "PointArrayAttribute[0].x", /=\s*10(?:\.0+)?\b/,
+expect_segment(first, "PointArrayAttribute[0].x",
+               scalar_result_pattern(10, allow_zero_decimal: true),
                first_transcript)
 expect_segment(
   first, "EnvelopeEcho(EnvelopeAttribute)",
-  /=\s*Envelope\{\s*Point\{\s*10(?:\.0+)?,\s*20(?:\.0+)?\},\s*30\}/,
+  /^[ \t]*=[ \t]*Envelope\{[ \t]*Point\{[ \t]*10(?:\.0+)?,[ \t]*20(?:\.0+)?\},[ \t]*30\}[ \t]*$/,
   first_transcript
 )
 expect_segment(
   first, "EnvelopeConstant.point.x = 999",
   /Fatal Semantic error:.*Cannot assign constant/m, first_transcript
 )
-expect_segment(first, "EnvelopeConstant.point.x", /=\s*3(?:\.0+)?\b/,
+expect_segment(first, "EnvelopeConstant.point.x",
+               scalar_result_pattern(3, allow_zero_decimal: true),
                first_transcript)
 
 second_commands = [
@@ -204,15 +248,20 @@ second_transcript = run_session(options, second_commands)
 second = command_segments(
   second_transcript, options.fetch(:component), second_commands
 )
-expect_segment(second, "EnvelopeAttribute.point.x", /=\s*101(?:\.0+)?\b/,
+expect_segment(second, "EnvelopeAttribute.point.x",
+               scalar_result_pattern(101, allow_zero_decimal: true),
                second_transcript)
-expect_segment(second, "EnvelopeAttribute.quality", /=\s*102\b/,
+expect_segment(second, "EnvelopeAttribute.quality",
+               scalar_result_pattern(102, allow_zero_decimal: false),
                second_transcript)
-expect_segment(second, "EnvelopeProperty.point.y", /=\s*103(?:\.0+)?\b/,
+expect_segment(second, "EnvelopeProperty.point.y",
+               scalar_result_pattern(103, allow_zero_decimal: true),
                second_transcript)
-expect_segment(second, "PointArrayAttribute[0].x", /=\s*201(?:\.0+)?\b/,
+expect_segment(second, "PointArrayAttribute[0].x",
+               scalar_result_pattern(201, allow_zero_decimal: true),
                second_transcript)
-expect_segment(second, "EnvelopeConstant.point.x", /=\s*3(?:\.0+)?\b/,
+expect_segment(second, "EnvelopeConstant.point.x",
+               scalar_result_pattern(3, allow_zero_decimal: true),
                second_transcript)
 
 puts "ctaskbrowser-opcua custom datatype acceptance passed"
