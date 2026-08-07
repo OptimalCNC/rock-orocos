@@ -49,7 +49,7 @@ orocos_rock_validate_target "$TARGET"
 DEPLOYER="$(orocos_rock_target_deployer "$TARGET")"
 OPCUA_DEPLOYER="$(orocos_rock_target_opcua_deployer "$TARGET")"
 OPCUA_BROWSER="ctaskbrowser-opcua-$TARGET"
-MQUEUE_TRANSPORT="$PREFIX/lib/orocos/$TARGET/types/librtt-transport-mqueue-$TARGET.so"
+MQUEUE_TRANSPORT="$PREFIX/toolchain/lib/orocos/$TARGET/types/librtt-transport-mqueue-$TARGET.so"
 
 orocos_rock_require_file "$PREFIX/env.sh"
 orocos_rock_require_file "$PREFIX/dev-env.sh"

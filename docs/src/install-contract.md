@@ -29,10 +29,11 @@ The installed prefix must provide:
 - environment setup for runtime use
 - environment setup for development use
 
+Autoproj installs toolchain packages below the prefix's `toolchain` directory.
 For `gnulinux` and `xenomai`, respectively, the required mqueue transport is:
 
-- `lib/orocos/gnulinux/types/librtt-transport-mqueue-gnulinux.so`
-- `lib/orocos/xenomai/types/librtt-transport-mqueue-xenomai.so`
+- `toolchain/lib/orocos/gnulinux/types/librtt-transport-mqueue-gnulinux.so`
+- `toolchain/lib/orocos/xenomai/types/librtt-transport-mqueue-xenomai.so`
 
 The prefix does not include RTT or OCL CORBA libraries and executables in
 either target build.
@@ -142,7 +143,7 @@ An install is considered minimally valid when it can:
 1. source `env.sh`
 2. run the deployer for the selected target
 3. find the target-specific RTT mqueue transport under
-   `lib/orocos/$OROCOS_TARGET/types`
+   `toolchain/lib/orocos/$OROCOS_TARGET/types`
 4. resolve the native OPC UA transport through pkg-config
 5. run the target OPC UA deployer and TaskBrowser client version checks
 6. source `dev-env.sh`

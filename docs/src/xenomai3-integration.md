@@ -15,7 +15,8 @@ The Xenomai 3 build contract configures RTT with `-DENABLE_MQ=ON` and
 `-DENABLE_CORBA=OFF`. `orocos-rock` writes `rtt_corba_implementation: none`
 into `.autoproj/config.yml`, so OmniORB is not required for the default
 Xenomai 3 toolchain build. Install validation requires
-`lib/orocos/xenomai/types/librtt-transport-mqueue-xenomai.so`; mqueue-specific
+`toolchain/lib/orocos/xenomai/types/librtt-transport-mqueue-xenomai.so`;
+mqueue-specific
 runtime evidence under this contract remains deferred to the Xenomai host gates
 below.
 
