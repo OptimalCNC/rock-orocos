@@ -64,3 +64,21 @@ can still delay endpoint shutdown indefinitely because its lease and invocation
 storage must not be released early. Target Xenomai validation,
 cross-distribution CI, downstream application migration, and OPC UA PubSub port
 mapping remain separate gates.
+
+## GNU/Linux Mqueue Installation Acceptance
+
+The fresh GNU/Linux installation acceptance passed at root
+`f7dab129dff2835dbc1cdbb5432b7c146f185ed1`, RTT
+`73831c62598ddc5cedc85378f759af7ef6ce4609`, `rtt_opcua`
+`f993906c251497af06e24c005ee4f9ee938203af`, and OCL
+`d465bb83f6870503a53571a93a36adf01a8cdfc1`. The isolated install prefix was
+`/tmp/orocos-mqueue.VlcY0D/prefix`.
+
+RTT passed all 6 selected tests, including `mqueue-test` and
+`mqueue_archive_test`; `rtt_opcua` passed 10/10 tests; and OCL passed 12/12
+selected deployment and TaskBrowser tests. The installed custom-datatype
+fixture, explicit-start Deployer lifecycle, and `ctaskbrowser-opcua` acceptance
+also passed. The required transport is installed at
+`lib/orocos/gnulinux/types/librtt-transport-mqueue-gnulinux.so`, with
+`ENABLE_MQ=ON` and `ENABLE_CORBA=OFF` recorded in the fresh RTT cache. GNU/Linux
+is accepted; Xenomai runtime acceptance remains pending.
