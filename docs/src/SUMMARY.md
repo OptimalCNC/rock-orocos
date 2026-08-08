@@ -7,6 +7,7 @@
   - [Architecture](./architecture.md)
   - [Package Policy](./package-policy.md)
   - [Dual-Organization Publication](./dual-organization-publication.md)
+  - [Dual-Organization Publication Plan](./dual-organization-publication-plan.md)
   - [Install Contract](./install-contract.md)
   - [Xenomai 3 Integration](./xenomai3-integration.md)
   - [Bootstrap Workflow](./bootstrap-workflow.md)
