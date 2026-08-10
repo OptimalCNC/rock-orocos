@@ -100,6 +100,32 @@ coverage and avoid duplicating the implementation.
 No source update runs after this merge and before compilation. This prevents
 Autoproj from replacing or rejecting the intentional RTT working state.
 
+## Autoproj Bootstrap Recovery
+
+The repository's lightweight bootstrap keeps using the already installed
+user-level Autoproj gem instead of replacing it with a second workspace-local
+gem installation. The generated workspace state must nevertheless include a
+Ruby-compatible `.autoproj/bin/autoproj` launcher because Autoproj Stage 2
+invokes that exact path through the Ruby interpreter.
+
+`orocos_rock_prepare_autoproj_workspace` generates the launcher alongside its
+existing `bundle`, `bundler`, and `ruby` wrappers. The launcher records the
+workspace root and Gemfile, exposes the same user and default gem paths used by
+`orocos_rock_autoproj`, activates the compatible Facets release, and loads the
+installed Autoproj executable. It is generated workspace state and is not
+committed.
+
+This does not make Stage 2 part of every normal bootstrap. In particular,
+`bootstrap.sh --skip-osdeps` must continue to skip dependency installation.
+For this recovery, rerun the already approved Stage 2 command once after the
+launcher exists. Stage 2 must complete its environment export and dependency
+phase before destructive cleanup or compilation begins.
+
+Regression coverage must first fail when the launcher generation is absent,
+then pass after the fix. Integration verification invokes the generated file
+through Ruby, matching Stage 2, and confirms that Stage 2 completes without
+changing selected source refs or the retained RTT stash.
+
 ## Clean Build Boundary
 
 Before deletion, enumerate and review the exact package-local `build/`
