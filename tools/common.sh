@@ -115,7 +115,6 @@ require "rubygems"
 ENV["AUTOPROJ_CURRENT_ROOT"] = "$OROCOS_ROCK_ROOT"
 ENV["BUNDLE_GEMFILE"] ||= "$OROCOS_ROCK_ROOT/.autoproj/Gemfile"
 ENV["GEM_PATH"] = "$autoproj_gem_path"
-Dir.chdir(ENV.fetch("AUTOPROJ_CURRENT_ROOT"))
 Gem.clear_paths
 gem "facets", "< 3.2"
 load Gem.bin_path("autoproj", "autoproj")

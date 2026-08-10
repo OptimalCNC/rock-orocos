@@ -174,7 +174,10 @@ orocos_rock_prepare_autoproj_workspace "$test_root/prefix" none gnulinux
 launcher="$test_root/.autoproj/bin/autoproj"
 [ -x "$launcher" ] || orocos_rock_die "generated Autoproj launcher is missing or not executable: $launcher"
 
-version_output="$(ruby "$launcher" version)"
+version_output="$(
+    cd "$test_root"
+    ruby "$launcher" version
+)"
 grep -Eq '^autoproj version: 2\.18\.' <<<"$version_output" ||
     orocos_rock_die "generated Autoproj launcher returned an unexpected version: $version_output"
 ```
@@ -237,6 +240,7 @@ temporary workspace is removed.
 Run:
 
 ```bash
+PYTHONPATH='' \
 XENOMAI_DIR=/usr/xenomai \
 XENOMAI_ROOT_DIR=/usr/xenomai \
 PATH="/usr/xenomai/bin:$PATH" \
@@ -247,6 +251,11 @@ PATH="/usr/xenomai/bin:$PATH" \
 ```
 
 Expected: `.autoproj/config.yml` contains the exact prefix, `rtt_target: xenomai`, `rtt_corba_implementation: none`, and `XENOMAI_DIR: /usr/xenomai`.
+
+`PYTHONPATH=''` is required because the existing generated legacy
+`.autoproj/env.sh` is sourced by a `set -u` bootstrap shell and expands that
+variable before reconfiguration; defining it prevents an unrelated nounset
+failure without changing workspace policy.
 
 - [ ] **Step 8: Verify the generated launcher through the Stage 2 invocation boundary**
 

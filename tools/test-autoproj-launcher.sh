@@ -16,6 +16,9 @@ orocos_rock_prepare_autoproj_workspace "$test_root/prefix" none gnulinux
 launcher="$test_root/.autoproj/bin/autoproj"
 [ -x "$launcher" ] || orocos_rock_die "generated Autoproj launcher is missing or not executable: $launcher"
 
-version_output="$(ruby "$launcher" version)"
+version_output="$(
+    cd "$test_root"
+    ruby "$launcher" version
+)"
 grep -Eq '^autoproj version: 2\.18\.' <<<"$version_output" ||
     orocos_rock_die "generated Autoproj launcher returned an unexpected version: $version_output"
