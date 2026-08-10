@@ -117,7 +117,7 @@ Expected: rebase succeeds without conflict and `origin/main` is an ancestor of `
 
 **Files:**
 - Modify: `tools/common.sh`
-- Modify: `tools/check-autoproj-policy.rb`
+- Create: `tools/test-autoproj-launcher.sh`
 - Regenerate: `.autoproj/config.yml`
 - Regenerate: `.autoproj/Gemfile`
 - Regenerate: `.autoproj/bin/autoproj`
@@ -151,30 +151,50 @@ Run:
 
 Expected: the command either reports an existing usable Autoproj or installs it successfully without editing shell startup files.
 
-- [ ] **Step 3: Add a failing launcher policy test**
+- [ ] **Step 3: Write a failing launcher behavior test**
 
-Add this assertion to `tools/check-autoproj-policy.rb` after the existing
-`.autoproj/bin/bundle` assertion:
+Create `tools/test-autoproj-launcher.sh` with this content:
 
-```ruby
-unless common_script.include?('.autoproj/bin/autoproj') &&
-       common_script.include?('ENV["AUTOPROJ_CURRENT_ROOT"]') &&
-       common_script.include?('ENV["BUNDLE_GEMFILE"]') &&
-       common_script.include?('Gem.clear_paths') &&
-       common_script.include?('load Gem.bin_path("autoproj", "autoproj")')
-  errors << "tools/common.sh: must seed a user-gem Autoproj launcher for Stage 2"
-end
+```bash
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/common.sh"
+
+test_root="$(mktemp -d "${TMPDIR:-/tmp}/orocos-rock-autoproj-launcher.XXXXXX")"
+trap 'rm -rf "$test_root"' EXIT
+
+OROCOS_ROCK_ROOT="$test_root"
+orocos_rock_require_autoproj
+orocos_rock_prepare_autoproj_workspace "$test_root/prefix" none gnulinux
+
+launcher="$test_root/.autoproj/bin/autoproj"
+[ -x "$launcher" ] || orocos_rock_die "generated Autoproj launcher is missing or not executable: $launcher"
+
+version_output="$(ruby "$launcher" version)"
+grep -Eq '^autoproj version: 2\.18\.' <<<"$version_output" ||
+    orocos_rock_die "generated Autoproj launcher returned an unexpected version: $version_output"
 ```
 
-- [ ] **Step 4: Run the policy test and verify the intended failure**
+This test uses the real bootstrap function and installed Autoproj gem in an
+isolated `mktemp` workspace. The production change that it catches is removal
+or breakage of the Stage-2-compatible launcher.
+
+- [ ] **Step 4: Run the behavior test and verify the intended failure**
 
 Run:
 
 ```bash
-ruby tools/check-autoproj-policy.rb
+chmod +x tools/test-autoproj-launcher.sh
+./tools/test-autoproj-launcher.sh
 ```
 
-Expected: FAIL with `tools/common.sh: must seed a user-gem Autoproj launcher for Stage 2` because launcher generation is absent.
+Expected: FAIL with `generated Autoproj launcher is missing or not executable`
+because launcher generation is absent. The temporary workspace is removed by
+the exit trap.
 
 - [ ] **Step 5: Generate the workspace-local Autoproj launcher**
 
@@ -204,11 +224,13 @@ The file must remain a Ruby program because Autoproj Stage 2 invokes it as
 Run:
 
 ```bash
+./tools/test-autoproj-launcher.sh
 ruby tools/check-autoproj-policy.rb
-bash -n tools/common.sh tools/bootstrap.sh
+bash -n tools/common.sh tools/bootstrap.sh tools/test-autoproj-launcher.sh
 ```
 
-Expected: both commands exit zero.
+Expected: all commands exit zero. The launcher test reports no stderr and its
+temporary workspace is removed.
 
 - [ ] **Step 7: Reconfigure the workspace for the final prefix and Xenomai target**
 
@@ -231,7 +253,7 @@ Expected: `.autoproj/config.yml` contains the exact prefix, `rtt_target: xenomai
 Run:
 
 ```bash
-/usr/bin/ruby3.2 .autoproj/bin/autoproj --version
+/usr/bin/ruby3.2 .autoproj/bin/autoproj version
 ```
 
 Expected: the command exits zero and reports Autoproj 2.18.x. This exact Ruby
@@ -383,7 +405,7 @@ Expected: policy checks pass; farbot selects `master`; rtlog-cpp selects `main`;
 Run:
 
 ```bash
-git add tools/common.sh tools/check-autoproj-policy.rb
+git add tools/common.sh tools/test-autoproj-launcher.sh
 git commit -m "fix: generate Autoproj workspace launcher"
 ```
 
