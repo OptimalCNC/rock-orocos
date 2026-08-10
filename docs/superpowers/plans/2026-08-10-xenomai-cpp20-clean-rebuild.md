@@ -466,7 +466,7 @@ git -C "$rtt_repo" status --short
 
 Expected: either both files apply cleanly or Git reports conflicts only in the two approved RTT files. The stash remains listed.
 
-- [ ] **Step 3: Resolve any semantic overlap with updated RTT**
+- [ ] **Step 3: Resolve semantic overlap and retain producer locking**
 
 The desired wakeup behavior in `ExecutionEngine.cpp` is exactly:
 
@@ -477,23 +477,90 @@ The desired wakeup behavior in `ExecutionEngine.cpp` is exactly:
 }
 ```
 
-If updated `dev` already locks `msg_lock` around this broadcast, retain the updated implementation and omit the duplicate hunk. The regression in `method_test.cpp` must include `internal/GlobalEngine.hpp` and retain this behavior:
+If updated `dev` already locks `msg_lock` around this broadcast, retain the
+updated implementation and omit the duplicate hunk. Use `apply_patch` for
+manual conflict resolution. Remove conflict markers and keep updated C++20 API
+spellings from `dev`.
+
+- [ ] **Step 4: Add a deterministic queued-work regression**
+
+Replace the timing-dependent single nested call with
+`testWaitAndProcessMessagesDoesNotSleepWithQueuedWork` in `method_test.cpp`.
+Use a test-only `ExecutionEngine` subclass and the existing protected
+`waitAndProcessMessages`, `mqueue`, `msg_lock`, and `msg_cond` boundary:
+
+- run the waiter on a real RTT `Activity`, not a raw standard thread;
+- return false from the first predicate call;
+- on the second predicate call, which occurs under `msg_lock` after the first
+  empty drain, enqueue one real `DisposableInterface` into `mqueue`;
+- use atomic flags and a `std::promise`/`std::future` to observe execution;
+- bound observation with `future.wait_for(std::chrono::seconds(2))`; and
+- before any Boost assertion, unconditionally set a cancel flag, broadcast
+  under `msg_lock`, stop the activity, and leave its scope so the worker is
+  joined.
+
+The production mutation this test catches is omission of the under-lock queue
+check: the real queued message then remains unprocessed until the cleanup
+broadcast.
+
+- [ ] **Step 5: Prove the regression fails with producer locking alone**
+
+Run the focused existing Xenomai target and only the new test:
+
+```bash
+make -C toolchain/tools/rtt/build method_test/fast -j2
+timeout 15s env \
+  LD_LIBRARY_PATH="$PWD/toolchain/tools/rtt/build/rtt:$PWD/toolchain/tools/rtt/build/rtt/typekit:$PWD/toolchain/tools/rtt/build/tests${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+  toolchain/tools/rtt/build/tests/method_test \
+  --run_test=OperationCallerTestSuite/testWaitAndProcessMessagesDoesNotSleepWithQueuedWork \
+  --log_level=test_suite
+```
+
+Expected RED: after the two-second observation bound, cleanup completes and
+Boost.Test fails only because `status != std::future_status::ready`. The outer
+timeout must not fire.
+
+- [ ] **Step 6: Make waiter decisions coherent with producer notification**
+
+After each `processMessages()` pass, `waitAndProcessMessages()` must make the
+following decisions while holding `msg_lock`:
 
 ```cpp
-BOOST_AUTO_TEST_CASE(testNestedOwnThreadOperationCallerCall)
 {
-    OperationCaller<double(void)> nested(
-        caller->provides()->getOperation("o0"),
-        RTT::internal::GlobalEngine::Instance());
-
-    BOOST_REQUIRE(nested.ready());
-    BOOST_CHECK_EQUAL(-1.0, nested());
+    os::MutexLock lock(msg_lock);
+    if (pred()) {
+        return;
+    }
+    if (mqueue->isEmpty()) {
+        msg_cond.wait(msg_lock);
+    }
 }
 ```
 
-Use `apply_patch` for manual conflict resolution. Remove conflict markers and keep updated C++20 API spellings from `dev`.
+When work is queued, leave the scope without waiting and loop back to
+`processMessages()`. This handles both lock acquisition orders: a producer that
+broadcasts first leaves visible queued work, while a waiter that begins waiting
+first atomically releases `msg_lock` before the producer broadcasts.
 
-- [ ] **Step 4: Verify the merged working state and recovery copy**
+- [ ] **Step 7: Prove GREEN and run the complete focused test binary**
+
+```bash
+make -C toolchain/tools/rtt/build orocos-rtt-xenomai_dynamic/fast -j2
+make -C toolchain/tools/rtt/build method_test/fast -j2
+timeout 15s env \
+  LD_LIBRARY_PATH="$PWD/toolchain/tools/rtt/build/rtt:$PWD/toolchain/tools/rtt/build/rtt/typekit:$PWD/toolchain/tools/rtt/build/tests${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+  toolchain/tools/rtt/build/tests/method_test \
+  --run_test=OperationCallerTestSuite/testWaitAndProcessMessagesDoesNotSleepWithQueuedWork \
+  --log_level=test_suite
+timeout 60s env \
+  LD_LIBRARY_PATH="$PWD/toolchain/tools/rtt/build/rtt:$PWD/toolchain/tools/rtt/build/rtt/typekit:$PWD/toolchain/tools/rtt/build/tests${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+  toolchain/tools/rtt/build/tests/method_test --log_level=test_suite
+```
+
+Expected GREEN: the deterministic case completes without waiting for cleanup,
+then all `method_test` cases pass. Both outer timeouts remain inactive.
+
+- [ ] **Step 8: Verify the merged working state and recovery copy**
 
 Run:
 
@@ -677,7 +744,8 @@ Expected: validation reports `Validated Orocos/Rock xenomai install prefix: /hom
 
 **Interfaces:**
 - Consumes: installed Xenomai prefix and merged RTT source.
-- Produces: executable evidence that the nested OwnThread call completes without a lost wakeup.
+- Produces: executable evidence that queued work observed at the waiter boundary
+  is processed without a second notification or lost wakeup.
 
 - [ ] **Step 1: Enable RTT tests in the clean Xenomai build tree**
 
@@ -711,7 +779,7 @@ Run:
 set -euo pipefail
 . /home/metanc/.orocos/env.sh
 timeout 30s toolchain/tools/rtt/build/tests/method_test \
-  --run_test=OperationCallerTestSuite/testNestedOwnThreadOperationCallerCall \
+  --run_test=OperationCallerTestSuite/testWaitAndProcessMessagesDoesNotSleepWithQueuedWork \
   --log_level=test_suite
 '
 ```

@@ -32,8 +32,13 @@ uses GCC 13. The current install prefix is `/home/metanc/.orocos`.
 The RTT checkout has intentional, uncommitted changes on
 `fix-execution-engine-nested-ownthread-wakeup`:
 
-- `rtt/ExecutionEngine.cpp` locks `msg_lock` while broadcasting `msg_cond`.
-- `tests/method_test.cpp` adds a nested OwnThread operation regression.
+- `rtt/ExecutionEngine.cpp` makes producer notification and waiter queue
+  inspection coherent under `msg_lock`: producers broadcast while holding the
+  lock, and `waitAndProcessMessages()` waits only when its predicate is false
+  and the message queue is empty.
+- `tests/method_test.cpp` deterministically injects real message work after the
+  waiter's first empty drain and verifies that the waiter processes it without
+  requiring a second notification.
 
 All other selected source checkouts have no tracked edits. Package-local build
 directories and a root `CMakeFiles/` directory are generated artifacts.
@@ -96,6 +101,21 @@ updated `dev` head and apply the saved stash. Resolve conflicts only in the two
 original files unless an updated API requires a directly related change. If
 the new RTT source already implements equivalent locking, keep the regression
 coverage and avoid duplicating the implementation.
+
+The retained producer-side lock alone is insufficient. The waiter can drain an
+empty queue, lose a producer broadcast before it begins waiting, and then sleep
+while the queue is nonempty. The complete protocol keeps the producer broadcast
+under `msg_lock` and, after each drain, checks both the completion predicate and
+message-queue emptiness under that same lock. A true predicate returns; an empty
+queue waits; queued work releases the lock and loops back to `processMessages()`.
+
+The regression uses only the existing protected `ExecutionEngine` test
+boundary. A test engine running on an RTT `Activity` injects one real disposable
+into `mqueue` on the post-drain predicate call. A two-second `std::future` bound
+captures failure before an unconditional cancel, locked broadcast, activity
+stop, and join. This creates the missed-notification state deterministically,
+without a production test hook, mocks, probabilistic repetition, or an
+unbounded hang.
 
 No source update runs after this merge and before compilation. This prevents
 Autoproj from replacing or rejecting the intentional RTT working state.
@@ -185,8 +205,8 @@ Verification has five layers:
 3. `tools/validate-install.sh --prefix /home/metanc/.orocos --target xenomai`
    verifies the Xenomai deployer, OPC UA deployer and browser, target-specific
    mqueue transport, OPC UA pkg-config packages, `orogen`, and `typegen`.
-4. The focused nested OwnThread RTT regression passes against the updated
-   C++20/Xenomai build.
+4. The focused `testWaitAndProcessMessagesDoesNotSleepWithQueuedWork` RTT
+   regression passes against the updated C++20/Xenomai build.
 5. A bounded `deployer-opcua-xenomai` process executes `opcua.start()`, remains
    healthy, and exposes its endpoint only on loopback. The process is stopped
    cleanly after the listener check.
