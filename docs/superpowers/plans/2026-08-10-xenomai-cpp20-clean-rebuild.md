@@ -4,7 +4,7 @@
 
 **Goal:** Synchronize the root and Autoproj-managed repositories, merge the existing RTT wakeup fix, and produce a clean validated C++20 Xenomai installation with `deployer-opcua-xenomai` at `/home/metanc/.orocos`.
 
-**Architecture:** Preserve the local RTT patch before any source update, synchronize the workspace from the tracked Autoproj policy, and then reapply the patch on the updated RTT `dev` base. Delete only reviewed build/install artifacts and use the documented no-update maintainer flow so the final clean build cannot replace the intentional RTT working state.
+**Architecture:** Preserve the local RTT patch before any source update, synchronize the workspace from the tracked Autoproj policy, and then reapply the patch on the updated RTT `dev` base. The lightweight bootstrap generates the workspace-local Autoproj launcher required by the one-time Stage 2 recovery without making Stage 2 part of normal `--skip-osdeps` operation. Delete only reviewed build/install artifacts and use the documented no-update maintainer flow so the final clean build cannot replace the intentional RTT working state.
 
 **Tech Stack:** Git, Autoproj 2.18+, CMake 3.28, GCC 13/C++20, Orocos RTT/OCL, Xenomai 3.3.3, open62541 1.4.15, open62541pp 0.21.2, `rtt_opcua`, Boost.Test, Bash.
 
@@ -23,6 +23,7 @@
 - Leave the merged RTT changes visible and uncommitted on `fix-execution-engine-nested-ownthread-wakeup`.
 - Do not run another source update after reapplying the RTT patch.
 - Keep `.autoproj`, package Git metadata, build logs, and unrelated files.
+- `bootstrap.sh --skip-osdeps` must not install OS or Ruby dependencies.
 
 ---
 
@@ -115,14 +116,17 @@ Expected: rebase succeeds without conflict and `origin/main` is an ancestor of `
 ### Task 2: Reconfigure Autoproj And Synchronize Sources
 
 **Files:**
+- Modify: `tools/common.sh`
+- Modify: `tools/check-autoproj-policy.rb`
 - Regenerate: `.autoproj/config.yml`
 - Regenerate: `.autoproj/Gemfile`
+- Regenerate: `.autoproj/bin/autoproj`
 - Regenerate: `.autoproj/env.sh`
 - Synchronize: package checkouts selected by `autoproj/manifest` and `autoproj/overrides.yml`
 
 **Interfaces:**
 - Consumes: updated root policy and a clean saved RTT working state from Task 1.
-- Produces: all selected source checkouts at the configured branches/tags, including new OPC UA dependencies.
+- Produces: a Stage-2-compatible workspace launcher and all selected source checkouts at the configured branches/tags, including new OPC UA dependencies.
 
 - [ ] **Step 1: Confirm Xenomai discovery before reconfiguration**
 
@@ -147,7 +151,66 @@ Run:
 
 Expected: the command either reports an existing usable Autoproj or installs it successfully without editing shell startup files.
 
-- [ ] **Step 3: Reconfigure the workspace for the final prefix and Xenomai target**
+- [ ] **Step 3: Add a failing launcher policy test**
+
+Add this assertion to `tools/check-autoproj-policy.rb` after the existing
+`.autoproj/bin/bundle` assertion:
+
+```ruby
+unless common_script.include?('.autoproj/bin/autoproj') &&
+       common_script.include?('ENV["AUTOPROJ_CURRENT_ROOT"]') &&
+       common_script.include?('ENV["BUNDLE_GEMFILE"]') &&
+       common_script.include?('Gem.clear_paths') &&
+       common_script.include?('load Gem.bin_path("autoproj", "autoproj")')
+  errors << "tools/common.sh: must seed a user-gem Autoproj launcher for Stage 2"
+end
+```
+
+- [ ] **Step 4: Run the policy test and verify the intended failure**
+
+Run:
+
+```bash
+ruby tools/check-autoproj-policy.rb
+```
+
+Expected: FAIL with `tools/common.sh: must seed a user-gem Autoproj launcher for Stage 2` because launcher generation is absent.
+
+- [ ] **Step 5: Generate the workspace-local Autoproj launcher**
+
+In `orocos_rock_prepare_autoproj_workspace`, after generating `bundle` and
+`bundler`, add:
+
+```bash
+    autoproj_gem_path="$(orocos_rock_user_gem_path)"
+    cat >"$OROCOS_ROCK_ROOT/.autoproj/bin/autoproj" <<EOF
+#!$ruby_executable
+require "rubygems"
+ENV["AUTOPROJ_CURRENT_ROOT"] = "$OROCOS_ROCK_ROOT"
+ENV["BUNDLE_GEMFILE"] ||= "$OROCOS_ROCK_ROOT/.autoproj/Gemfile"
+ENV["GEM_PATH"] = "$autoproj_gem_path"
+Gem.clear_paths
+gem "facets", "< 3.2"
+load Gem.bin_path("autoproj", "autoproj")
+EOF
+    chmod +x "$OROCOS_ROCK_ROOT/.autoproj/bin/autoproj"
+```
+
+The file must remain a Ruby program because Autoproj Stage 2 invokes it as
+`ruby .autoproj/bin/autoproj`, bypassing its shebang.
+
+- [ ] **Step 6: Verify the policy and shell tests pass**
+
+Run:
+
+```bash
+ruby tools/check-autoproj-policy.rb
+bash -n tools/common.sh tools/bootstrap.sh
+```
+
+Expected: both commands exit zero.
+
+- [ ] **Step 7: Reconfigure the workspace for the final prefix and Xenomai target**
 
 Run:
 
@@ -163,7 +226,115 @@ PATH="/usr/xenomai/bin:$PATH" \
 
 Expected: `.autoproj/config.yml` contains the exact prefix, `rtt_target: xenomai`, `rtt_corba_implementation: none`, and `XENOMAI_DIR: /usr/xenomai`.
 
-- [ ] **Step 4: Update the exact selected source package set**
+- [ ] **Step 8: Verify the generated launcher through the Stage 2 invocation boundary**
+
+Run:
+
+```bash
+/usr/bin/ruby3.2 .autoproj/bin/autoproj --version
+```
+
+Expected: the command exits zero and reports Autoproj 2.18.x. This exact Ruby
+invocation is required because it matches `Autoproj::Ops::Install#stage2`.
+
+Record the selected source and retained-stash state immediately before Stage 2:
+
+```bash
+/bin/bash -lc '
+set -euo pipefail
+for repo_path in \
+  toolchain/farbot \
+  toolchain/rtlog-cpp \
+  toolchain/tools/rtt \
+  toolchain/open62541 \
+  toolchain/open62541pp \
+  toolchain/tools/rtt_opcua \
+  toolchain/tools/ocl \
+  toolchain/tools/orogen \
+  toolchain/tools/typelib \
+  toolchain/tools/utilmm \
+  toolchain/tools/utilrb \
+  toolchain/tools/rtt_typelib
+do
+  printf "%s\t" "$repo_path"
+  git -C "$repo_path" rev-parse HEAD
+  git -C "$repo_path" status --porcelain=v1 --untracked-files=no
+done > /tmp/rock-orocos-stage2-sources.before
+git -C toolchain/tools/rtt stash list --format="%H %s" \
+  > /tmp/rock-orocos-stage2-stashes.before
+'
+```
+
+Expected: both snapshot files are non-empty; no selected checkout reports a
+tracked edit.
+
+- [ ] **Step 9: Complete the one-time supported Stage 2 recovery**
+
+Run:
+
+```bash
+/bin/bash -lc '
+set -euo pipefail
+export XENOMAI_DIR=/usr/xenomai
+export XENOMAI_ROOT_DIR=/usr/xenomai
+export PATH="/usr/xenomai/bin:$PATH"
+export OROCOS_TARGET=xenomai
+. tools/common.sh
+orocos_rock_require_autoproj
+orocos_rock_ensure_workspace_ruby_gems
+orocos_rock_configure_target_environment xenomai
+orocos_rock_autoproj install_stage2 "$OROCOS_ROCK_ROOT" --no-interactive
+'
+```
+
+Expected: Stage 2 exits zero after generating the proper environment and
+finishing its dependency phase. `.autoproj/env.sh` exists and a clean shell
+can source root `env.sh` without diagnostics. Stop before cleanup or build if
+Stage 2 fails.
+
+- [ ] **Step 10: Verify Stage 2 preserved sources and the RTT stash**
+
+Run:
+
+```bash
+/bin/bash -lc '
+set -euo pipefail
+for repo_path in \
+  toolchain/farbot \
+  toolchain/rtlog-cpp \
+  toolchain/tools/rtt \
+  toolchain/open62541 \
+  toolchain/open62541pp \
+  toolchain/tools/rtt_opcua \
+  toolchain/tools/ocl \
+  toolchain/tools/orogen \
+  toolchain/tools/typelib \
+  toolchain/tools/utilmm \
+  toolchain/tools/utilrb \
+  toolchain/tools/rtt_typelib
+do
+  printf "%s\t" "$repo_path"
+  git -C "$repo_path" rev-parse HEAD
+  git -C "$repo_path" status --porcelain=v1 --untracked-files=no
+done > /tmp/rock-orocos-stage2-sources.after
+git -C toolchain/tools/rtt stash list --format="%H %s" \
+  > /tmp/rock-orocos-stage2-stashes.after
+diff -u /tmp/rock-orocos-stage2-sources.before \
+  /tmp/rock-orocos-stage2-sources.after
+diff -u /tmp/rock-orocos-stage2-stashes.before \
+  /tmp/rock-orocos-stage2-stashes.after
+rm -f \
+  /tmp/rock-orocos-stage2-sources.before \
+  /tmp/rock-orocos-stage2-sources.after \
+  /tmp/rock-orocos-stage2-stashes.before \
+  /tmp/rock-orocos-stage2-stashes.after
+'
+```
+
+Expected: both diffs are empty. The source refs, tracked worktrees, and full
+RTT stash list are byte-for-byte unchanged by Stage 2.
+
+- [ ] **Step 11: Update the exact selected source package set**
 
 Run this as one shell so the helper functions and environment remain active:
 
@@ -189,7 +360,7 @@ orocos_rock_autoproj update \
 
 Expected: Autoproj updates existing packages, creates `toolchain/open62541`, `toolchain/open62541pp`, and `toolchain/tools/rtt_opcua`, and reports no package update failure.
 
-- [ ] **Step 5: Verify configured sources and C++20 content**
+- [ ] **Step 12: Verify configured sources and C++20 content**
 
 Run:
 
@@ -206,6 +377,19 @@ git -C toolchain/open62541pp describe --tags --exact-match
 ```
 
 Expected: policy checks pass; farbot selects `master`; rtlog-cpp selects `main`; maintained packages resolve their `dev` tracking refs; dependency tags are exactly `v1.4.15` and `v0.21.2`.
+
+- [ ] **Step 13: Commit the reviewed bootstrap repair**
+
+Run:
+
+```bash
+git add tools/common.sh tools/check-autoproj-policy.rb
+git commit -m "fix: generate Autoproj workspace launcher"
+```
+
+Expected: the commit contains only the launcher implementation and its policy
+regression. Generated `.autoproj` state, source refs, and build artifacts are
+not committed.
 
 ### Task 3: Rebase And Reapply The RTT Wakeup Fix
 
