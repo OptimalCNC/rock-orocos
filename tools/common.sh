@@ -108,6 +108,19 @@ exec "$ruby_executable" "$bundler_executable" "\$@"
 EOF
     chmod +x "$OROCOS_ROCK_ROOT/.autoproj/bin/bundle"
     cp "$OROCOS_ROCK_ROOT/.autoproj/bin/bundle" "$OROCOS_ROCK_ROOT/.autoproj/bin/bundler"
+    autoproj_gem_path="$(orocos_rock_user_gem_path)"
+    cat >"$OROCOS_ROCK_ROOT/.autoproj/bin/autoproj" <<EOF
+#!$ruby_executable
+require "rubygems"
+ENV["AUTOPROJ_CURRENT_ROOT"] = "$OROCOS_ROCK_ROOT"
+ENV["BUNDLE_GEMFILE"] ||= "$OROCOS_ROCK_ROOT/.autoproj/Gemfile"
+ENV["GEM_PATH"] = "$autoproj_gem_path"
+Dir.chdir(ENV.fetch("AUTOPROJ_CURRENT_ROOT"))
+Gem.clear_paths
+gem "facets", "< 3.2"
+load Gem.bin_path("autoproj", "autoproj")
+EOF
+    chmod +x "$OROCOS_ROCK_ROOT/.autoproj/bin/autoproj"
     cat >"$OROCOS_ROCK_ROOT/.autoproj/Gemfile" <<EOF
 source "https://rubygems.org"
 ruby "$ruby_version" if respond_to?(:ruby)
