@@ -195,8 +195,7 @@ Replace the empty-import test with an application-owned failure:
 add_test(NAME ctaskbrowser_opcua_empty_import
   COMMAND $<TARGET_FILE:ctaskbrowser-opcua> --import=)
 set_tests_properties(ctaskbrowser_opcua_empty_import PROPERTIES
-  PASS_REGULAR_EXPRESSION "--import requires a package name"
-  WILL_FAIL TRUE)
+  PASS_REGULAR_EXPRESSION "--import requires a package name")
 ```
 
 Replace the repeated-import help short-circuit with an arity failure that is
@@ -208,9 +207,13 @@ add_test(NAME ctaskbrowser_opcua_repeated_imports
     --import fixture_a --import=fixture_b)
 set_tests_properties(ctaskbrowser_opcua_repeated_imports PROPERTIES
   PASS_REGULAR_EXPRESSION
-    "exactly one endpoint and one component name are required"
-  WILL_FAIL TRUE)
+    "exactly one endpoint and one component name are required")
 ```
+
+`PASS_REGULAR_EXPRESSION` intentionally owns the result of these two negative
+tests: CTest ignores the process exit code and passes only when the required
+application diagnostic appears. Do not combine it with `WILL_FAIL`, which
+would invert the regex-confirmed success.
 
 - [ ] **Step 3: Regenerate and verify the CLI registrations**
 
