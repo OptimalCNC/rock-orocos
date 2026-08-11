@@ -214,7 +214,24 @@ orocos_rock_source_workspace_env() {
     if [ -f "$OROCOS_ROCK_ROOT/env.sh" ] &&
        [ -f "$OROCOS_ROCK_ROOT/.autoproj/env.sh" ] &&
        [ -f "$OROCOS_ROCK_ROOT/.bundle_env.sh" ]; then
+        local nounset_was_enabled=0
+        local source_status=0
+
+        case "$-" in
+            *u*) nounset_was_enabled=1 ;;
+        esac
+        set +u
         # shellcheck disable=SC1091
-        . "$OROCOS_ROCK_ROOT/env.sh"
+        if . "$OROCOS_ROCK_ROOT/env.sh"; then
+            source_status=0
+        else
+            source_status=$?
+        fi
+        if [ "$nounset_was_enabled" -eq 1 ]; then
+            set -u
+        else
+            set +u
+        fi
+        return "$source_status"
     fi
 }

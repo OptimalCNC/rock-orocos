@@ -35,6 +35,17 @@ else
   errors << "native CI must install Ruby development headers" unless contents.include?("ruby-dev")
   errors << "native CI must install ripgrep for warning checks" unless contents.include?("ripgrep")
   errors << "native CI must install Autoproj through the wrapper" unless contents.include?("./tools/install-autoproj.sh")
+  autoproj_install_index = contents.index("./tools/install-autoproj.sh")
+  {
+    "Autoproj launcher regression" => "bash tools/test-autoproj-launcher.sh",
+    "nounset workspace environment regression" => "bash tools/test-workspace-env-nounset.sh"
+  }.each do |name, command|
+    command_index = contents.index(command)
+    errors << "native CI must run the #{name}" unless command_index
+    if command_index && autoproj_install_index && command_index < autoproj_install_index
+      errors << "native CI must run the #{name} after Autoproj installation"
+    end
+  end
   errors << "native CI must run repository policy check" unless contents.include?("ruby tools/check-repository-policy.rb")
   errors << "native CI must run Autoproj policy check" unless contents.include?("ruby tools/check-autoproj-policy.rb")
   errors << "native CI must run package test workflow policy check" unless contents.include?("ruby tools/check-package-tests-ci.rb")

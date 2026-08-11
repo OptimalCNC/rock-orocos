@@ -20,5 +20,9 @@ version_output="$(
     cd "$test_root"
     ruby "$launcher" version
 )"
-grep -Eq '^autoproj version: 2\.18\.' <<<"$version_output" ||
+autoproj_version="$(sed -nE 's/^autoproj version: ([^[:space:]]+)$/\1/p' <<<"$version_output")"
+[ -n "$autoproj_version" ] ||
     orocos_rock_die "generated Autoproj launcher returned an unexpected version: $version_output"
+ruby -rrubygems -e 'exit(Gem::Version.new(ARGV.fetch(0)) >= Gem::Version.new(ARGV.fetch(1)) ? 0 : 1)' \
+    "$autoproj_version" 2.18.0 ||
+    orocos_rock_die "generated Autoproj launcher version is below 2.18.0: $autoproj_version"
