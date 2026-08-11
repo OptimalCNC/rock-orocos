@@ -159,6 +159,15 @@ CORBA remains configured `OFF`, is not installed, and is not part of the
 required test matrix. Straightforward references to renamed RTT APIs are still
 updated in its dormant sources.
 
+RTT's configured tests must link the same `OROCOS_TARGET` as the runtime under
+test. The shared `TEST_LIBRARIES` list already supplies
+`rtt-typekit-${OROCOS_TARGET}_plugin`; individual tests must not add a
+hardcoded GNU/Linux typekit plugin. In particular, `typekit_test` relies on the
+shared target-selected dependency instead of adding a second platform-specific
+link item. Verification builds the complete configured RTT target set before
+running CTest so a missing or cross-target test dependency cannot be hidden by
+a focused build.
+
 ## Scripting Safety Contract
 
 The initial hardening retains Boost Spirit Classic and the existing RTT
