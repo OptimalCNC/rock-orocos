@@ -87,6 +87,11 @@ jobs:
       - name: Install Autoproj
         run: ./tools/install-autoproj.sh
 
+      - name: Check focused Autoproj regressions
+        run: |
+          bash tools/test-autoproj-launcher.sh
+          bash tools/test-workspace-env-nounset.sh
+
       - name: Check repository policy
         run: |
           ruby tools/check-repository-policy.rb

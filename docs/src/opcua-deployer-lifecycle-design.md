@@ -294,6 +294,40 @@ resource kind, canonical RTT type name, and reason.
 
 ## Test Contract
 
+### Xenomai test-process lifecycle
+
+The OCL OPC UA deployment test executable constructs RTT `TaskContext`
+instances directly, without entering through `ORO_main`. Its process-level
+test fixture must therefore initialize RTT once with `__os_init()` before any
+test case runs.
+
+On Xenomai, teardown must follow RTT's maintained test-runner behavior:
+stop and release `RTT::os::StartStopManager` instead of calling `__os_exit()`,
+which can release the Xenomai main task before Boost.Test has completed
+process teardown. Other targets may use the ordinary `__os_exit()` path.
+
+The fixture is test-only. It does not change `OpcUaDeploymentComponent`, the
+OPC UA endpoint lifecycle, or the production deployer, which already enters
+through RTT's required initialization path.
+
+Xenomai owns process-level `--help` and `--version` options before
+`ORO_main` runs. The OCL test contract does not add a second command-line
+separator or change the installed TaskBrowser wrapper to bypass that runtime
+behavior. Instead, the application-help output assertion is registered only
+for non-Xenomai targets. Parser failure cases must not use `--help` as a
+short-circuit: empty-import validation ends on its own diagnostic, and the
+repeated-import case ends on the required endpoint/component arity check after
+both import forms have parsed successfully.
+
+This target-aware CTest boundary changes no production command-line behavior.
+The ordinary `--import` and endpoint/component workflow remains covered on
+Xenomai.
+
+Acceptance requires the previously hanging focused deployment case, all OCL
+OPC UA deployment cases, and the complete OCL CTest suite to finish within
+their configured bounds. A production deployer loopback smoke test remains
+the final installed-runtime check.
+
 Implementation begins with failing maintained-package tests that prove:
 
 1. Construction leaves OPC UA stopped, and pre-start publication fails rather

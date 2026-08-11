@@ -113,6 +113,8 @@ After changing scripts, package policy, or Docker support, run:
 ruby tools/check-repository-policy.rb
 ruby tools/check-autoproj-policy.rb
 ruby tools/check-clean-room-docker.rb
+bash tools/test-autoproj-launcher.sh
+bash tools/test-workspace-env-nounset.sh
 bash -n tools/common.sh tools/bootstrap.sh tools/install.sh tools/export-env.sh tools/validate-install.sh
 bash -n tools/setup.sh tools/docker-build.sh
 ```
