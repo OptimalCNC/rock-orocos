@@ -2,19 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Keep strict C++20 warnings on OCL's OPC UA executable sources while classifying installed `rtt_opcua`, Orocos RTT, and Xenomai headers as target-local system dependencies, then complete the no-update Xenomai installation.
+**Goal:** Keep strict C++20 warnings on all four OCL OPC UA targets while classifying installed `rtt_opcua`, Orocos RTT, and Xenomai headers as target-local system dependencies, then complete the no-update Xenomai installation.
 
-**Architecture:** Mark `${RTT_OPCUA_INCLUDE_DIRS}` as `SYSTEM PRIVATE` on both OCL OPC UA executables while leaving OCL source and generated paths ordinary. Prove both target boundaries through structured compile-command inspection and focused builds before resuming the partial clean Autoproj build.
+**Architecture:** Mark `${RTT_OPCUA_INCLUDE_DIRS}` as `SYSTEM PRIVATE` on the deployment library, deployment test, deployer, and TaskBrowser client while leaving OCL source and generated paths ordinary. Prove all four target boundaries through structured compile-command inspection and focused builds before resuming the partial clean Autoproj build.
 
 **Tech Stack:** CMake 3.28, GCC 13, C++20, Xenomai 3.3.3, Orocos RTT/OCL, `rtt_opcua`, Autoproj 2.18+, Ruby JSON/Shellwords, Bash.
 
 ## Global Constraints
 
-- Keep `-Wall -Wextra -Wpedantic -Werror` on both OCL OPC UA executables.
+- Keep `-Wall -Wextra -Wpedantic -Werror` on all four OCL OPC UA targets.
 - Do not add warning-specific suppressions for Xenomai diagnostics.
 - Do not modify `rtt_opcua`, Orocos RTT, Xenomai, installed headers, or exported dependency metadata for this issue.
 - Do not run a source update, force-update, reset, clean, or push any checkout.
-- Leave OCL at `d465bb83f6870503a53571a93a36adf01a8cdfc1` with the approved CMake diff visible and uncommitted.
+- Leave OCL at `d465bb83f6870503a53571a93a36adf01a8cdfc1` with only the approved diffs in `bin/CMakeLists.txt` and `deployment/CMakeLists.txt` visible and uncommitted.
 - Preserve the reviewed uncommitted `rtt_opcua` CMake diff at `770b5089902f77c6de2a47fbbb989579d1caf087`.
 - Leave the intentional RTT wakeup patch uncommitted at `3140361114c470025ceb7af755073f9d9896db39` and preserve both RTT stashes.
 - Build target: `xenomai`; Xenomai prefix: `/usr/xenomai`; install prefix: `/home/metanc/.orocos`.
@@ -23,20 +23,22 @@
 
 ---
 
-### Task 1: Classify Both OCL OPC UA Dependency Boundaries
+### Task 1: Classify All Four OCL OPC UA Dependency Boundaries
 
 **Files:**
 - Modify: `toolchain/tools/ocl/bin/CMakeLists.txt:41-63`
+- Modify: `toolchain/tools/ocl/deployment/CMakeLists.txt:36-76`
 - Inspect: `toolchain/tools/ocl/build/compile_commands.json`
 - Preserve: `.superpowers/sdd/2026-08-10-rtt-opcua-system-dependency-includes/task-2-first-failure-ocl-build.log`
+- Preserve: `.superpowers/sdd/2026-08-10-ocl-opcua-system-dependency-includes/task-1-ocl-opcua-system-includes-red.log`
 
 **Interfaces:**
 - Consumes: the configured C++20 Xenomai OCL build tree and installed `rtt_opcua`/RTT dependencies in the partial fresh prefix.
-- Produces: ordinary OCL-owned include paths, system-private dependency paths on `deployer-opcua` and `ctaskbrowser-opcua`, and two focused strict-warning executable builds.
+- Produces: ordinary OCL-owned include paths, system-private dependency paths on all four strict OPC UA targets, and focused green builds for the library, test, deployer, and client.
 
-- [ ] **Step 1: Re-run both focused targets to verify the RED boundary**
+- [x] **Step 1: Verify the captured RED boundary**
 
-Run:
+The focused build was already run before the plan amendment:
 
 ```bash
 /bin/bash -lc '
@@ -50,9 +52,11 @@ cmake --build toolchain/tools/ocl/build \
 
 Expected: FAIL with `-Werror` diagnostics originating in
 `/usr/xenomai/include` and/or installed RTT Xenomai headers. The log must show
-no diagnostic originating in maintained OCL source or headers.
+no diagnostic originating in maintained OCL source or headers. The captured
+command exited `2`, failed in `orocos-ocl-deployment-opcua`, and the log has
+SHA-256 `e660ca655d897251ef54423c5c160a9da2fbb16f0d8db93840d7c450ea3a1ae8`.
 
-- [ ] **Step 2: Mark each executable's installed dependencies as system-private**
+- [x] **Step 2: Mark both executable dependencies as system-private**
 
 Change only the two existing calls in `toolchain/tools/ocl/bin/CMakeLists.txt`:
 
@@ -69,14 +73,37 @@ target_include_directories(ctaskbrowser-opcua SYSTEM PRIVATE
 ```
 
 Do not change the C++ standard, strict warning options, link dependencies,
-Orocos helper macros, other OCL targets, or any dependency source.
+Orocos helper macros, other OCL targets, or any dependency source. These two
+edits are already applied and their generated commands passed the structured
+validator.
 
-- [ ] **Step 3: Reconfigure OCL and verify both real compile commands**
+- [ ] **Step 3: Mark the deployment library and test dependencies as system-private**
+
+Change only the two existing calls in
+`toolchain/tools/ocl/deployment/CMakeLists.txt`:
+
+```cmake
+TARGET_INCLUDE_DIRECTORIES(orocos-ocl-deployment-opcua SYSTEM PRIVATE
+  ${RTT_OPCUA_INCLUDE_DIRS})
+```
+
+and:
+
+```cmake
+target_include_directories(ocl_opcua_deployment_test SYSTEM PRIVATE
+  ${RTT_OPCUA_INCLUDE_DIRS})
+```
+
+Do not change `BUILD_TESTING`, the C++ standard, strict warning options, link
+dependencies, installed headers, or any other OCL target.
+
+- [ ] **Step 4: Reconfigure OCL and verify all four real compile commands**
 
 Run:
 
 ```bash
 cmake -S toolchain/tools/ocl -B toolchain/tools/ocl/build
+rg '^BUILD_TESTING:BOOL=ON$' toolchain/tools/ocl/build/CMakeCache.txt
 ```
 
 Then run:
@@ -84,23 +111,37 @@ Then run:
 ```bash
 ruby -rjson -rshellwords -e '
 entries = JSON.parse(File.read(ARGV.fetch(0)))
-selectors = {
-  "deployer-opcua" => lambda do |item|
-    item.fetch("file").end_with?("/bin/deployer.cpp") &&
-      item.fetch("command").include?("CMakeFiles/deployer-opcua.dir/")
-  end,
-  "ctaskbrowser-opcua" => lambda do |item|
-    item.fetch("file").end_with?("/bin/ctaskbrowser-opcua.cpp") &&
-      item.fetch("command").include?("CMakeFiles/ctaskbrowser-opcua.dir/")
-  end
-}
-
-ordinary = [
+common_ordinary = [
   "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl",
   "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build/ocl",
-  "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build",
-  "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build/bin"
+  "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build"
 ]
+specs = {
+  "deployer-opcua" => [
+    "/bin/deployer.cpp",
+    "CMakeFiles/deployer-opcua.dir/",
+    common_ordinary + [
+      "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build/bin"
+    ]
+  ],
+  "ctaskbrowser-opcua" => [
+    "/bin/ctaskbrowser-opcua.cpp",
+    "CMakeFiles/ctaskbrowser-opcua.dir/",
+    common_ordinary + [
+      "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build/bin"
+    ]
+  ],
+  "orocos-ocl-deployment-opcua" => [
+    "/deployment/OpcUaDeploymentComponent.cpp",
+    "CMakeFiles/orocos-ocl-deployment-opcua.dir/",
+    common_ordinary
+  ],
+  "ocl_opcua_deployment_test" => [
+    "/deployment/tests/opcua_deployment_test.cpp",
+    "CMakeFiles/ocl_opcua_deployment_test.dir/",
+    common_ordinary
+  ]
+}
 dependencies = [
   "/home/metanc/.orocos/toolchain/include/orocos",
   "/usr/xenomai/include/trank",
@@ -110,8 +151,11 @@ dependencies = [
   "/home/metanc/.orocos/toolchain/include"
 ]
 
-selectors.each do |target, selector|
-  entry = entries.find(&selector)
+specs.each do |target, (suffix, marker, ordinary)|
+  entry = entries.find do |item|
+    item.fetch("file").end_with?(suffix) &&
+      item.fetch("command").include?(marker)
+  end
   abort "#{target} compile command is missing" unless entry
   tokens = Shellwords.split(entry.fetch("command"))
   %w[-std=c++20 -Wall -Wextra -Wpedantic -Werror].each do |flag|
@@ -128,27 +172,29 @@ selectors.each do |target, selector|
   end
 end
 
-puts "validated both OCL OPC UA C++20 warning and system-include boundaries"
+puts "validated all four OCL OPC UA C++20 warning and system-include boundaries"
 ' toolchain/tools/ocl/build/compile_commands.json
 ```
 
-Expected: both commands exit `0`; the Ruby validator prints
-`validated both OCL OPC UA C++20 warning and system-include boundaries`.
+Expected: all three commands exit `0`; the cache check prints
+`BUILD_TESTING:BOOL=ON` and the Ruby validator prints
+`validated all four OCL OPC UA C++20 warning and system-include boundaries`.
 
-- [ ] **Step 4: Build both OPC UA executables with strict warnings**
+- [ ] **Step 5: Build all four OPC UA targets with strict warnings**
 
 Run:
 
 ```bash
 cmake --build toolchain/tools/ocl/build \
-  --target deployer-opcua ctaskbrowser-opcua \
+  --target orocos-ocl-deployment-opcua ocl_opcua_deployment_test \
+    deployer-opcua ctaskbrowser-opcua \
   --parallel 2
 ```
 
 Expected: PASS with `-std=c++20 -Wall -Wextra -Wpedantic -Werror` and no
 promoted dependency-header diagnostics.
 
-- [ ] **Step 5: Verify the exact OCL diff and all preserved source state**
+- [ ] **Step 6: Verify the exact OCL diff and all preserved source state**
 
 Run:
 
@@ -164,7 +210,8 @@ sha256sum \
   .superpowers/sdd/2026-08-10-rtt-opcua-system-dependency-includes/task-2-first-failure-ocl-build.log
 ```
 
-Expected: OCL has exactly `M bin/CMakeLists.txt` plus untracked `build/`;
+Expected: OCL has exactly `M bin/CMakeLists.txt` and
+`M deployment/CMakeLists.txt` plus untracked `build/`;
 `rtt_opcua` still has exactly `M CMakeLists.txt` plus untracked `build/`; RTT
 still has exactly the approved `rtt/ExecutionEngine.cpp` and
 `tests/method_test.cpp` modifications; both stash OIDs remain; the preserved
@@ -185,7 +232,7 @@ Do not commit either nested package change.
 - Inspect: `toolchain/tools/rtt_opcua/build/compile_commands.json`
 
 **Interfaces:**
-- Consumes: Task 1's two focused green OCL executables, the reviewed `rtt_opcua` boundary, and the partial fresh prefix.
+- Consumes: Task 1's four focused green OCL targets, the reviewed `rtt_opcua` boundary, and the partial fresh prefix.
 - Produces: a complete validated C++20 Xenomai prefix with OPC UA deployer/client tools, mqueue transport, `orogen`, and `typegen`.
 
 - [ ] **Step 1: Resume Autoproj once without updating sources**
@@ -215,29 +262,44 @@ Expected: all selected packages compile and install successfully without an
 the first failing package log and return to systematic root-cause analysis
 before any retry or tracked change.
 
-- [ ] **Step 2: Verify the three final strict compiler boundaries**
+- [ ] **Step 2: Verify all five final strict compiler boundaries**
 
 Run:
 
 ```bash
 ruby -rjson -rshellwords -e '
 entries = JSON.parse(File.read(ARGV.fetch(0)))
-selectors = {
-  "deployer-opcua" => lambda do |item|
-    item.fetch("file").end_with?("/bin/deployer.cpp") &&
-      item.fetch("command").include?("CMakeFiles/deployer-opcua.dir/")
-  end,
-  "ctaskbrowser-opcua" => lambda do |item|
-    item.fetch("file").end_with?("/bin/ctaskbrowser-opcua.cpp") &&
-      item.fetch("command").include?("CMakeFiles/ctaskbrowser-opcua.dir/")
-  end
-}
-ordinary = [
+common_ordinary = [
   "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl",
   "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build/ocl",
-  "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build",
-  "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build/bin"
+  "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build"
 ]
+specs = {
+  "deployer-opcua" => [
+    "/bin/deployer.cpp",
+    "CMakeFiles/deployer-opcua.dir/",
+    common_ordinary + [
+      "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build/bin"
+    ]
+  ],
+  "ctaskbrowser-opcua" => [
+    "/bin/ctaskbrowser-opcua.cpp",
+    "CMakeFiles/ctaskbrowser-opcua.dir/",
+    common_ordinary + [
+      "/home/metanc/liufang/src/rock-orocos/toolchain/tools/ocl/build/bin"
+    ]
+  ],
+  "orocos-ocl-deployment-opcua" => [
+    "/deployment/OpcUaDeploymentComponent.cpp",
+    "CMakeFiles/orocos-ocl-deployment-opcua.dir/",
+    common_ordinary
+  ],
+  "ocl_opcua_deployment_test" => [
+    "/deployment/tests/opcua_deployment_test.cpp",
+    "CMakeFiles/ocl_opcua_deployment_test.dir/",
+    common_ordinary
+  ]
+}
 dependencies = [
   "/home/metanc/.orocos/toolchain/include/orocos",
   "/usr/xenomai/include/trank",
@@ -246,8 +308,11 @@ dependencies = [
   "/usr/xenomai/include/alchemy",
   "/home/metanc/.orocos/toolchain/include"
 ]
-selectors.each do |target, selector|
-  entry = entries.find(&selector)
+specs.each do |target, (suffix, marker, ordinary)|
+  entry = entries.find do |item|
+    item.fetch("file").end_with?(suffix) &&
+      item.fetch("command").include?(marker)
+  end
   abort "#{target} compile command is missing" unless entry
   tokens = Shellwords.split(entry.fetch("command"))
   %w[-std=c++20 -Wall -Wextra -Wpedantic -Werror].each do |flag|
@@ -263,7 +328,7 @@ selectors.each do |target, selector|
     abort "#{target} dependency is not system: #{path}" unless system_pair || tokens.include?("-isystem#{path}")
   end
 end
-puts "validated both final OCL OPC UA C++20 warning and system-include boundaries"
+puts "validated all four final OCL OPC UA C++20 warning and system-include boundaries"
 ' toolchain/tools/ocl/build/compile_commands.json
 ```
 
@@ -297,7 +362,7 @@ puts "validated final rtt_opcua C++20 warning and system-include boundary"
 ' toolchain/tools/rtt_opcua/build/compile_commands.json
 ```
 
-Expected: all three target checks pass after the complete build, with strict
+Expected: all five target checks pass after the complete build, with strict
 maintained-source flags and system dependency paths intact.
 
 - [ ] **Step 3: Stage Ruby generator tools and export stable environments**
