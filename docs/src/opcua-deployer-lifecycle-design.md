@@ -294,6 +294,27 @@ resource kind, canonical RTT type name, and reason.
 
 ## Test Contract
 
+### Xenomai test-process lifecycle
+
+The OCL OPC UA deployment test executable constructs RTT `TaskContext`
+instances directly, without entering through `ORO_main`. Its process-level
+test fixture must therefore initialize RTT once with `__os_init()` before any
+test case runs.
+
+On Xenomai, teardown must follow RTT's maintained test-runner behavior:
+stop and release `RTT::os::StartStopManager` instead of calling `__os_exit()`,
+which can release the Xenomai main task before Boost.Test has completed
+process teardown. Other targets may use the ordinary `__os_exit()` path.
+
+The fixture is test-only. It does not change `OpcUaDeploymentComponent`, the
+OPC UA endpoint lifecycle, or the production deployer, which already enters
+through RTT's required initialization path.
+
+Acceptance requires the previously hanging focused deployment case, all OCL
+OPC UA deployment cases, and the complete OCL CTest suite to finish within
+their configured bounds. A production deployer loopback smoke test remains
+the final installed-runtime check.
+
 Implementation begins with failing maintained-package tests that prove:
 
 1. Construction leaves OPC UA stopped, and pre-start publication fails rather
