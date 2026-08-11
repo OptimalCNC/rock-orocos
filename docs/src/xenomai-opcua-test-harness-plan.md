@@ -11,24 +11,31 @@ down RTT correctly when they run against the Xenomai target.
 **Architecture:** Add one Boost.Test process fixture to the existing OCL OPC UA
 deployment test executable. The fixture follows RTT's own test runner: it calls
 `__os_init()` once with Boost.Test's real process arguments and uses RTT's
-Xenomai-safe `StartStopManager` shutdown path after all cases complete.
+Xenomai-safe `StartStopManager` shutdown path after all cases complete. Keep
+the production TaskBrowser CLI unchanged; its CTest definitions avoid
+Xenomai-owned help flags and retain parser coverage through application-owned
+validation failures.
 
 **Tech Stack:** C++20, Orocos RTT/OCL, Xenomai 3.3.3, Boost.Test, CMake, CTest.
 
 ## Global Constraints
 
 - Change only OCL's `deployment/tests/opcua_deployment_test.cpp` for the
-  lifecycle correction.
+  lifecycle correction and `bin/CMakeLists.txt` for the target-aware CLI test
+  correction.
 - Do not change `OpcUaDeploymentComponent`, the production deployer, RTT, or
-  `rtt_opcua` behavior.
+  `rtt_opcua` behavior. Do not change `ctaskbrowser-opcua.cpp` or its installed
+  wrapper.
 - Preserve the existing OCL dependency-include edits in `bin/CMakeLists.txt`
   and `deployment/CMakeLists.txt`.
 - Treat the bounded timeout of
   `explicit_start_publishes_only_deployer` as the required RED evidence.
 - On Xenomai, do not call `__os_exit()` from the Boost.Test fixture; follow
   RTT's maintained test runner and stop/release `StartStopManager` instead.
+- On Xenomai, do not register an assertion for application-specific `--help`;
+  Xenomai owns that process-level option before `ORO_main` runs.
 - Commit only after the focused case, all six OPC UA deployment cases, and the
-  complete OCL CTest suite pass.
+  complete 12-test Xenomai OCL CTest suite pass.
 
 ---
 
@@ -127,7 +134,100 @@ ctest --test-dir toolchain/tools/ocl/build --output-on-failure \
 
 Expected: all six selected tests pass and no test times out.
 
-- [ ] **Step 5: Run the complete OCL verification boundary**
+- [ ] **Step 5: Verify the fixture boundary and preserved changes**
+
+```bash
+cmake --build toolchain/tools/ocl/build --parallel 2
+git -C toolchain/tools/ocl diff --check
+git -C toolchain/tools/ocl status --short
+```
+
+Expected: the full build and `diff --check` exit `0`; status contains only the
+two preserved CMake edits and the new test harness edit.
+
+---
+
+### Task 2: Keep TaskBrowser CLI Tests Target-Aware
+
+**Files:**
+
+- Modify: `toolchain/tools/ocl/bin/CMakeLists.txt`
+- Test: CTest registrations generated from
+  `toolchain/tools/ocl/bin/CMakeLists.txt`
+
+**Interfaces:**
+
+- Consumes: CMake cache variable `OROCOS_TARGET`, the existing
+  `ctaskbrowser-opcua` executable, and its existing command-line parser.
+- Produces: a non-Xenomai application-help test plus target-independent
+  empty-import and repeated-import parser tests that do not use `--help` as a
+  short-circuit.
+
+- [ ] **Step 1: Preserve the observed Xenomai RED evidence**
+
+The pre-change complete suite has already produced this required result:
+
+```text
+ctaskbrowser_opcua_help: failed because Xenomai printed its own help
+ctaskbrowser_opcua_empty_import: failed because Xenomai consumed --help
+ctaskbrowser_opcua_repeated_imports: failed because Xenomai consumed --help
+```
+
+The full command exited `8` with 3 failures out of 13. Do not add a standalone
+`--` parser or change production code to satisfy these tests.
+
+- [ ] **Step 2: Make only the CTest definitions target-aware**
+
+Wrap the help-output test in this target condition:
+
+```cmake
+IF(NOT "${OROCOS_TARGET}" STREQUAL "xenomai")
+  add_test(NAME ctaskbrowser_opcua_help
+    COMMAND $<TARGET_FILE:ctaskbrowser-opcua> --help)
+  set_tests_properties(ctaskbrowser_opcua_help PROPERTIES
+    PASS_REGULAR_EXPRESSION "--import PACKAGE")
+ENDIF()
+```
+
+Replace the empty-import test with an application-owned failure:
+
+```cmake
+add_test(NAME ctaskbrowser_opcua_empty_import
+  COMMAND $<TARGET_FILE:ctaskbrowser-opcua> --import=)
+set_tests_properties(ctaskbrowser_opcua_empty_import PROPERTIES
+  PASS_REGULAR_EXPRESSION "--import requires a package name"
+  WILL_FAIL TRUE)
+```
+
+Replace the repeated-import help short-circuit with an arity failure that is
+reached only after both import forms parse successfully:
+
+```cmake
+add_test(NAME ctaskbrowser_opcua_repeated_imports
+  COMMAND $<TARGET_FILE:ctaskbrowser-opcua>
+    --import fixture_a --import=fixture_b)
+set_tests_properties(ctaskbrowser_opcua_repeated_imports PROPERTIES
+  PASS_REGULAR_EXPRESSION
+    "exactly one endpoint and one component name are required"
+  WILL_FAIL TRUE)
+```
+
+- [ ] **Step 3: Regenerate and verify the CLI registrations**
+
+```bash
+cmake --build toolchain/tools/ocl/build --parallel 2 \
+  --target ctaskbrowser-opcua
+ctest --test-dir toolchain/tools/ocl/build -N -V \
+  -R '^ctaskbrowser_opcua_.*$'
+ctest --test-dir toolchain/tools/ocl/build --output-on-failure \
+  --timeout 30 -R '^ctaskbrowser_opcua_.*$'
+```
+
+Expected on Xenomai: four tests are registered because the help-output test is
+omitted; all four pass; empty and repeated import cases emit their exact
+application diagnostics rather than Xenomai help.
+
+- [ ] **Step 4: Run the complete OCL verification boundary**
 
 ```bash
 cmake --build toolchain/tools/ocl/build --parallel 2
@@ -136,20 +236,20 @@ git -C toolchain/tools/ocl diff --check
 git -C toolchain/tools/ocl status --short
 ```
 
-Expected: the full build exits `0`; all 13 OCL tests pass; `diff --check`
-exits `0`; status contains only the two preserved CMake edits and the new test
-harness edit.
+Expected: the full build exits `0`; all 12 Xenomai OCL tests pass;
+`diff --check` exits `0`; status contains only the two approved CMake files and
+the new test harness edit.
 
-- [ ] **Step 6: Commit the OCL changes on its default branch**
+- [ ] **Step 5: Commit the verified OCL changes on its default branch**
 
 ```bash
 git -C toolchain/tools/ocl add -- \
+  bin/CMakeLists.txt deployment/CMakeLists.txt \
   deployment/tests/opcua_deployment_test.cpp
 git -C toolchain/tools/ocl commit -m \
-  "test: initialize RTT in OPC UA deployment suite"
+  "build: harden Xenomai OPC UA integration"
 ```
 
-Expected: OCL `dev` contains one focused test-lifecycle commit. The two
-pre-existing CMake edits remain unstaged for their separate dependency-header
-commit during final integration. Generated build artifacts remain untracked or
-ignored and are not committed.
+Expected: OCL `dev` contains one verified C++20/Xenomai OPC UA integration
+commit and its tracked working tree is clean. Generated build artifacts remain
+untracked or ignored and are not committed.
