@@ -18,5 +18,6 @@
   - [OPC UA Deployer Lifecycle Plan](./opcua-deployer-lifecycle-plan.md)
   - [OPC UA Custom Datatype Plan](./orocos-opcua-custom-datatype-plan.md)
   - [OPC UA Custom Datatype Verification](./opcua-custom-datatype-verification.md)
+  - [OPC UA PKI Authentication And Authorization PRD](./opcua-security-prd.md)
   - [Deployer TUI PRD](./deployer-tui-prd.md)
   - [Package Test Results](./package-test-results.md)
