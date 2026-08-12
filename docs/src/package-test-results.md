@@ -18,7 +18,7 @@ The package entries use the public maintenance branches selected in
 | `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Cross-distribution package workflow |
 | `rtt-typelib` | `rtt-typelib`, `get_marshaller_for_test`, and `rtt_typelib-gnulinux` metadata | Cross-distribution package workflow |
 | `rtt-core` | `main-test`, `list-test`, `core-test`, `task-test`, `mqueue-test`, and `mqueue_archive_test` | Maintained selected subset |
-| `rtt-opcua` | All `rtt_opcua_*_test` and split `ocl_opcua_deployment_*` cases on GNU/Linux, target-correct maintained subsets on Xenomai, OPC UA deployer/browser targets, and `rtt_opcua-gnulinux` plus installed OCL pkg-config metadata | Installed-prefix IPv4 LAN gate, including wildcard listener inspection, separate client and TaskBrowser connections through a non-loopback address, shutdown closure, and home-prefix isolation; cross-distribution CI pending |
+| `rtt-opcua` | Target-correct maintained Xenomai subsets of `rtt_opcua_*_test`, split `ocl_opcua_deployment_*`, and TaskBrowser argument cases; OPC UA deployer/browser targets; `rtt_opcua-xenomai` plus installed OCL pkg-config metadata; and installed-prefix IPv4 LAN acceptance with wildcard listener, separate LAN client and TaskBrowser connections, shutdown closure, and home-prefix isolation | Xenomai maintained gate; GNU/Linux `rtt_opcua_*_test`, `rtt_opcua-gnulinux` metadata, and installed-prefix LAN verification pending |
 | `ocl-basic` | `timer` and `taskb` | Cross-distribution package workflow |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` | Cross-distribution package workflow |
 
