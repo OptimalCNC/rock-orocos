@@ -236,7 +236,7 @@ if [ "$TARGET" = xenomai ]; then
         --target ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
     ctest --test-dir "$TEST_ROOT/ocl-build" --output-on-failure \
         --timeout "$TEST_TIMEOUT" \
-        -R '^(ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
+        -R '^(deployer_opcua_cli_address_rejected|ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
 else
     cmake --build "$TEST_ROOT/ocl-build" --parallel "$BUILD_PARALLEL" \
         --target taskbrowser_value_renderer_test \
@@ -346,7 +346,7 @@ cleanup_processes() {
 }
 trap cleanup_processes EXIT INT TERM
 
-orocos_rock_info "Starting external fixture server on loopback port $PORT"
+orocos_rock_info "Starting external fixture server on wildcard IPv4 port $PORT"
 "$SERVER" \
     --typekit "$TYPEKIT" \
     --transport "$TRANSPORT" \
@@ -370,7 +370,13 @@ if [ "$ready" -ne 1 ]; then
     orocos_rock_die "fixture server did not become ready"
 fi
 
-ENDPOINT="$(sed -n '1p' "$READY_FILE")"
+READY_ENDPOINT="$(sed -n '1p' "$READY_FILE")"
+EXPECTED_READY_ENDPOINT="opc.tcp://0.0.0.0:$PORT/rtt"
+if [ "$READY_ENDPOINT" != "$EXPECTED_READY_ENDPOINT" ]; then
+    orocos_rock_die \
+        "fixture server reported unexpected endpoint: $READY_ENDPOINT"
+fi
+ENDPOINT="opc.tcp://$LAN_IPV4:$PORT/rtt"
 orocos_rock_info "Running external fixture client against $ENDPOINT"
 "$CLIENT" \
     --standalone \
