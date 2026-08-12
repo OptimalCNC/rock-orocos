@@ -65,6 +65,8 @@ done
 [ -n "$DEPENDENCY_PREFIX" ] || \
     orocos_rock_die "--dependency-prefix is required"
 orocos_rock_validate_target "$TARGET"
+orocos_rock_require_command ip
+orocos_rock_require_command ss
 
 PREFIX="$(realpath -m -- "$PREFIX")"
 DEPENDENCY_PREFIX="$(realpath -m -- "$DEPENDENCY_PREFIX")"
@@ -148,6 +150,8 @@ LIBRARY_PATHS=(
 )
 LD_LIBRARY_PATH="$(IFS=:; printf '%s' "${LIBRARY_PATHS[*]}")"
 export LD_LIBRARY_PATH
+PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$DEPENDENCY_PREFIX/lib/pkgconfig"
+export PKG_CONFIG_PATH
 
 HOME_IGNORE="$CALLER_HOME_OROCOS;$CALLER_HOME_OROCOS/toolchain"
 HOME_IGNORE+=";$CALLER_HOME_OROCOS_REAL;$CALLER_HOME_OROCOS_REAL/toolchain"
@@ -187,13 +191,22 @@ configure_build_install \
     -DENABLE_TESTS=ON \
     -DBUILD_TESTING=ON
 
-cmake --build "$TEST_ROOT/rtt-build" --parallel "$BUILD_PARALLEL" \
-    --target typekit_test scripting_test \
-    type_discovery_struct_test type_discovery_container_test \
-    mqueue-test mqueue_archive_test
-ctest --test-dir "$TEST_ROOT/rtt-build" --output-on-failure \
-    --timeout "$TEST_TIMEOUT" \
-    -R '^(typekit_test|scripting_test|type_discovery_struct_test|type_discovery_container_test|mqueue-test|mqueue_archive_test)$'
+if [ "$TARGET" = xenomai ]; then
+    cmake --build "$TEST_ROOT/rtt-build" --parallel "$BUILD_PARALLEL" \
+        --target typekit_test type_discovery_struct_test \
+        type_discovery_container_test mqueue-test mqueue_archive_test
+    ctest --test-dir "$TEST_ROOT/rtt-build" --output-on-failure \
+        --timeout "$TEST_TIMEOUT" \
+        -R '^(typekit_test|type_discovery_struct_test|type_discovery_container_test|mqueue-test|mqueue_archive_test)$'
+else
+    cmake --build "$TEST_ROOT/rtt-build" --parallel "$BUILD_PARALLEL" \
+        --target typekit_test scripting_test \
+        type_discovery_struct_test type_discovery_container_test \
+        mqueue-test mqueue_archive_test
+    ctest --test-dir "$TEST_ROOT/rtt-build" --output-on-failure \
+        --timeout "$TEST_TIMEOUT" \
+        -R '^(typekit_test|scripting_test|type_discovery_struct_test|type_discovery_container_test|mqueue-test|mqueue_archive_test)$'
+fi
 
 INSTALLED_PREFIX_PATH="$PREFIX;$DEPENDENCY_PREFIX"
 configure_build_install \
@@ -201,8 +214,14 @@ configure_build_install \
     "$INSTALLED_PREFIX_PATH" \
     -DBUILD_TESTING=ON \
     -DRTT_OPCUA_WARNINGS_AS_ERRORS=ON
-ctest --test-dir "$TEST_ROOT/rtt-opcua-build" --output-on-failure \
-    --timeout "$TEST_TIMEOUT"
+if [ "$TARGET" = xenomai ]; then
+    ctest --test-dir "$TEST_ROOT/rtt-opcua-build" --output-on-failure \
+        --timeout "$TEST_TIMEOUT" \
+        -R '^(rtt_opcua_foundation_test|rtt_opcua_server_test)$'
+else
+    ctest --test-dir "$TEST_ROOT/rtt-opcua-build" --output-on-failure \
+        --timeout "$TEST_TIMEOUT"
+fi
 
 configure_build_install \
     ocl "$OROCOS_ROCK_ROOT/toolchain/tools/ocl" \
@@ -212,19 +231,35 @@ configure_build_install \
     -DBUILD_DEPLOYMENT=ON \
     -DBUILD_TASKBROWSER=ON \
     -DBUILD_OPCUA=ON
-cmake --build "$TEST_ROOT/ocl-build" --parallel "$BUILD_PARALLEL" \
-    --target taskbrowser_value_renderer_test \
-    ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
-ctest --test-dir "$TEST_ROOT/ocl-build" --output-on-failure \
-    --timeout "$TEST_TIMEOUT" \
-    -R '^(taskbrowser_value_renderer_test|ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
+if [ "$TARGET" = xenomai ]; then
+    cmake --build "$TEST_ROOT/ocl-build" --parallel "$BUILD_PARALLEL" \
+        --target ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
+    ctest --test-dir "$TEST_ROOT/ocl-build" --output-on-failure \
+        --timeout "$TEST_TIMEOUT" \
+        -R '^(ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
+else
+    cmake --build "$TEST_ROOT/ocl-build" --parallel "$BUILD_PARALLEL" \
+        --target taskbrowser_value_renderer_test \
+        ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
+    ctest --test-dir "$TEST_ROOT/ocl-build" --output-on-failure \
+        --timeout "$TEST_TIMEOUT" \
+        -R '^(taskbrowser_value_renderer_test|ocl_opcua_deployment_.*|ctaskbrowser_opcua_.*)$'
+fi
 
+FIXTURE_CMAKE_ARGS=()
+if [ "$TARGET" = xenomai ]; then
+    FIXTURE_SYSTEM_INCLUDES="-isystem $PREFIX/include/orocos"
+    FIXTURE_SYSTEM_INCLUDES+=" -isystem /usr/xenomai/include/trank"
+    FIXTURE_SYSTEM_INCLUDES+=" -isystem /usr/xenomai/include/cobalt"
+    FIXTURE_SYSTEM_INCLUDES+=" -isystem /usr/xenomai/include"
+    FIXTURE_SYSTEM_INCLUDES+=" -isystem /usr/xenomai/include/alchemy"
+    FIXTURE_SYSTEM_INCLUDES+=" -isystem $DEPENDENCY_PREFIX/include"
+    FIXTURE_CMAKE_ARGS+=("-DCMAKE_CXX_FLAGS=$FIXTURE_SYSTEM_INCLUDES")
+fi
 configure_build_install \
     fixture "$OROCOS_ROCK_ROOT/tests/opcua-custom-datatypes" \
-    "$INSTALLED_PREFIX_PATH"
+    "$INSTALLED_PREFIX_PATH" "${FIXTURE_CMAKE_ARGS[@]}"
 
-PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$DEPENDENCY_PREFIX/lib/pkgconfig"
-export PKG_CONFIG_PATH
 pkg-config --exists "orocos-rtt-$TARGET"
 pkg-config --exists "rtt_opcua-$TARGET"
 pkg-config --exists "orocos_opcua_fixture-$TARGET"
@@ -260,19 +295,38 @@ cd "$TEST_ROOT"
 
 unused_port() {
     ruby -rsocket -e \
-        'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]'
+        'server = TCPServer.new("0.0.0.0", 0); puts server.addr[1]'
 }
 
-port_accepts_connections() {
-    ruby -rsocket -e '
-        begin
-          socket = TCPSocket.new("127.0.0.1", Integer(ARGV.fetch(0)))
-          socket.close
-        rescue SystemCallError
-          exit 1
-        end
-    ' "$1"
+discover_lan_ipv4() {
+    ip -4 -o addr show scope global | awk '
+        $3 == "inet" {
+            split($4, address, "/")
+            if (address[1] !~ /^127\./) {
+                print address[1]
+                exit
+            }
+        }
+    '
 }
+
+listening_socket() {
+    ss -H -ltn "sport = :$1"
+}
+
+ipv4_wildcard_listener() {
+    ss -H -4 -ltn "sport = :$1" | awk -v port="$1" '
+        $4 == "0.0.0.0:" port || $4 == "*:" port { found = 1 }
+        END { exit !found }
+    '
+}
+
+LAN_IPV4="$(discover_lan_ipv4)"
+if [ -z "$LAN_IPV4" ]; then
+    orocos_rock_die \
+        "IPv4 LAN acceptance requires a non-loopback global AF_INET address"
+fi
+orocos_rock_info "Using non-loopback IPv4 acceptance address $LAN_IPV4"
 
 PORT="$(unused_port)"
 READY_FILE="$TEST_ROOT/server.ready"
@@ -335,12 +389,11 @@ fi
 SERVER_PID=""
 
 NO_START_PORT="$(unused_port)"
-NO_START_ENDPOINT="opc.tcp://127.0.0.1:$NO_START_PORT/rtt"
+NO_START_ENDPOINT="opc.tcp://$LAN_IPV4:$NO_START_PORT/rtt"
 NO_START_LOG="$TEST_ROOT/deployer-no-start.log"
 NO_START_CLIENT_LOG="$TEST_ROOT/deployer-no-start-client.log"
 orocos_rock_info "Starting deployer without opcua.start() on port $NO_START_PORT"
 "$DEPLOYER" \
-    --opcua-address 127.0.0.1 \
     --opcua-port "$NO_START_PORT" \
     --opcua-endpoint-path /rtt \
     "$NO_START_SCRIPT" </dev/null >"$NO_START_LOG" 2>&1 &
@@ -351,7 +404,7 @@ if ! kill -0 "$DEPLOYER_PID" 2>/dev/null; then
     sed -n '1,240p' "$NO_START_LOG" >&2
     orocos_rock_die "no-start deployer exited unexpectedly"
 fi
-if port_accepts_connections "$NO_START_PORT"; then
+if listening_socket "$NO_START_PORT" | grep -q .; then
     orocos_rock_die "OPC UA port opened before opcua.start()"
 fi
 if "$CLIENT" \
@@ -377,12 +430,11 @@ START_PORT="$(unused_port)"
 while [ "$START_PORT" = "$NO_START_PORT" ]; do
     START_PORT="$(unused_port)"
 done
-START_ENDPOINT="opc.tcp://127.0.0.1:$START_PORT/rtt"
+START_ENDPOINT="opc.tcp://$LAN_IPV4:$START_PORT/rtt"
 START_LOG="$TEST_ROOT/deployer-start.log"
 PROBE_LOG="$TEST_ROOT/deployer-probe.log"
 orocos_rock_info "Starting explicit OPC UA deployer on port $START_PORT"
 "$DEPLOYER" \
-    --opcua-address 127.0.0.1 \
     --opcua-port "$START_PORT" \
     --opcua-endpoint-path /rtt \
     "$START_SCRIPT" </dev/null >"$START_LOG" 2>&1 &
@@ -413,6 +465,13 @@ if [ "$deployer_ready" -ne 1 ]; then
     orocos_rock_die "explicit OPC UA deployer did not become ready"
 fi
 
+if ! ipv4_wildcard_listener "$START_PORT"; then
+    ss -H -ltn "sport = :$START_PORT" >&2 || true
+    orocos_rock_die \
+        "OPC UA listener is not wildcard IPv4 on 0.0.0.0:$START_PORT"
+fi
+ss -H -4 -ltn "sport = :$START_PORT" >"$TEST_ROOT/deployer-listener.ss"
+
 orocos_rock_info "Running installed deployer OPC UA acceptance client"
 "$CLIENT" \
     --deployer \
@@ -433,6 +492,11 @@ if ! wait "$DEPLOYER_PID"; then
     orocos_rock_die "explicit OPC UA deployer failed during shutdown"
 fi
 DEPLOYER_PID=""
+
+if listening_socket "$START_PORT" | grep -q .; then
+    listening_socket "$START_PORT" >&2
+    orocos_rock_die "OPC UA port remained open after deployer shutdown"
+fi
 
 RUNTIME_ENV="$TEST_ROOT/runtime-env.sh"
 {

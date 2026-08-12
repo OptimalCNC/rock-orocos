@@ -21,7 +21,7 @@ The repository keeps the scope narrow:
 The installed prefix exports:
 
 - `env.sh` for runtime tools such as `deployer-gnulinux`
-- `deployer-opcua` and `ctaskbrowser-opcua` for loopback remote access
+- `deployer-opcua` and `ctaskbrowser-opcua` for IPv4 LAN remote access
 - `dev-env.sh` for generator tools such as `orogen` and `typegen`
 
 RTT CORBA sources remain available in their upstream packages, but this

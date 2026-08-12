@@ -139,16 +139,18 @@ source ~/.orocos/env.sh
 deployer-opcua site.ops
 ```
 
-The default endpoint is `opc.tcp://127.0.0.1:4840/rtt`. In another sourced
-shell, attach the remote TaskBrowser to the published deployer component:
+The default listener is `opc.tcp://0.0.0.0:4840/rtt` and accepts connections
+on all IPv4 interfaces. Clients must use the server host's concrete LAN IPv4
+address, for example `opc.tcp://192.0.2.10:4840/rtt`. In another sourced shell,
+attach the remote TaskBrowser to the published deployer component:
 
 ```bash
-ctaskbrowser-opcua opc.tcp://127.0.0.1:4840/rtt Deployer
+ctaskbrowser-opcua opc.tcp://192.0.2.10:4840/rtt Deployer
 ```
 
-Use `--opcua-port` or `--opcua-endpoint-path` when a different local endpoint
-is needed. The unsuffixed commands dispatch to the executable for the selected
-`OROCOS_TARGET`.
+Use `--opcua-port` or `--opcua-endpoint-path` when a different port or path is
+needed. The listener address is not configurable from the CLI. The unsuffixed
+commands dispatch to the executable for the selected `OROCOS_TARGET`.
 
 > [!IMPORTANT]
 > `deployer-opcua` constructs the local Deployer with its OPC UA listener
@@ -174,8 +176,9 @@ through the Deployer while the endpoint exists.
 
 > [!WARNING]
 > The remote deployer can load components and invoke exported operations.
-> Keep it on loopback. Non-loopback listening is rejected until certificate
-> and authentication configuration is implemented.
+> The current IPv4 LAN endpoint uses `SecurityPolicy None` and provides no
+> authentication or authorization. Use it only on an isolated network and/or
+> restrict access with host firewall rules.
 
 ## C++20 And Type Names
 

@@ -38,6 +38,11 @@ For `gnulinux` and `xenomai`, respectively, the required mqueue transport is:
 The prefix does not include RTT or OCL CORBA libraries and executables in
 either target build.
 
+The installed `deployer-opcua` binds all IPv4 interfaces by default at
+`opc.tcp://0.0.0.0:4840/rtt`. Downstream clients connect through a concrete
+server IPv4 address. The CLI exposes `--opcua-port` and
+`--opcua-endpoint-path`, but no listener-address override.
+
 The selected Orocos target is part of the prefix contract. The default target
 is `gnulinux`; a Xenomai build must be requested explicitly with
 `--target xenomai`. The default prefix remains `~/.orocos` unless the caller
@@ -150,6 +155,11 @@ An install is considered minimally valid when it can:
 7. run `orogen`
 8. run `typegen`
 9. support a downstream Orocos configure step
+
+The installed-prefix OPC UA acceptance additionally starts the deployer,
+proves its socket is wildcard IPv4, connects separate installed client and
+TaskBrowser processes through a non-loopback IPv4 address, and proves the port
+closes after deployer shutdown.
 
 ## Relationship To Downstream Projects
 

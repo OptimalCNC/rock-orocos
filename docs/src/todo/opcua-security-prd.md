@@ -29,12 +29,14 @@ guarantees in the [Install Contract](../install-contract.md).
 
 ## Problem Statement
 
-The current native OPC UA integration is suitable for isolated loopback use,
-but it does not yet provide a complete production security model. A client can
-connect to a published RTT object graph without a product-defined distinction
-between an anonymous caller, a named developer, an administrator, or an
-unattended service. The server also lacks an approved contract for encrypted
-non-loopback connections and certificate trust.
+The current native OPC UA integration binds all IPv4 interfaces and permits
+LAN clients to connect with `SecurityPolicy None`, no authentication, and no
+authorization. Any client that can reach the endpoint can browse the published
+RTT object graph and invoke the operations exposed there. This insecure IPv4
+LAN baseline requires an isolated network and/or host firewall rules and is not
+a production security model. It provides no encrypted channel, certificate
+trust, principal distinction, or access policy for an anonymous caller, a
+named developer, an administrator, or an unattended service.
 
 MetaNC needs two independent controls:
 
