@@ -117,7 +117,7 @@ CMake/CTest, mdBook.
 - Preserves: all existing errors for a present category with missing child
   metadata, invalid direction, incompatible method schema, or duplicate names.
 
-- [ ] **Step 1: Add deterministic NodeId and category-shaping test helpers**
+- [x] **Step 1: Add deterministic NodeId and category-shaping test helpers**
 
   Add this test helper near `unusedLoopbackPort()`:
 
@@ -210,7 +210,7 @@ CMake/CTest, mdBook.
   `<initializer_list>`, `<string_view>`, and `<utility>` includes; the test
   already includes `nodemanagement.hpp` and `<array>`.
 
-- [ ] **Step 2: Extend the proxy fixtures with sparse-root and empty services**
+- [x] **Step 2: Extend the proxy fixtures with sparse-root and empty services**
 
   Extend `ProxyTarget` with two empty services so sparse and dense category
   shapes can be exercised without removing either service Object:
@@ -239,7 +239,7 @@ CMake/CTest, mdBook.
   };
   ```
 
-- [ ] **Step 3: Write the failing sparse-category proxy test**
+- [x] **Step 3: Write the failing sparse-category proxy test**
 
   Add
   `proxy_treats_missing_category_objects_as_empty_collections`. Publish a
@@ -337,7 +337,7 @@ CMake/CTest, mdBook.
                     ->getOperation("negate"));
   ```
 
-- [ ] **Step 4: Write the failing sparse-root proxy test**
+- [x] **Step 4: Write the failing sparse-root proxy test**
 
   Add `proxy_reconstructs_a_sparse_component_root`. Publish a
   `SparseRootTarget`, remove the candidate empty category Objects, and leave
@@ -371,7 +371,7 @@ CMake/CTest, mdBook.
   stored in `getProviderNames()`, so an empty list proves no child service was
   reconstructed.
 
-- [ ] **Step 5: Add the strict missing-metadata characterization test**
+- [x] **Step 5: Add the strict missing-metadata characterization test**
 
   Add `proxy_rejects_missing_metadata_inside_a_present_category`. Publish a
   fresh `ProxyTarget`, delete only the port type node while leaving `Ports` and
@@ -404,7 +404,7 @@ CMake/CTest, mdBook.
   BOOST_TEST(error.find("BadNodeIdUnknown") != std::string::npos);
   ```
 
-- [ ] **Step 6: Run focused tests and verify the red/characterization state**
+- [x] **Step 6: Run focused tests and verify the red/characterization state**
 
   Run:
 
@@ -425,7 +425,7 @@ CMake/CTest, mdBook.
     deleted category;
   - missing-metadata test passes, proving the strict behavior that must remain.
 
-- [ ] **Step 7: Implement category-only `BadNodeIdUnknown` tolerance**
+- [x] **Step 7: Implement category-only `BadNodeIdUnknown` tolerance**
 
   Add this helper beside `invalidatesInterface`:
 
@@ -500,7 +500,7 @@ CMake/CTest, mdBook.
   Do not apply this helper to component lookup, service-description reads,
   `rttType`, port `type`, port `direction`, method arguments, or method lookup.
 
-- [ ] **Step 8: Run proxy tests and verify green behavior**
+- [x] **Step 8: Run proxy tests and verify green behavior**
 
   Run:
 
@@ -514,7 +514,7 @@ CMake/CTest, mdBook.
   Expected: sparse root and nested categories, the deliberately dense empty
   service, missing-metadata rejection, and all existing proxy behavior pass.
 
-- [ ] **Step 9: Commit proxy compatibility**
+- [x] **Step 9: Commit proxy compatibility**
 
   ```bash
   git -C toolchain/tools/rtt_opcua add \
@@ -543,7 +543,7 @@ CMake/CTest, mdBook.
 - Preserves: service Objects, resource NodeIds, snapshot validation, and
   fingerprint generation over the final committed node set.
 
-- [ ] **Step 1: Extend the static fixture with an empty service**
+- [x] **Step 1: Extend the static fixture with an empty service**
 
   Extend `StaticSnapshotComponent` with the initializer and member shown below,
   then document and register it on the root service:
@@ -566,7 +566,7 @@ CMake/CTest, mdBook.
   existing generated operation-only port service. Together these fixtures
   cover empty, single-category, and generated-service cases.
 
-- [ ] **Step 2: Write the failing sparse component-root test**
+- [x] **Step 2: Write the failing sparse component-root test**
 
   Add `publish_component_omits_empty_root_categories` using the existing
   `OperationComponent`. It contributes operations, while the standard
@@ -591,7 +591,7 @@ CMake/CTest, mdBook.
 
   This is the direct publisher counterpart to Task 1's sparse-root proxy test.
 
-- [ ] **Step 3: Write the failing sparse service assertions**
+- [x] **Step 3: Write the failing sparse service assertions**
 
   In `publish_component_creates_one_complete_static_snapshot`, assert these
   positive paths:
@@ -662,7 +662,7 @@ CMake/CTest, mdBook.
   BOOST_TEST(empty_description->text() == "Intentionally empty service");
   ```
 
-- [ ] **Step 4: Run the object-model tests and verify they fail on dense folders**
+- [x] **Step 4: Run the object-model tests and verify they fail on dense folders**
 
   ```bash
   cmake --build toolchain/tools/rtt_opcua/build --parallel 2 \
@@ -676,7 +676,7 @@ CMake/CTest, mdBook.
   Expected: each test reaches a `requireMissingNode` assertion and fails
   because the current publisher creates all five categories unconditionally.
 
-- [ ] **Step 5: Define one shared category table**
+- [x] **Step 5: Define one shared category table**
 
   Add `<array>` and replace the local initializer list in
   `appendResourceFolders` with:
@@ -705,7 +705,7 @@ CMake/CTest, mdBook.
   }
   ```
 
-- [ ] **Step 6: Implement direct-child pruning after recursive discovery**
+- [x] **Step 6: Implement direct-child pruning after recursive discovery**
 
   Add:
 
@@ -732,7 +732,7 @@ CMake/CTest, mdBook.
   owns an empty child service Object, but removes the five category Objects
   below that empty child.
 
-- [ ] **Step 7: Run focused and complete `rtt_opcua` tests**
+- [x] **Step 7: Run focused and complete `rtt_opcua` tests**
 
   ```bash
   cmake --build toolchain/tools/rtt_opcua/build --parallel 2
@@ -745,7 +745,7 @@ CMake/CTest, mdBook.
   sparse publisher remains reconstructable and that intentionally present
   empty category Objects remain accepted.
 
-- [ ] **Step 8: Install the updated generic transport into the feature overlay**
+- [x] **Step 8: Install the updated generic transport into the feature overlay**
 
   ```bash
   cmake --install toolchain/tools/rtt_opcua/build
@@ -755,7 +755,7 @@ CMake/CTest, mdBook.
   `.worktrees/opcua-interface-mapping/install`, receives the updated library,
   plugin, headers, and pkg-config metadata.
 
-- [ ] **Step 9: Commit sparse publication**
+- [x] **Step 9: Commit sparse publication**
 
   ```bash
   git -C toolchain/tools/rtt_opcua add \
@@ -779,7 +779,7 @@ CMake/CTest, mdBook.
 - Produces: direct address-space evidence that OCL publishes the generic sparse
   schema, plus existing `TaskContextProxy` behavioral evidence.
 
-- [ ] **Step 1: Add direct OPC UA browse helpers to the OCL test**
+- [x] **Step 1: Add direct OPC UA browse helpers to the OCL test**
 
   Include:
 
@@ -825,7 +825,7 @@ CMake/CTest, mdBook.
   }
   ```
 
-- [ ] **Step 2: Add sparse assertions to the deployer integration test**
+- [x] **Step 2: Add sparse assertions to the deployer integration test**
 
   In `strict_publication_is_static_and_idempotent`, immediately after:
 
@@ -857,7 +857,7 @@ CMake/CTest, mdBook.
   Disconnect the direct client, then leave the existing proxy creation and all
   operation/property/attribute/port/generated-service checks unchanged.
 
-- [ ] **Step 3: Reconfigure OCL against the feature overlay**
+- [x] **Step 3: Reconfigure OCL against the feature overlay**
 
   ```bash
   feature_root=/home/liufang/MetaNC/rock-orocos/.worktrees/opcua-interface-mapping
@@ -874,7 +874,7 @@ CMake/CTest, mdBook.
   Inspect `build-overlay/CMakeCache.txt` and require
   `RTT_OPCUA_LIBRARY_DIRS` to list the feature overlay before the base prefix.
 
-- [ ] **Step 4: Build and run the OCL OPC UA integration suite**
+- [x] **Step 4: Build and run the OCL OPC UA integration suite**
 
   ```bash
   cmake --build toolchain/tools/ocl/build-overlay --parallel 2 \
@@ -886,13 +886,13 @@ CMake/CTest, mdBook.
   Expected: all six OCL OPC UA deployment cases pass, including the direct
   sparse-category assertions and existing complete proxy behavior.
 
-- [ ] **Step 5: Install OCL into the feature overlay**
+- [x] **Step 5: Install OCL into the feature overlay**
 
   ```bash
   cmake --install toolchain/tools/ocl/build-overlay
   ```
 
-- [ ] **Step 6: Commit OCL acceptance coverage**
+- [x] **Step 6: Commit OCL acceptance coverage**
 
   ```bash
   git -C toolchain/tools/ocl add deployment/tests/opcua_deployment_test.cpp
@@ -917,7 +917,7 @@ CMake/CTest, mdBook.
 - Produces: direct browse/call/read/write evidence and TaskBrowser evidence for
   the sparse schema without modifying any repository.
 
-- [ ] **Step 1: Add an intentionally empty probe service**
+- [x] **Step 1: Add an intentionally empty probe service**
 
   Add `empty_(RTT::Service::Create("empty"))` to
   `InterfaceProbeComponent`, document it, and register it at the root:
@@ -934,7 +934,7 @@ CMake/CTest, mdBook.
   RTT::Service::shared_ptr empty_;
   ```
 
-- [ ] **Step 2: Replace dense category assertions with exact sparse assertions**
+- [x] **Step 2: Replace dense category assertions with exact sparse assertions**
 
   Add:
 
@@ -1023,6 +1023,11 @@ CMake/CTest, mdBook.
 
 - [ ] **Step 3: Refresh the probe prefix and rebuild the probe**
 
+  Status: the prefix refresh, rebuild, install, and environment-matched runtime
+  resolution checks completed. This combined step remains unchecked because
+  bare `ldd` followed the pre-existing base-prefix-first RUNPATH instead of the
+  probe prefix; see Completion Evidence for the exercised-runtime result.
+
   ```bash
   feature_root=/home/liufang/MetaNC/rock-orocos/.worktrees/opcua-interface-mapping
   probe_root=/tmp/rtt-opcua-interface-probe.7Ym4Ma
@@ -1055,7 +1060,7 @@ CMake/CTest, mdBook.
   binary resolves `orocos-rtt-opcua`, `rtt-transport-opcua`, or OCL from the
   base prefix.
 
-- [ ] **Step 4: Start the deployer using the temporary executable**
+- [x] **Step 4: Start the deployer using the temporary executable**
 
   In terminal one:
 
@@ -1067,7 +1072,7 @@ CMake/CTest, mdBook.
   Do not use the unqualified base-prefix `deployer-opcua`; it cannot discover
   the temporary component package.
 
-- [ ] **Step 5: Run direct and TaskBrowser clients**
+- [x] **Step 5: Run direct and TaskBrowser clients**
 
   In terminal two:
 
@@ -1091,7 +1096,7 @@ CMake/CTest, mdBook.
   control.nested.ping()       = true
   ```
 
-- [ ] **Step 6: Stop and verify clean shutdown**
+- [x] **Step 6: Stop and verify clean shutdown**
 
   Enter `quit` in terminal one, then run:
 
