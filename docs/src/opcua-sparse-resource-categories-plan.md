@@ -42,6 +42,35 @@ CMake/CTest, mdBook.
 - Commit changes separately in the `rtt_opcua`, OCL, and root documentation
   repositories. Never add package `build/` directories.
 
+## Completion Evidence
+
+- `rtt_opcua` commits: `2911f38c2c4a96b8860bd2d5d749f2342f68c1cb`
+  (`feat: accept sparse OPC UA resource categories`) and
+  `b28073abf773c02ccd50e7bd4b1ffe103e5e163b`
+  (`feat: omit empty OPC UA resource categories`).
+- OCL acceptance commit:
+  `f4f9c9222fba50b473cd00ef6c5321a4f2ff749f`
+  (`test: verify sparse OPC UA component categories`). Task 3 added
+  `open62541pp` discovery and linking only to the direct-client test target;
+  production OCL targets were not expanded.
+- Fresh 2026-08-14 regression runs passed: `rtt_opcua` CTest `10/10` and the
+  maintained `ocl_opcua_deployment_.*` suite `6/6`. Each run used the feature
+  build libraries ahead of the installed prefix in `LD_LIBRARY_PATH`.
+- Retained manual-probe evidence:
+  `/tmp/rtt-opcua-interface-probe.7Ym4Ma`. Its direct client exited `0` with
+  `direct OPC UA interface mapping probe passed`; its TaskBrowser exited `0`
+  and returned `add(20, 22) = 42`, `control.scale(10) = 45`, and
+  `control.nested.ping() = true` while displaying the empty service
+  documentation.
+- `mdbook build docs --dest-dir /tmp/orocos-opcua-sparse-verify.WGHZqR/book`,
+  `mdbook test docs`, and `ruby tools/check-repository-policy.rb` all exited
+  `0`. Root, `rtt_opcua`, and OCL `git diff --check` commands also exited `0`.
+- Task 4 caveat: bare `ldd` follows a pre-existing base-prefix-first RUNPATH.
+  The probe launch scripts prepend their prefix to `LD_LIBRARY_PATH`, and
+  environment-matched `ldd` plus the exercised clients resolved the probe
+  overlay. This remains a RUNPATH follow-up if bare-prefix execution becomes a
+  required contract.
+
 ## File Structure
 
 - Modify `toolchain/tools/rtt_opcua/src/client_session.cpp`: interpret a missing
@@ -1087,7 +1116,7 @@ CMake/CTest, mdBook.
 - Consumes: package commits, OCL acceptance results, and manual-probe logs.
 - Produces: fresh regression evidence and a clean auditable feature state.
 
-- [ ] **Step 1: Run all `rtt_opcua` tests from a fresh build invocation**
+- [x] **Step 1: Run all `rtt_opcua` tests from a fresh build invocation**
 
   ```bash
   cmake --build toolchain/tools/rtt_opcua/build --parallel 2
@@ -1096,7 +1125,7 @@ CMake/CTest, mdBook.
 
   Expected: 10 of 10 tests pass.
 
-- [ ] **Step 2: Re-run all maintained OCL OPC UA integration cases**
+- [x] **Step 2: Re-run all maintained OCL OPC UA integration cases**
 
   ```bash
   cmake --build toolchain/tools/ocl/build-overlay --parallel 2 \
@@ -1107,7 +1136,7 @@ CMake/CTest, mdBook.
 
   Expected: 6 of 6 deployment cases pass.
 
-- [ ] **Step 3: Run documentation and root policy checks**
+- [x] **Step 3: Run documentation and root policy checks**
 
   ```bash
   verify_root="$(mktemp -d /tmp/orocos-opcua-sparse-verify.XXXXXX)"
@@ -1119,7 +1148,7 @@ CMake/CTest, mdBook.
   git -C toolchain/tools/ocl diff --check
   ```
 
-- [ ] **Step 4: Record exact completion evidence in this plan**
+- [x] **Step 4: Record exact completion evidence in this plan**
 
   Add a `## Completion Evidence` section immediately below the global
   constraints containing:
@@ -1133,7 +1162,7 @@ CMake/CTest, mdBook.
 
   Mark checkboxes only for steps supported by fresh command output.
 
-- [ ] **Step 5: Inspect all three repository states**
+- [x] **Step 5: Inspect all three repository states**
 
   ```bash
   git status --short --branch
@@ -1145,7 +1174,7 @@ CMake/CTest, mdBook.
   its final commit; `rtt_opcua` may retain only its pre-existing untracked
   `build/`; OCL is clean.
 
-- [ ] **Step 6: Commit completion evidence**
+- [x] **Step 6: Commit completion evidence**
 
   ```bash
   git add docs/src/opcua-sparse-resource-categories-plan.md \
