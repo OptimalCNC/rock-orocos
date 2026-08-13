@@ -56,20 +56,37 @@ mapping.
 ### Recursive service rule
 
 Every `RTT::Service` is mapped by the same recursive function. At each service
-level, the function maps:
+level, the function discovers:
 
 ```text
 service
-|- operations
-|- properties
-|- attributes
-|- ports
-`- services
+|- operations (when non-empty)
+|- properties (when non-empty)
+|- attributes (when non-empty)
+|- ports (when non-empty)
+`- services (when non-empty)
 ```
 
 A component's root `provides()` object is the root service. A custom child
 service, a nested child service, and an RTT-generated port service adapter all
-use the same rule.
+use the same rule. The service object itself remains present even when all five
+resource categories are empty, preserving service identity and documentation.
+
+### Sparse category rule
+
+The mapper creates a category Object only when the complete supported snapshot
+contains at least one direct child in that category. This rule applies
+uniformly to the component root, custom services, nested services, and
+RTT-generated port service adapters.
+
+> [!IMPORTANT]
+> Absence of a category Object means that category is empty. It does not mean
+> the owning component or service is absent, unsupported, or unpublished.
+
+Category pruning happens after resource discovery and validation. It therefore
+does not change type validation, unsupported-resource diagnostics, strict
+publication, or selector policy. It only removes empty organizational Objects
+from the committed address space.
 
 ### Separate data and object planes
 
@@ -115,8 +132,9 @@ rtt/components/<component>
 ```
 
 Each path segment is percent-escaped independently. Category segments make a
-same-named port and service unambiguous. Empty category folders remain present
-at each published service level so clients can browse one stable schema.
+same-named port and service unambiguous. A category path exists only when that
+category contains at least one published resource. Resource paths remain
+deterministic and unchanged when their category exists.
 
 ## Component Mapping
 
@@ -319,9 +337,13 @@ For every genuine or generated child service:
 
 1. Create an OPC UA Object below the owning `services` object.
 2. Preserve its name and documentation.
-3. Create its five category objects.
-4. Map its operations, properties, attributes/constants, and ports.
-5. Recurse into its child services.
+3. Map its operations, properties, attributes/constants, and ports.
+4. Recurse into its child services.
+5. Retain only category Objects that contain at least one mapped child.
+
+An empty child service remains as an OPC UA Object with no category children.
+If a service has at least one child service, its `Services` category is
+non-empty and remains present even when that child service is itself empty.
 
 Traversal remains cycle-safe and bounded by the maintained maximum service
 depth. RTT's reserved `this` lookup is a self-alias, not a child service, and
@@ -358,6 +380,13 @@ reachable.
   including same-named generated port service adapters;
 - properties, attributes, and constants retain their writability; and
 - lifecycle metadata maintains the proxy task state.
+
+When browsing a deterministic category Object itself, the proxy interprets
+`BadNodeIdUnknown` as an empty category and continues reconstruction. Any other
+browse failure remains an error. Missing or malformed resource and metadata
+nodes inside an existing category also remain errors. This makes the proxy
+compatible with both the sparse schema and older servers that expose empty
+category Objects without weakening schema validation.
 
 A service and a port may legally share a name. Proxy installation must retain
 both instead of allowing one representation to replace or suppress the other.
@@ -397,15 +426,18 @@ Tests prove:
 
 1. Every resource appears at its deterministic path with correct metadata.
 2. The same recursive mapping works at the root and both service depths.
-3. Each port appears in both the `ports` and `services` categories.
-4. Input and event-input data-plane writes reach the original RTT port.
-5. Output data-plane reads preserve value and `FlowStatus`.
-6. Generated adapter operations are callable through the generic operation
+3. A category Object exists exactly when it contains a mapped direct child.
+4. An empty service Object remains present without empty category Objects.
+5. Each port appears in both the `ports` and `services` categories.
+6. Input and event-input data-plane writes reach the original RTT port.
+7. Output data-plane reads preserve value and `FlowStatus`.
+8. Generated adapter operations are callable through the generic operation
    dispatcher and preserve RTT behavior.
-7. `FlowStatus` and `WriteStatus` use the canonical integer codecs end to end.
-8. `TaskContextProxy` recreates same-named port and service resources together.
-9. One unsupported nested resource rejects the complete component snapshot.
-10. Existing rollback, idempotence, timeout, lifetime, and shutdown tests still
+9. `FlowStatus` and `WriteStatus` use the canonical integer codecs end to end.
+10. `TaskContextProxy` treats absent categories as empty and recreates
+    same-named port and service resources together.
+11. One unsupported nested resource rejects the complete component snapshot.
+12. Existing rollback, idempotence, timeout, lifetime, and shutdown tests still
     pass.
 
 OCL integration tests prove that `opcua.publishComponent(name)` exposes this
@@ -443,6 +475,8 @@ Manual acceptance must show:
 - output samples written by the component are read through the data plane;
 - generated input- and output-port service operations are discoverable and
   callable independently of the data plane;
+- empty category Objects are absent at the root and every service depth;
+- an empty service remains browseable without category children;
 - `ctaskbrowser-opcua` reconstructs both same-named proxy resources; and
 - clean endpoint shutdown leaves no running probe process.
 
