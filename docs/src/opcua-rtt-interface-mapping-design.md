@@ -145,7 +145,7 @@ The component object contains:
 
 - the component name and description as OPC UA object metadata;
 - a read-only `lifecycleState` variable;
-- the five stable category objects; and
+- each non-empty resource category object; and
 - the recursively mapped contents of `component.provides()`.
 
 `lifecycleState` is transport metadata needed by `TaskContextProxy`; it is not
