@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 
-Status: Draft for review
+Status: Approved for implementation
 
 ## Purpose
 
@@ -214,9 +214,19 @@ does not provide a stable event-classification query, so OPC UA does not invent
 an `event` direction or metadata flag. A future RTT API could add that metadata
 without changing the transfer method.
 
-The counterpart crosses between OPC UA's non-realtime worker and RTT through a
-bounded connection. OPC UA callbacks do not perform network work from a
-realtime activity.
+For a published input or event input, the server connects its output
+counterpart using that component input port's default `RTT::ConnPolicy`. This
+preserves the component's choice between latest-value data and buffered input,
+including its buffer size and lock policy. The OPC UA layer must not replace
+that choice with an SDK policy or a transport-wide default.
+
+For a published output, the server owns the input counterpart and connects it
+with the configured bounded, lock-free circular buffer. That queue decouples
+component writes from OPC UA reads. Its configured size therefore applies only
+to published output ports.
+
+Both counterparts cross between OPC UA's non-realtime worker and RTT. OPC UA
+callbacks do not perform network work from a realtime activity.
 
 `TaskContextProxy` recreates a remote port with its original declared
 direction. Normal RTT connection rules then provide the counterpart at the
@@ -356,7 +366,8 @@ This design deliberately does not decide:
 - user- or role-specific browse/read/write/call permissions;
 - application-specific internal-resource conventions;
 - public stop, unpublish, replacement, or reconciliation operations; or
-- OPC UA PubSub transport.
+- OPC UA PubSub transport; or
+- application SDK APIs, retries, or client-side convenience wrappers.
 
 Those layers consume this mapping and must not redefine it.
 
