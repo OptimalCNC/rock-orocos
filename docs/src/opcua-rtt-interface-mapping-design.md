@@ -153,6 +153,14 @@ custom-service, nested-service, and generated-port-service operations.
 Component code never runs directly on the OPC UA server thread. Exceptions and
 conversion failures are translated to OPC UA status codes.
 
+RTT-generated port adapters use synchronous operations, which do not provide
+an asynchronous send handle. The dispatcher runs those calls on a worker and
+applies the same bounded response timeout as ordinary operations. A timed-out
+call cannot be cancelled through RTT; its component lease and argument storage
+remain retained until the call returns, and mapper shutdown waits for that
+completion. This preserves lifetime safety while making the non-cancellable
+RTT behavior explicit.
+
 Every argument, return value, and collected mutable output must have a
 registered RTT-to-OPC-UA codec. One unsupported operation makes strict
 component preflight fail before any component nodes are committed.
@@ -425,8 +433,9 @@ OPC UA, and explicitly publishes the component.
 
 Manual acceptance must show:
 
-- local TaskBrowser lists every expected RTT resource;
-- an OPC UA browse dump lists every expected component and nested-service path;
+- the direct OPC UA client resolves and validates every expected deterministic
+  component and nested-service path;
+- `ctaskbrowser-opcua` recursively lists every expected RTT resource;
 - values round-trip for properties, attributes, constants, and operations;
 - constants reject writes;
 - input and event-input samples written through the data plane reach the

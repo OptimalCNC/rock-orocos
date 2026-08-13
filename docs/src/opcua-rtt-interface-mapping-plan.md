@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > `superpowers:subagent-driven-development` (recommended) or
 > `superpowers:executing-plans` to implement this plan task-by-task. Steps use
-> checkbox (`- [ ]`) syntax for tracking.
+> checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Publish and reconstruct every supported RTT operation, property,
 attribute/constant, data port, generated port service, and nested service with
@@ -19,6 +19,28 @@ directly and does not define an SDK API.
 
 **Tech Stack:** C++20, Orocos RTT, OCL, open62541 `v1.4.15`, open62541pp
 `v0.21.2`, Boost.Test, CMake/CTest, mdBook, OCL `.ops` scripts.
+
+## Completion Evidence
+
+Completed on 2026-08-13 with these package commits:
+
+- `rtt_opcua` `4f6bc6c`: canonical `Int32` status codecs;
+- `rtt_opcua` `8314724`: direction-correct, type-safe port data plane;
+- `rtt_opcua` `aca3594`: recursive generated port services and synchronous
+  operation dispatch support; and
+- OCL `fc82052`: complete publication integration coverage.
+
+The repository-supported `rtt-opcua` package gate passed 5 native mapper tests
+and 6 OCL deployment tests. The independent probe is retained at
+`/tmp/rtt-opcua-interface-probe.7Ym4Ma` and used endpoint
+`opc.tcp://127.0.0.1:45403/rtt`. Its direct open62541pp client validated every
+root and nested category, variable mutability, operation, port metadata,
+data-plane transfer, generated port service, common generated operations, and
+scalar status. Its `ctaskbrowser-opcua` transcript lists the complete proxy and
+records results `42`, `45`, and `true` for root, child-service, and nested
+operations. `ldd` logs prove changed OCL and `rtt_opcua` libraries resolved
+from the isolated probe prefix. The deployer stopped with no allocation left
+and no listener remaining on port `45403`.
 
 ## Global Constraints
 
@@ -81,7 +103,7 @@ directly and does not define an SDK API.
 - Produces: the fixed values `NoData=0`, `OldData=1`, `NewData=2`,
   `WriteSuccess=0`, `WriteFailure=1`, and `NotConnected=2`.
 
-- [ ] **Step 1: Extend the exact canonical-catalog test and add status
+- [x] **Step 1: Extend the exact canonical-catalog test and add status
   round-trip tests**
 
   Update `canonical_builtin_catalog_is_exact` to include `FlowStatus` and
@@ -112,7 +134,7 @@ directly and does not define an SDK API.
   }
   ```
 
-- [ ] **Step 2: Run the focused tests and verify the red state**
+- [x] **Step 2: Run the focused tests and verify the red state**
 
   Run:
 
@@ -126,7 +148,7 @@ directly and does not define an SDK API.
   Expected: the catalog and status-codec assertions fail because neither RTT
   status type has a registered OPC UA protocol.
 
-- [ ] **Step 3: Register both enum concepts through the scalar codec path**
+- [x] **Step 3: Register both enum concepts through the scalar codec path**
 
   Add descriptors mapping both names to `DataTypeId::Int32`, include
   `rtt/FlowStatus.hpp`, and add these exact protocol branches:
@@ -147,12 +169,12 @@ directly and does not define an SDK API.
   Keep the generic `encodeScalar`/`decodeScalarValue` conversions as the only
   implementation of the numeric mapping.
 
-- [ ] **Step 4: Run the focused tests and verify the green state**
+- [x] **Step 4: Run the focused tests and verify the green state**
 
   Run the Step 2 commands again. Expected: both executables build with warning
   gates enabled and both CTest cases pass.
 
-- [ ] **Step 5: Commit the status codec change in `rtt_opcua`**
+- [x] **Step 5: Commit the status codec change in `rtt_opcua`**
 
   ```bash
   git -C toolchain/tools/rtt_opcua add \
@@ -183,7 +205,7 @@ directly and does not define an SDK API.
   default policy for input/event-input writes and `port_buffer_size` only for
   published output collection.
 
-- [ ] **Step 1: Change direct-server tests to assert typed statuses and input
+- [x] **Step 1: Change direct-server tests to assert typed statuses and input
   default-policy behavior**
 
   Replace string assertions with numeric ones:
@@ -200,7 +222,7 @@ directly and does not define an SDK API.
   read returns the second value. This distinguishes the input's latest-value
   policy from the old forced circular buffer.
 
-- [ ] **Step 2: Change proxy tests to require the Int32 method schema and
+- [x] **Step 2: Change proxy tests to require the Int32 method schema and
   behavior**
 
   Assert that proxy discovery rejects String status signatures and that normal
@@ -208,7 +230,7 @@ directly and does not define an SDK API.
   checks that local proxy input samples reach the target input and target
   output samples reach a local proxy sink.
 
-- [ ] **Step 3: Run the server and proxy tests and verify the red state**
+- [x] **Step 3: Run the server and proxy tests and verify the red state**
 
   ```bash
   cmake --build toolchain/tools/rtt_opcua/build --parallel 2 \
@@ -220,7 +242,7 @@ directly and does not define an SDK API.
   Expected: failures report String status arguments and FIFO behavior on the
   published input.
 
-- [ ] **Step 4: Use status codecs in method schemas and bridge callbacks**
+- [x] **Step 4: Use status codecs in method schemas and bridge callbacks**
 
   Change `portMethodArguments` to accept both codecs:
 
@@ -234,7 +256,7 @@ directly and does not define an SDK API.
   `flowStatusName` and `writeStatusName` so no port status crosses OPC UA as a
   free-form string.
 
-- [ ] **Step 5: Select connection policy by published direction**
+- [x] **Step 5: Select connection policy by published direction**
 
   In `PortBridge::create`, use these two branches:
 
@@ -252,18 +274,18 @@ directly and does not define an SDK API.
   }
   ```
 
-- [ ] **Step 6: Decode numeric statuses in client validation and proxy pumps**
+- [x] **Step 6: Decode numeric statuses in client validation and proxy pumps**
 
   Validate the first output argument against the correct status codec's OPC UA
   datatype. Decode it through `TypeCodec::makeDataSource` and branch on the RTT
   enum value. Reject out-of-range values with a concrete remote-port error.
 
-- [ ] **Step 7: Run the focused tests and verify the green state**
+- [x] **Step 7: Run the focused tests and verify the green state**
 
   Run the Step 3 commands again. Expected: both test executables pass, including
   the input-policy and numeric-schema cases.
 
-- [ ] **Step 8: Commit the data-plane change in `rtt_opcua`**
+- [x] **Step 8: Commit the data-plane change in `rtt_opcua`**
 
   ```bash
   git -C toolchain/tools/rtt_opcua add \
@@ -293,7 +315,7 @@ directly and does not define an SDK API.
 - Produces: path-specific preflight diagnostics for real service cycles and
   maximum-depth overflow; RTT's reserved `this` self-alias remains ignored.
 
-- [ ] **Step 1: Add direct-server tests for both views of every port kind**
+- [x] **Step 1: Add direct-server tests for both views of every port kind**
 
   Extend a generic fixture with input, output, and event input ports. Assert
   that each data-plane object exists and that these ordinary service methods
@@ -316,7 +338,7 @@ directly and does not define an SDK API.
   dispatcher and assert their RTT effects independently from the data-plane
   methods.
 
-- [ ] **Step 2: Add a nested all-resource fixture and recursion-failure tests**
+- [x] **Step 2: Add a nested all-resource fixture and recursion-failure tests**
 
   Add a custom service containing an operation, property, attribute, constant,
   input port, and output port, plus one child service. Assert deterministic
@@ -324,7 +346,7 @@ directly and does not define an SDK API.
   repeat a non-`this` service pointer in the active ancestry; assert strict
   publication failure and diagnostics containing the offending service path.
 
-- [ ] **Step 3: Add proxy coexistence tests**
+- [x] **Step 3: Add proxy coexistence tests**
 
   After creating `TaskContextProxy`, assert both of these succeed for the same
   name:
@@ -337,13 +359,13 @@ directly and does not define an SDK API.
   Call the generated service operations through RTT's generic operation
   interface and separately transfer samples through the mirrored proxy port.
 
-- [ ] **Step 4: Run object-model and proxy tests and verify the red state**
+- [x] **Step 4: Run object-model and proxy tests and verify the red state**
 
   Run Task 2 Step 3. Expected: generated port-service node and coexistence
   assertions fail because traversal currently suppresses any service whose
   name matches a port.
 
-- [ ] **Step 5: Remove port-name suppression and make recursion fail closed**
+- [x] **Step 5: Remove port-name suppression and make recursion fail closed**
 
   Replace the traversal guard:
 
@@ -358,7 +380,7 @@ directly and does not define an SDK API.
   by appending one `UnsupportedResource` whose path identifies the child
   service; do not insert a silently empty subtree.
 
-- [ ] **Step 6: Preserve both resources in the proxy**
+- [x] **Step 6: Preserve both resources in the proxy**
 
   Keep mirrored ports installed with `addLocalPort`, which deliberately does
   not synthesize a second adapter service, and install the discovered remote
@@ -366,7 +388,7 @@ directly and does not define an SDK API.
   existing proxy installation contract; this task does not add a second proxy
   mapping implementation.
 
-- [ ] **Step 7: Run focused and complete `rtt_opcua` tests**
+- [x] **Step 7: Run focused and complete `rtt_opcua` tests**
 
   ```bash
   cmake --build toolchain/tools/rtt_opcua/build --parallel 2
@@ -376,7 +398,7 @@ directly and does not define an SDK API.
 
   Expected: all `rtt_opcua` CTest cases pass.
 
-- [ ] **Step 8: Commit the recursive service change in `rtt_opcua`**
+- [x] **Step 8: Commit the recursive service change in `rtt_opcua`**
 
   ```bash
   git -C toolchain/tools/rtt_opcua add \
@@ -398,20 +420,20 @@ directly and does not define an SDK API.
 - Produces: proof that `opcua.publishComponent(name)` publishes the complete
   two-plane model without OCL-specific mapping logic.
 
-- [ ] **Step 1: Extend the OCL fixture with input/output ports and a nested
+- [x] **Step 1: Extend the OCL fixture with input/output ports and a nested
   service**
 
   Publish the local peer through `OpcUaDeploymentComponent`, create a
   `TaskContextProxy`, and assert root resources, nested resources, data ports,
   and generated same-named port services are all present.
 
-- [ ] **Step 2: Exercise one resource of each kind through the proxy**
+- [x] **Step 2: Exercise one resource of each kind through the proxy**
 
   Read/write a property and attribute, reject a constant write, call a root and
   nested operation, transfer one input and one output sample, and call one
   generated port-service operation.
 
-- [ ] **Step 3: Run the OCL test and verify it fails before rebuilding against
+- [x] **Step 3: Run the OCL test and verify it fails before rebuilding against
   the new transport**
 
   ```bash
@@ -425,13 +447,13 @@ directly and does not define an SDK API.
   assertions fail. After reconfiguration against Tasks 1-3, the same test must
   pass.
 
-- [ ] **Step 4: Keep OCL as lifecycle-only glue**
+- [x] **Step 4: Keep OCL as lifecycle-only glue**
 
   Do not change `OpcUaDeploymentComponent` or add resource-category branches
   to OCL. A failure here belongs to the generic `rtt_opcua` mapping and must be
   corrected in Tasks 1-3 before this integration test can pass.
 
-- [ ] **Step 5: Reconfigure, build, and run OCL OPC UA integration**
+- [x] **Step 5: Reconfigure, build, and run OCL OPC UA integration**
 
   ```bash
   cmake -S toolchain/tools/ocl -B toolchain/tools/ocl/build \
@@ -443,7 +465,7 @@ directly and does not define an SDK API.
     -R '^ocl_opcua_deployment_.*$'
   ```
 
-- [ ] **Step 6: Commit the OCL integration test**
+- [x] **Step 6: Commit the OCL integration test**
 
   ```bash
   git -C toolchain/tools/ocl add \
@@ -476,7 +498,7 @@ directly and does not define an SDK API.
 - Produces: direct browse/call/read/write evidence for every mapped category.
 - Produces: no repository or application SDK code.
 
-- [ ] **Step 1: Create a fresh probe directory and isolated overlay**
+- [x] **Step 1: Create a fresh probe directory and isolated overlay**
 
   ```bash
   mktemp -d /tmp/rtt-opcua-interface-probe.XXXXXX
@@ -488,7 +510,7 @@ directly and does not define an SDK API.
   toolchain prefix may supply unchanged dependencies, but all changed binaries
   and libraries must resolve from the probe overlay; record `ldd` evidence.
 
-- [ ] **Step 2: Implement the application-neutral RTT component**
+- [x] **Step 2: Implement the application-neutral RTT component**
 
   The component must expose this matrix using `Int32`, `Float64`, `String`, and
   `Bool` only:
@@ -513,20 +535,20 @@ directly and does not define an SDK API.
         `- operation: ping() -> Bool
   ```
 
-- [ ] **Step 3: Build the plugin and direct OPC UA client**
+- [x] **Step 3: Build the plugin and direct OPC UA client**
 
   Configure and build under the same temporary directory. The client must use
   open62541pp directly, resolve namespace URI `urn:orocos:rtt`, construct
   deterministic NodeIds, and fail nonzero when any assertion fails.
 
-- [ ] **Step 4: Start `deployer-opcua` and publish through the public API**
+- [x] **Step 4: Start `deployer-opcua` and publish through the public API**
 
   The `.ops` script must import the temporary plugin, load
   `interface_probe`, call `opcua.start()`, and assert
   `opcua.publishComponent("interface_probe")`. Keep the deployer alive until
   the client finishes, with stdout/stderr captured under the probe directory.
 
-- [ ] **Step 5: Verify all address-space and behavior checks directly**
+- [x] **Step 5: Verify all address-space and behavior checks directly**
 
   The client must verify:
 
@@ -541,14 +563,14 @@ directly and does not define an SDK API.
   - same-named `ports/<name>` and `services/<name>` NodeIds both exist; and
   - all status variants are scalar `Int32`, never String.
 
-- [ ] **Step 6: Verify `ctaskbrowser-opcua` reconstruction**
+- [x] **Step 6: Verify `ctaskbrowser-opcua` reconstruction**
 
   Connect the rebuilt client tool and capture a recursive interface listing
   showing the root resources, nested services, data ports, and same-named port
   services. Exercise at least one root operation and one nested operation from
   the proxy interface.
 
-- [ ] **Step 7: Stop cleanly and retain the evidence path**
+- [x] **Step 7: Stop cleanly and retain the evidence path**
 
   Stop the deployer after the client succeeds, verify no endpoint process is
   left running, and retain the temporary path and logs for the final report.
@@ -567,7 +589,7 @@ directly and does not define an SDK API.
 - Consumes: all preceding implementation and manual evidence.
 - Produces: a clean verified package state and an auditable final report.
 
-- [ ] **Step 1: Run the complete repository-supported OPC UA test workflow**
+- [x] **Step 1: Run the complete repository-supported OPC UA test workflow**
 
   ```bash
   ./tools/test-package.sh --prefix "$OROCOS_PREFIX" --target gnulinux rtt-opcua
@@ -575,7 +597,7 @@ directly and does not define an SDK API.
 
   Expected: all native `rtt_opcua` and OCL OPC UA integration tests pass.
 
-- [ ] **Step 2: Run documentation and repository checks**
+- [x] **Step 2: Run documentation and repository checks**
 
   ```bash
   mdbook build docs
@@ -584,7 +606,7 @@ directly and does not define an SDK API.
   git diff --check
   ```
 
-- [ ] **Step 3: Inspect package and root worktree state**
+- [x] **Step 3: Inspect package and root worktree state**
 
   ```bash
   git status --short
@@ -595,7 +617,7 @@ directly and does not define an SDK API.
   Expected: only intentionally retained build directories or documented user
   files are untracked; no implementation change remains uncommitted.
 
-- [ ] **Step 4: Commit final documentation evidence**
+- [x] **Step 4: Commit final documentation evidence**
 
   ```bash
   git add docs/src/SUMMARY.md \
@@ -604,7 +626,7 @@ directly and does not define an SDK API.
   git commit -m "docs: record complete RTT OPC UA mapping"
   ```
 
-- [ ] **Step 5: Report exact verification evidence**
+- [x] **Step 5: Report exact verification evidence**
 
   Report package commit IDs, test counts, the retained `/tmp` probe path, the
   endpoint used, mapped paths checked, and any residual compatibility risk.
