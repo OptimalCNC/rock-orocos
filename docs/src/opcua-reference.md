@@ -62,15 +62,19 @@ datatype and value rank exactly match the registered RTT type protocol:
 
 | RTT port | `value` access | Behavior |
 |---|---|---|
-| Input | `CurrentWrite` only | Each valid OPC UA Write attempts one delivery to the RTT input port. |
+| Input | `CurrentRead \| CurrentWrite` | Each valid OPC UA Write attempts one delivery to the RTT input port. |
 | Retaining output | `CurrentRead` only | Read or monitor the latest retained RTT sample without consuming it. |
 | Non-retaining output | absent | No canonical sample Variable is published. |
 
-Input `value` has no initial value and does not echo the last Write. Reading or
-monitoring it returns `BadNotReadable`. A type or rank mismatch returns
-`BadTypeMismatch`. Repeated Writes of an equal value remain separate delivery
-attempts. A successful Write means that the bridge accepted delivery to the
-RTT port; it does not mean that component logic has processed the sample.
+Input `value` reads return the last OPC UA sample successfully delivered to the
+RTT input port. Before the first successful delivery, Read and monitoring
+return `BadWaitingForInitialData`. Every valid Write still attempts one RTT
+delivery, including an equal value; failed Writes do not replace the readback.
+A type or rank mismatch returns `BadTypeMismatch`. A successful Write means
+that the bridge accepted delivery to the RTT port. The readback is bridge-owned
+command state, not component consumption, acknowledgement, or process state,
+and does not mean that component logic consumed, processed, or acted on the
+sample.
 
 Retaining output `value` returns `BadWaitingForInitialData` until the first
 sample exists. Later reads are non-consuming and return the current retained

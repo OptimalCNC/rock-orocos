@@ -13,6 +13,5 @@
   - [Xenomai 3 Integration](./xenomai3-integration.md)
   - [Package Verification Matrix](./package-test-results.md)
 - [Planned Work / TODO](./todo/index.md)
-  - [OPC UA Input Port Readback](./todo/opcua-input-port-readback-design.md)
   - [OPC UA PKI And Authorization](./todo/opcua-security-prd.md)
   - [Deployer TUI](./todo/deployer-tui-prd.md)
