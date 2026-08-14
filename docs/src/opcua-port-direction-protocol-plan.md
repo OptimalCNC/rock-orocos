@@ -20,6 +20,17 @@ using the generic mapping and adds only end-to-end acceptance coverage.
 Boost.Test, OCL, CMake/CTest, mdBook, and the retained temporary interface
 probe.
 
+## Completion Evidence
+
+- `rtt_opcua`: `ec9f0aa032f4830de6cfae79a865292cb077d6dd` (`feat: define OPC UA port direction codes`) and `64fb2772a97804ee291243688401af1cad932486` (`feat: map OPC UA port direction as Int32`).
+- OCL: `ca65b0f21178fbb107201083837ef9e843fdaa53` (`test: verify OPC UA port direction codes`).
+- Fresh feature-build regressions: `rtt_opcua` passed 10/10 tests; the maintained OCL OPC UA suite passed 6/6 tests.
+- The rebuilt direct client reported `direct OPC UA interface mapping probe passed`; it checked root, event, and nested input/output direction metadata as scalar, read-only OPC UA `Int32` values while retaining the existing data-plane and generated-service checks.
+- TaskBrowser reported `add(20, 22) = 42`, `control.scale(10) = 45`, and `control.nested.ping() = true`.
+- `mdbook build`, `mdbook test`, and `tools/check-repository-policy.rb` exited 0; root, `rtt_opcua`, and OCL `git diff --check` commands were clean.
+- The deployer and direct client resolved `liborocos-rtt-opcua-gnulinux.so` from the refreshed probe prefix. The deployer was stopped after both clients exited; port 4842 and matching runtime processes were absent afterward.
+- OCL production source did not change. The retained temporary probe, its prefix, build output, and runtime logs remain outside Git.
+
 ## Global Constraints
 
 - Keep the existing deterministic `direction` NodeIds unchanged.
@@ -98,7 +109,7 @@ probe.
   `install/include/orocos/rtt/opcua/port_direction.hpp`.
 - Consumes: no RTT typekit, sample codec, or OPC UA custom datatype.
 
-- [ ] **Step 1: Add the failing public-contract test**
+- [x] **Step 1: Add the failing public-contract test**
 
   Add these includes to `tests/foundation_test.cpp`:
 
@@ -122,7 +133,7 @@ probe.
   }
   ```
 
-- [ ] **Step 2: Build to verify RED**
+- [x] **Step 2: Build to verify RED**
 
   Run:
 
@@ -138,7 +149,7 @@ probe.
   Expected: compilation fails because
   `rtt/opcua/port_direction.hpp` does not exist.
 
-- [ ] **Step 3: Add the minimal public enum header**
+- [x] **Step 3: Add the minimal public enum header**
 
   Create `include/rtt/opcua/port_direction.hpp` with exactly:
 
@@ -160,7 +171,7 @@ probe.
   Do not add conversion functions, labels, an `unknown` member, or RTT type
   registration.
 
-- [ ] **Step 4: Build and run the focused test to verify GREEN**
+- [x] **Step 4: Build and run the focused test to verify GREEN**
 
   Run:
 
@@ -174,7 +185,7 @@ probe.
   Expected: the selected test passes and the target builds with
   `RTT_OPCUA_WARNINGS_AS_ERRORS=ON` from the existing CMake cache.
 
-- [ ] **Step 5: Install and verify the public header**
+- [x] **Step 5: Install and verify the public header**
 
   Run:
 
@@ -188,7 +199,7 @@ probe.
   Expected: all commands exit `0`; the installed header contains the same two
   fixed codes.
 
-- [ ] **Step 6: Commit the shared contract in `rtt_opcua`**
+- [x] **Step 6: Commit the shared contract in `rtt_opcua`**
 
   Run:
 
@@ -228,7 +239,7 @@ probe.
 - Preserves: `RemotePortDescription::direction`, but changes its type from the
   removed private `RemotePortDirection` to public `PortDirection`.
 
-- [ ] **Step 1: Add server-model assertions for exact integer metadata**
+- [x] **Step 1: Add server-model assertions for exact integer metadata**
 
   Include the shared header in `tests/object_model_test.cpp`:
 
@@ -327,7 +338,7 @@ probe.
   This proves root input/output, event input, and nested-service input/output
   use one contract.
 
-- [ ] **Step 2: Add strict publisher rejection for a directionless RTT port**
+- [x] **Step 2: Add strict publisher rejection for a directionless RTT port**
 
   Add these includes to `tests/object_model_test.cpp`:
 
@@ -427,7 +438,7 @@ probe.
   }
   ```
 
-- [ ] **Step 3: Add proxy mutation helpers for malformed direction metadata**
+- [x] **Step 3: Add proxy mutation helpers for malformed direction metadata**
 
   Include the shared header in `tests/task_context_proxy_test.cpp`:
 
@@ -486,7 +497,7 @@ probe.
   }
   ```
 
-- [ ] **Step 4: Add proxy tests for exact decoding and rejection**
+- [x] **Step 4: Add proxy tests for exact decoding and rejection**
 
   The existing main proxy test already requires `Feedback` to reconstruct as
   an `OutputPortInterface` and `Command` as an `InputPortInterface`; preserve
@@ -596,7 +607,7 @@ probe.
   Keep the existing missing `type` metadata test unchanged so both metadata
   paths remain covered.
 
-- [ ] **Step 5: Run the focused tests to verify RED**
+- [x] **Step 5: Run the focused tests to verify RED**
 
   Run:
 
@@ -612,7 +623,7 @@ probe.
   the proxy test fails because legacy `"input"` and `"output"` are still
   accepted and strict diagnostic text is not implemented.
 
-- [ ] **Step 6: Implement the dedicated publisher `NodeSpec`**
+- [x] **Step 6: Implement the dedicated publisher `NodeSpec`**
 
   Include the shared header from `src/object_model.cpp`:
 
@@ -660,7 +671,7 @@ probe.
 
   Do not reuse `staticStringSpec` or expose a writable backend for this node.
 
-- [ ] **Step 7: Classify direction before publishing each port**
+- [x] **Step 7: Classify direction before publishing each port**
 
   In `appendPortNodes`, immediately after calculating `is_input` and
   `is_output`, reject ambiguous classification before codec validation:
@@ -689,7 +700,7 @@ probe.
   Leave the existing input `write`, output `read`, retained output `value`,
   and unsupported sample-codec branches unchanged.
 
-- [ ] **Step 8: Make the proxy description use the shared enum**
+- [x] **Step 8: Make the proxy description use the shared enum**
 
   In `src/client_session.hpp`, include:
 
@@ -714,7 +725,7 @@ probe.
   `src/remote_port.cpp` with `PortDirection::input` and
   `PortDirection::output`. Do not retain a compatibility alias.
 
-- [ ] **Step 9: Implement exact scalar Int32 proxy decoding**
+- [x] **Step 9: Implement exact scalar Int32 proxy decoding**
 
   Add this helper beside `readStringValue` in `src/client_session.cpp`:
 
@@ -782,7 +793,7 @@ probe.
   Continue selecting `write` for `PortDirection::input`, `read` for
   `PortDirection::output`, then run the existing method-schema validation.
 
-- [ ] **Step 10: Run focused and full `rtt_opcua` suites to verify GREEN**
+- [x] **Step 10: Run focused and full `rtt_opcua` suites to verify GREEN**
 
   Run:
 
@@ -802,7 +813,7 @@ probe.
   test reconstructs both port directions and still transfers samples; all
   malformed metadata cases fail construction with their specified messages.
 
-- [ ] **Step 11: Install the matching publisher and proxy together**
+- [x] **Step 11: Install the matching publisher and proxy together**
 
   Run:
 
@@ -815,7 +826,7 @@ probe.
   Expected: the feature overlay contains the library implementing both sides
   of the revised wire schema and the header defining its codes.
 
-- [ ] **Step 12: Commit the protocol revision in `rtt_opcua`**
+- [x] **Step 12: Commit the protocol revision in `rtt_opcua`**
 
   Run:
 
@@ -852,7 +863,7 @@ probe.
 - Preserves: all existing `publishComponent`, sparse generated-service, proxy
   reconstruction, and sample-transfer assertions.
 
-- [ ] **Step 1: Add a direct OCL direction-contract helper**
+- [x] **Step 1: Add a direct OCL direction-contract helper**
 
   Include:
 
@@ -878,7 +889,7 @@ probe.
   }
   ```
 
-- [ ] **Step 2: Assert every representative deployed port direction**
+- [x] **Step 2: Assert every representative deployed port direction**
 
   In `strict_publication_is_static_and_idempotent`, after connecting the
   direct client and obtaining `namespace_index`, add:
@@ -913,7 +924,7 @@ probe.
   delivery, `Feedback` sample delivery, nested service port delivery, and
   generated service operations.
 
-- [ ] **Step 3: Reconfigure OCL against the feature overlay**
+- [x] **Step 3: Reconfigure OCL against the feature overlay**
 
   Run:
 
@@ -934,7 +945,7 @@ probe.
   Expected: `RTT_OPCUA_LIBRARY_DIRS` lists
   `$feature_root/install/lib` before the base prefix.
 
-- [ ] **Step 4: Build and run the focused and complete OCL OPC UA suite**
+- [x] **Step 4: Build and run the focused and complete OCL OPC UA suite**
 
   Run:
 
@@ -955,7 +966,7 @@ probe.
   so its first run is expected to be green against the already test-driven
   `rtt_opcua` implementation from Task 2.
 
-- [ ] **Step 5: Install and commit OCL acceptance coverage**
+- [x] **Step 5: Install and commit OCL acceptance coverage**
 
   Run:
 
@@ -989,7 +1000,7 @@ probe.
 - Produces: TaskBrowser evidence that the remote object/service surface remains
   usable.
 
-- [ ] **Step 1: Make the direct probe require integer direction metadata**
+- [x] **Step 1: Make the direct probe require integer direction metadata**
 
   Include the shared contract in
   `/tmp/rtt-opcua-interface-probe.7Ym4Ma/interface_probe_client.cpp`:
@@ -1054,7 +1065,7 @@ probe.
   input, and nested-service output. Preserve every operation, value,
   data-plane, generated-port-service, and sparse-category check.
 
-- [ ] **Step 2: Refresh the probe overlay and rebuild**
+- [x] **Step 2: Refresh the probe overlay and rebuild**
 
   Run:
 
@@ -1077,7 +1088,7 @@ probe.
   Expected: the probe client compiles against the installed public
   `PortDirection` header and links successfully.
 
-- [ ] **Step 3: Confirm environment-matched runtime resolution**
+- [x] **Step 3: Confirm environment-matched runtime resolution**
 
   Run:
 
@@ -1095,7 +1106,7 @@ probe.
   Expected: both commands show probe-prefix libraries, including the revised
   `orocos-rtt-opcua` implementation.
 
-- [ ] **Step 4: Run the deployer and both clients**
+- [x] **Step 4: Run the deployer and both clients**
 
   In terminal one:
 
@@ -1128,7 +1139,7 @@ probe.
 
   Stop the deployer with `Ctrl-C` only after both clients exit.
 
-- [ ] **Step 5: Run fresh full regression and repository checks**
+- [x] **Step 5: Run fresh full regression and repository checks**
 
   Run:
 
@@ -1158,7 +1169,7 @@ probe.
   cases, mdBook and policy checks exit `0`, and all three diff checks are
   clean.
 
-- [ ] **Step 6: Record completion evidence and commit root documentation**
+- [x] **Step 6: Record completion evidence and commit root documentation**
 
   Add a `## Completion Evidence` section near the top of this chapter. Record:
 
