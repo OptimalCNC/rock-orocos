@@ -96,7 +96,7 @@ OCL:        codex/opcua-native-task-state-operations
 - Preserves the existing C++ enum definition and all lifecycle transition
   implementation.
 
-- [ ] **Step 1: Add the failing typekit contract test**
+- [x] **Step 1: Add the failing typekit contract test**
 
   Extend `testCanonicalBuiltinTypesAreRegistered` to require `TaskState` and
   require that `Types()->getTypeInfo<RTT::base::TaskCore::TaskState>()` resolves
@@ -106,7 +106,7 @@ OCL:        codex/opcua-native-task-state-operations
   The production mutation caught by this test is removing or renaming the
   TaskState TypeInfo registration.
 
-- [ ] **Step 2: Add failing native-operation behavior tests**
+- [x] **Step 2: Add failing native-operation behavior tests**
 
   In `taskstates_test.cpp`, add a test that obtains typed operation callers
   from a normal `TaskContext` root:
@@ -128,7 +128,7 @@ OCL:        codex/opcua-native-task-state-operations
   target state. This catches accidentally wiring both operations to the same
   getter.
 
-- [ ] **Step 3: Configure and witness RED**
+- [x] **Step 3: Configure and witness RED**
 
   ```bash
   cmake -S "$feature_root/toolchain/tools/rtt" \
@@ -148,7 +148,7 @@ OCL:        codex/opcua-native-task-state-operations
   Expected RED: `TaskState` is absent and the two root operation callers are
   not ready. Compilation itself must succeed.
 
-- [ ] **Step 4: Add the minimal RTT registration and operations**
+- [x] **Step 4: Add the minimal RTT registration and operations**
 
   In `RealTimeTypekitTypes2.cpp`, include `base/TaskCore.hpp` and
   `types/EnumTypeInfo.hpp`, then register:
@@ -174,6 +174,12 @@ OCL:        codex/opcua-native-task-state-operations
 
 - [ ] **Step 5: Verify GREEN, full RTT regression, and install**
 
+  Focused state/typekit coverage passes and the feature RTT is installed. The
+  complete suite is `42/43`: the sole failure is the inherited
+  `property_loader_test/testPropUnknown`, reproduced with the installed base
+  RTT libraries. The literal complete-suite-pass criterion therefore remains
+  unchecked.
+
   ```bash
   cmake --build "$feature_root/toolchain/tools/rtt/build" --parallel 2
   ctest --test-dir "$feature_root/toolchain/tools/rtt/build" \
@@ -187,7 +193,7 @@ OCL:        codex/opcua-native-task-state-operations
   Expected: focused and complete configured RTT suites pass; the installed
   typekit and headers come from the feature prefix.
 
-- [ ] **Step 6: Commit RTT**
+- [x] **Step 6: Commit RTT**
 
   ```bash
   git -C "$feature_root/toolchain/tools/rtt" add \
@@ -216,7 +222,7 @@ OCL:        codex/opcua-native-task-state-operations
 - Keeps operation metadata type name `TaskState` while using OPC UA built-in
   `Int32` on the wire.
 
-- [ ] **Step 1: Add failing codec tests**
+- [x] **Step 1: Add failing codec tests**
 
   Add a table of the seven literal enum/code pairs. For each pair, require
   `toVariant`, `makeDataSource`, and `assignVariant` to round-trip exact scalar
@@ -228,7 +234,7 @@ OCL:        codex/opcua-native-task-state-operations
   and `static_cast<TaskState>(7)` and require encoding to fail. These catch an
   unrestricted `static_cast` implementation in either direction.
 
-- [ ] **Step 2: Configure against feature RTT and witness RED**
+- [x] **Step 2: Configure against feature RTT and witness RED**
 
   ```bash
   export PKG_CONFIG_PATH="$feature_prefix/lib/pkgconfig:$base_prefix/lib/pkgconfig"
@@ -249,7 +255,7 @@ OCL:        codex/opcua-native-task-state-operations
 
   Expected RED: no canonical `TaskState` codec exists.
 
-- [ ] **Step 3: Implement bounded scalar conversion**
+- [x] **Step 3: Implement bounded scalar conversion**
 
   Add `TaskState` to `canonicalTypeDescriptors()` as built-in `Int32`.
   Include `rtt/base/TaskCore.hpp` in `type_protocol.cpp` and add one shared
@@ -273,7 +279,7 @@ OCL:        codex/opcua-native-task-state-operations
 
   with the bounded validation policy, not the unrestricted status-enum cast.
 
-- [ ] **Step 4: Verify GREEN, install, and commit**
+- [x] **Step 4: Verify GREEN, install, and commit**
 
   ```bash
   cmake --build "$feature_root/toolchain/tools/rtt_opcua/build" --parallel 2 \
@@ -305,7 +311,7 @@ OCL:        codex/opcua-native-task-state-operations
 - Relies exclusively on the existing `OperationDispatcher` and operation
   metadata nodes for both state getters.
 
-- [ ] **Step 1: Add failing address-space tests**
+- [x] **Step 1: Add failing address-space tests**
 
   In the complete snapshot test, replace the String lifecycle assertion with:
 
@@ -319,7 +325,7 @@ OCL:        codex/opcua-native-task-state-operations
   This catches either retaining the synthetic Variable or bypassing the
   generic method schema.
 
-- [ ] **Step 2: Witness RED**
+- [x] **Step 2: Witness RED**
 
   ```bash
   cmake --build "$feature_root/toolchain/tools/rtt_opcua/build" --parallel 2 \
@@ -333,13 +339,13 @@ OCL:        codex/opcua-native-task-state-operations
   If Task 1 and Task 2 are installed correctly, both native methods already
   publish through the generic mapper.
 
-- [ ] **Step 3: Remove only synthetic lifecycle publication**
+- [x] **Step 3: Remove only synthetic lifecycle publication**
 
   Delete `taskStateName`, `LifecycleDataSource`, `lifecycleSpec`, and the
   `insertNode(... lifecycleSpec(...))` call from `snapshotComponent`. Do not
   add replacement node code or modify `OperationDispatcher`.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
   ```bash
   cmake --build "$feature_root/toolchain/tools/rtt_opcua/build" --parallel 2 \
@@ -373,7 +379,7 @@ OCL:        codex/opcua-native-task-state-operations
 - Adds a dedicated state-operation invocation path that validates exactly one
   scalar built-in `Int32` result in `0..6`.
 
-- [ ] **Step 1: Add failing proxy behavior tests**
+- [x] **Step 1: Add failing proxy behavior tests**
 
   Add real published TaskContexts that expose deliberately divergent virtual
   state getters and predicate results. Require:
@@ -393,7 +399,7 @@ OCL:        codex/opcua-native-task-state-operations
   Use the real open62541pp server and `setMethodCallback`; do not assert on a
   mock.
 
-- [ ] **Step 2: Witness RED**
+- [x] **Step 2: Witness RED**
 
   ```bash
   cmake --build "$feature_root/toolchain/tools/rtt_opcua/build" --parallel 2 \
@@ -407,7 +413,7 @@ OCL:        codex/opcua-native-task-state-operations
   missing getters do not fail synchronization, and the proxy still reads the
   removed String Variable.
 
-- [ ] **Step 3: Validate required root operation schemas**
+- [x] **Step 3: Validate required root operation schemas**
 
   Validate discovered root `RemoteOperationDescription` entries before
   installing the staged interface. Require zero inputs, one return output from
@@ -427,7 +433,7 @@ OCL:        codex/opcua-native-task-state-operations
   Report the missing or incompatible operation name in the synchronization
   error. Nested services are unaffected.
 
-- [ ] **Step 4: Replace String reads with strict method invocation**
+- [x] **Step 4: Replace String reads with strict method invocation**
 
   Delete `readLifecycleState`, `parseTaskState`, and `readTaskState`. Add an
   `Impl::invokeTaskStateOperation(std::string_view)` path that shares the
@@ -448,7 +454,7 @@ OCL:        codex/opcua-native-task-state-operations
   `getTaskState` liveness call; judge readiness from connection/interface
   freshness, not from the returned enum value.
 
-- [ ] **Step 5: Verify focused and complete rtt_opcua suites**
+- [x] **Step 5: Verify focused and complete rtt_opcua suites**
 
   ```bash
   cmake --build "$feature_root/toolchain/tools/rtt_opcua/build" --parallel 2
@@ -459,7 +465,7 @@ OCL:        codex/opcua-native-task-state-operations
   git -C "$feature_root/toolchain/tools/rtt_opcua" diff --check
   ```
 
-- [ ] **Step 6: Commit proxy migration**
+- [x] **Step 6: Commit proxy migration**
 
   ```bash
   git -C "$feature_root/toolchain/tools/rtt_opcua" add \
@@ -487,7 +493,7 @@ OCL:        codex/opcua-native-task-state-operations
 - The probe verifies the same address space through a deployer process, a
   direct OPC UA client, and TaskBrowser.
 
-- [ ] **Step 1: Add failing OCL end-to-end assertions**
+- [x] **Step 1: Add failing OCL end-to-end assertions**
 
   Extend `strict_publication_is_static_and_idempotent` to require:
 
@@ -501,7 +507,7 @@ OCL:        codex/opcua-native-task-state-operations
   Witness RED against the pre-migration OCL overlay before changing any OCL
   production source.
 
-- [ ] **Step 2: Configure OCL against the feature overlay**
+- [x] **Step 2: Configure OCL against the feature overlay**
 
   ```bash
   export PKG_CONFIG_PATH="$feature_prefix/lib/pkgconfig:$base_prefix/lib/pkgconfig"
@@ -519,7 +525,7 @@ OCL:        codex/opcua-native-task-state-operations
     --target ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
   ```
 
-- [ ] **Step 3: Verify OCL GREEN and commit only the test**
+- [x] **Step 3: Verify OCL GREEN and commit only the test**
 
   ```bash
   LD_LIBRARY_PATH="$feature_root/toolchain/tools/ocl/build/deployment:$feature_root/toolchain/tools/rtt_opcua/build:$feature_root/toolchain/tools/rtt/build/rtt:$feature_prefix/lib:$base_prefix/lib" \
@@ -533,7 +539,7 @@ OCL:        codex/opcua-native-task-state-operations
     -m "test: verify native OPC UA task state methods"
   ```
 
-- [ ] **Step 4: Rebuild and run the retained temporary probe**
+- [x] **Step 4: Rebuild and run the retained temporary probe**
 
   Update the direct client to call both state Methods, require exact scalar
   Int32 results and `TaskState` RTT metadata, and require `lifecycleState` to be
@@ -546,6 +552,10 @@ OCL:        codex/opcua-native-task-state-operations
   RTT, `rtt_opcua`, and OCL libraries before accepting results.
 
 - [ ] **Step 5: Run final repository verification**
+
+  All feature and downstream suites pass. The complete RTT command retains the
+  independently reproduced base failure recorded in Task 1 Step 5, so this
+  combined all-green criterion remains unchecked.
 
   ```bash
   ctest --test-dir "$feature_root/toolchain/tools/rtt/build" \
@@ -565,7 +575,7 @@ OCL:        codex/opcua-native-task-state-operations
   git -C "$feature_root/toolchain/tools/ocl" diff --check
   ```
 
-- [ ] **Step 6: Record evidence and commit root documentation**
+- [x] **Step 6: Record evidence and commit root documentation**
 
   Update this chapter with the three nested commit IDs, exact test counts,
   probe/TaskBrowser outputs, library-resolution evidence, and clean-status
@@ -578,6 +588,70 @@ OCL:        codex/opcua-native-task-state-operations
   git -C "$feature_root" commit \
     -m "docs: record native task state verification"
   ```
+
+## Implementation Evidence
+
+Implementation and verification date: 2026-08-14.
+
+### Commits
+
+| Layer | Commits |
+| --- | --- |
+| RTT | `383e14068` (`feat: expose native task state operations`), `05113ba9c` (`test: initialize task state type metadata`) |
+| `rtt_opcua` | `3f2ab7b` (`TaskState` codec), `c338ed4` (native Method publication), `24d95fd` (canonical catalog), `a1fb1ae` (native-operation proxy) |
+| OCL | `4dd3335` (`test: verify native OPC UA task state methods`) |
+
+### RED And GREEN Evidence
+
+- RTT RED proved that `TaskState` TypeInfo and both root operation contracts
+  were absent. Focused GREEN is `2/2` for `taskstates_test` and `typekit_test`.
+- A final-suite check exposed that `taskstates_test` had relied on external
+  typekit preload state. The isolated assertion failed as `unknown_t`, passed
+  with the feature typekit preloaded, and then passed without preload after
+  the fixture explicitly initialized `RealTimeTypekitPlugin`.
+- The `TaskState` codec tests reject non-`Int32`, non-scalar, and out-of-range
+  values and round-trip every code from `0` through `6`.
+- Object-model RED found the legacy `lifecycleState` Variable. GREEN proves it
+  is absent and both state getters are ordinary generic Methods.
+- Proxy fixtures cover divergent current/target states, deliberately divergent
+  Boolean predicate results, valid `Init` liveness, missing/incompatible
+  Methods, invalid code `7`, server loss, and resynchronization.
+- OCL RED against the pre-migration libraries failed because
+  `CompleteMapping/lifecycleState` still existed. The same test is GREEN with
+  the coordinated feature overlay and no OCL production change.
+
+### Final Test Results
+
+| Scope | Result |
+| --- | --- |
+| RTT focused state/typekit tests | `2/2` passed |
+| RTT complete configured suite | `42/43` passed; only inherited `property_loader_test/testPropUnknown` failed |
+| RTT base-library reproduction | `property_loader_test/testPropUnknown` fails identically with `/home/liufang/.orocos/toolchain/lib` |
+| `rtt_opcua` feature tests | `5/5` passed |
+| `rtt_opcua` complete configured suite | `10/10` passed |
+| OCL OPC UA deployment suite | `6/6` passed |
+| mdBook | build and chapter tests passed |
+| Repository policy | passed via `ruby tools/check-repository-policy.rb`; the script's checked-in mode is `0644` |
+
+### Manual Probe
+
+The retained probe at `/tmp/rtt-opcua-interface-probe.7Ym4Ma` was configured
+with the feature prefix first, rebuilt, installed, and run against
+`opc.tcp://127.0.0.1:4843/rtt`.
+
+- The direct client required both Methods to return exactly one scalar
+  built-in `Int32`, required `rttOutputTypes == ["TaskState"]`, required
+  `lifecycleState` to return `BadNodeIdUnknown`, and printed
+  `direct OPC UA interface mapping probe passed`.
+- TaskBrowser listed `getTaskState` and `getTargetState` as root operations.
+  Calling them returned `1` and `1`, matching the probe component's
+  `PreOperational` current and target states.
+- `ldd` under the probe runtime environment resolved RTT, `rtt_opcua`, OCL
+  deployment, and OCL TaskBrowser libraries from
+  `.worktrees/opcua-native-task-state-plan/install`; unchanged open62541
+  dependencies resolved from the base toolchain.
+- The deployer exited through `quit`, reported zero still-allocated TLSF bytes,
+  left no matching process, and released TCP port `4843`.
 
 ## Mutation Checklist
 
