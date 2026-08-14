@@ -221,7 +221,8 @@ Each RTT port becomes one OPC UA Object below the owning service's `ports`
 object. The object contains stable metadata:
 
 - `type`: canonical RTT sample type;
-- `direction`: `input` or `output` from the published component's perspective;
+- `direction`: scalar `Int32` code `0` (`input`) or `1` (`output`) from the
+  published component's perspective;
 - `description`: RTT port documentation; and
 - the direction-appropriate sample-transfer method.
 
@@ -258,6 +259,24 @@ callbacks do not perform network work from a realtime activity.
 direction. Normal RTT connection rules then provide the counterpart at the
 caller: a local output connects to a proxy input, while a proxy output connects
 to a local input.
+
+### Port direction type
+
+Port direction is a finite protocol value, not display text. The publisher and
+proxy share `RTT::opcua::PortDirection`, represented as read-only scalar
+`Int32` metadata:
+
+| Code | Meaning |
+| ---: | --- |
+| `0` | input, including event input |
+| `1` | output |
+
+The proxy requires exactly scalar `Int32` and rejects legacy strings, other
+numeric datatypes, arrays, and unknown codes. There is no compatibility
+fallback or `unknown` value. Publisher and proxy must ship together as one
+wire-schema revision. See
+[OPC UA Port Direction Protocol Design](./opcua-port-direction-protocol-design.md)
+for the normative contract and verification requirements.
 
 ### Port status types
 
@@ -313,7 +332,7 @@ Examples of the two coexisting views are:
 ```text
 ports/command
   type
-  direction = input
+  direction = 0  # input
   description
   write(value)
 
