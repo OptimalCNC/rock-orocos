@@ -14,6 +14,7 @@
   - [Modernization Plan](./modernization-plan.md)
   - [C++20 And OPC UA Modernization Design](./cpp20-opcua-modernization-design.md)
   - [OPC UA RTT Interface Mapping Design](./opcua-rtt-interface-mapping-design.md)
+  - [Native RTT Task State Operations Design](./opcua-native-task-state-operations-design.md)
   - [OPC UA Port Direction Protocol Design](./opcua-port-direction-protocol-design.md)
   - [OPC UA Port Direction Protocol Plan](./opcua-port-direction-protocol-plan.md)
   - [OPC UA Sparse Resource Categories Plan](./opcua-sparse-resource-categories-plan.md)

@@ -252,12 +252,16 @@ The server publishes a stable `urn:orocos:rtt` namespace for:
 - properties
 - attributes
 - typed port metadata
-- model revision and lifecycle state
+- model revision
 
 Publishing a component exposes its entire interface supported by `rtt_opcua`,
 including supported nested services, operations, properties, attributes, and
 ports. The migration does not add administrative or restricted publication
 modes, and it does not define per-component resource allowlists.
+
+Lifecycle state is exposed through native `getTaskState` and `getTargetState`
+root operations. The information model does not add a synthetic lifecycle
+Variable below the component Object.
 
 Namespace indexes are resolved dynamically. Stable NodeIds encode names with a
 defined escaping policy rather than embedding unescaped component or service

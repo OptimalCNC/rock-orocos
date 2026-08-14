@@ -1,6 +1,6 @@
 # OPC UA RTT Interface Mapping Design
 
-Date: 2026-08-13
+Date: 2026-08-14
 
 Status: Approved for implementation
 
@@ -28,7 +28,7 @@ resource as public or internal.
 
 This design covers:
 
-- component identity and lifecycle metadata;
+- component identity and native lifecycle operations;
 - operations;
 - properties;
 - attributes and constants;
@@ -123,7 +123,6 @@ escaped, deterministic path scheme:
 
 ```text
 rtt/components/<component>
-  lifecycleState
   operations/<operation>
   properties/<property>
   attributes/<attribute-or-constant>
@@ -144,12 +143,14 @@ Each published `TaskContext` creates one component object below
 The component object contains:
 
 - the component name and description as OPC UA object metadata;
-- a read-only `lifecycleState` variable;
 - each non-empty resource category object; and
 - the recursively mapped contents of `component.provides()`.
 
-`lifecycleState` is transport metadata needed by `TaskContextProxy`; it is not
-an RTT attribute and does not appear below `attributes`.
+The mapper does not add transport-only component children. In particular,
+lifecycle state is exposed through the native `getTaskState` and
+`getTargetState` root operations, not through a synthetic Variable. See
+[Native RTT Task State Operations Design](./opcua-native-task-state-operations-design.md)
+for the normative type, proxy, compatibility, and verification contract.
 
 ## Operation Mapping
 
@@ -182,6 +183,11 @@ RTT behavior explicit.
 Every argument, return value, and collected mutable output must have a
 registered RTT-to-OPC-UA codec. One unsupported operation makes strict
 component preflight fail before any component nodes are committed.
+
+The native root operations `getTaskState` and `getTargetState` return RTT
+`TaskState`, transported as documented scalar `Int32` enum codes. They use the
+same generic operation mapping as every other root operation; the OPC UA model
+does not maintain a lifecycle-specific node or callback.
 
 ## Property Mapping
 
@@ -398,7 +404,8 @@ reachable.
 - recursive service discovery creates ordinary RTT services and operations,
   including same-named generated port service adapters;
 - properties, attributes, and constants retain their writability; and
-- lifecycle metadata maintains the proxy task state.
+- native lifecycle operations maintain the proxy current and target task
+  state.
 
 When browsing a deterministic category Object itself, the proxy interprets
 `BadNodeIdUnknown` as an empty category and continues reconstruction. Any other
@@ -453,10 +460,13 @@ Tests prove:
 8. Generated adapter operations are callable through the generic operation
    dispatcher and preserve RTT behavior.
 9. `FlowStatus` and `WriteStatus` use the canonical integer codecs end to end.
-10. `TaskContextProxy` treats absent categories as empty and recreates
+10. `TaskState` uses its canonical integer codec; `getTaskState` and
+    `getTargetState` round-trip through ordinary root operations, and no
+    synthetic `lifecycleState` node exists.
+11. `TaskContextProxy` treats absent categories as empty and recreates
     same-named port and service resources together.
-11. One unsupported nested resource rejects the complete component snapshot.
-12. Existing rollback, idempotence, timeout, lifetime, and shutdown tests still
+12. One unsupported nested resource rejects the complete component snapshot.
+13. Existing rollback, idempotence, timeout, lifetime, and shutdown tests still
     pass.
 
 OCL integration tests prove that `opcua.publishComponent(name)` exposes this
@@ -494,6 +504,9 @@ Manual acceptance must show:
 - output samples written by the component are read through the data plane;
 - generated input- and output-port service operations are discoverable and
   callable independently of the data plane;
+- native `getTaskState` and `getTargetState` operations are discoverable and
+  return documented integer state codes;
+- no synthetic `lifecycleState` component child exists;
 - empty category Objects are absent at the root and every service depth;
 - an empty service remains browseable without category children;
 - `ctaskbrowser-opcua` reconstructs both same-named proxy resources; and
