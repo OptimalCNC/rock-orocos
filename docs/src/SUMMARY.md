@@ -15,6 +15,7 @@
   - [C++20 And OPC UA Modernization Design](./cpp20-opcua-modernization-design.md)
   - [OPC UA RTT Interface Mapping Design](./opcua-rtt-interface-mapping-design.md)
   - [OPC UA Port Direction Protocol Design](./opcua-port-direction-protocol-design.md)
+  - [OPC UA Port Direction Protocol Plan](./opcua-port-direction-protocol-plan.md)
   - [OPC UA Sparse Resource Categories Plan](./opcua-sparse-resource-categories-plan.md)
   - [OPC UA RTT Interface Mapping Plan](./opcua-rtt-interface-mapping-plan.md)
   - [OPC UA Custom Datatype Design](./orocos-opcua-custom-datatype-design.md)
