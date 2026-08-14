@@ -7,6 +7,9 @@ agents_path = File.join(root, "AGENTS.md")
 readme_path = File.join(root, "README.md")
 workflow_path = File.join(root, ".github", "workflows", "repository-policy.yml")
 xenomai3_path = File.join(root, "docs", "src", "xenomai3-integration.md")
+docs_src = File.join(root, "docs", "src")
+summary_path = File.join(docs_src, "SUMMARY.md")
+todo_dir = File.join(docs_src, "todo")
 errors = []
 
 tracked_superpowers, git_status = Open3.capture2(
@@ -96,6 +99,66 @@ else
     errors << "repository policy workflow must watch #{path}" unless workflow.include?(path)
   end
   errors << "repository policy workflow must run repository policy check" unless workflow.include?("ruby tools/check-repository-policy.rb")
+end
+
+if !File.file?(summary_path)
+  errors << "missing docs/src/SUMMARY.md"
+else
+  summary = File.read(summary_path)
+  summary_targets = summary.scan(/\]\(([^)#]+\.md)(?:#[^)]+)?\)/)
+                           .flatten
+                           .map { |target| File.expand_path(target, docs_src) }
+                           .uniq
+  source_pages = Dir[File.join(docs_src, "**", "*.md")]
+                 .reject { |path| path == summary_path }
+                 .sort
+
+  source_pages.each do |path|
+    relative = path.delete_prefix("#{docs_src}/")
+    unless summary_targets.include?(path)
+      errors << "docs/src/#{relative}: missing from SUMMARY.md"
+    end
+  end
+
+  summary_targets.each do |path|
+    next if File.file?(path)
+
+    errors << "docs/src/SUMMARY.md: missing target #{path.delete_prefix("#{root}/")}"
+  end
+
+  source_pages.each do |page|
+    File.read(page).scan(/\]\(([^)]+)\)/).flatten.each do |target|
+      local_target = target.split("#", 2).first
+      next if local_target.empty?
+      next unless local_target.end_with?(".md")
+      next if local_target.match?(/\A[a-z][a-z0-9+.-]*:/i)
+
+      resolved = File.expand_path(local_target, File.dirname(page))
+      unless File.file?(resolved)
+        errors << "#{page.delete_prefix("#{root}/")}: missing link target #{local_target}"
+      end
+    end
+  end
+
+  implementation_plans = source_pages.select do |path|
+    File.basename(path).end_with?("-plan.md")
+  end
+  implementation_plans.each do |path|
+    errors << "#{path.delete_prefix("#{root}/")}: completed implementation plans do not belong in the public book"
+  end
+end
+
+Dir[File.join(todo_dir, "*.md")].sort.each do |path|
+  next if File.basename(path) == "index.md"
+
+  content = File.read(path)
+  relative = path.delete_prefix("#{root}/")
+  unless content.include?("Status: Planned and not implemented")
+    errors << "#{relative}: missing planned-status marker"
+  end
+  unless content.match?(/^## TODO$/)
+    errors << "#{relative}: missing TODO section"
+  end
 end
 
 if errors.any?
