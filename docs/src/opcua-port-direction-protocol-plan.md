@@ -28,7 +28,7 @@ probe.
 - The rebuilt direct client reported `direct OPC UA interface mapping probe passed`; it checked root, event, and nested input/output direction metadata as scalar, read-only OPC UA `Int32` values while retaining the existing data-plane and generated-service checks.
 - TaskBrowser reported `add(20, 22) = 42`, `control.scale(10) = 45`, and `control.nested.ping() = true`.
 - `mdbook build`, `mdbook test`, and `tools/check-repository-policy.rb` exited 0; root, `rtt_opcua`, and OCL `git diff --check` commands were clean.
-- The deployer and direct client resolved `liborocos-rtt-opcua-gnulinux.so` from the refreshed probe prefix. The deployer was stopped after both clients exited; port 4842 and matching runtime processes were absent afterward.
+- The deployer and direct client resolved `liborocos-rtt-opcua-gnulinux.so` from the refreshed probe prefix. Ctrl-C shutdown of the deployer exited 0 and open62541 reported `still-allocated=0`; port 4842 and matching runtime processes were absent afterward.
 - OCL production source did not change. The retained temporary probe, its prefix, build output, and runtime logs remain outside Git.
 
 ## Global Constraints
