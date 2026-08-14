@@ -47,19 +47,42 @@ visible so their identity and documentation are preserved.
 - properties become readable and, when supported by RTT, writable Variables;
 - attributes become Variables with RTT mutability preserved;
 - constants are read-only Variables;
+- ports become metadata Objects with one direction-specific sample Variable;
 - nested services use the same recursive mapping; and
 - generated RTT port services remain available below their owning service.
 
 ## Port Contract
 
-Each supported port has a typed sample-transfer object and its ordinary
-generated RTT service. Input direction is scalar `Int32` value `0`; output
-direction is scalar `Int32` value `1`. `FlowStatus` and `WriteStatus` also use
-their canonical scalar `Int32` protocols rather than free-form strings.
+Each supported port has an Object below `Ports/<name>`. Its `type` and
+`description` children are read-only String Variables. Its read-only
+`direction` child is a scalar `Int32`: input is `0` and output is `1`.
 
-Input ports expose typed write behavior. Output ports expose typed read
-behavior. The remote proxy validates direction, sample type, method schema,
-and status representation before creating a local mirror port.
+The canonical sample surface is a child Variable named `value`. Its OPC UA
+datatype and value rank exactly match the registered RTT type protocol:
+
+| RTT port | `value` access | Behavior |
+|---|---|---|
+| Input | `CurrentWrite` only | Each valid OPC UA Write attempts one delivery to the RTT input port. |
+| Retaining output | `CurrentRead` only | Read or monitor the latest retained RTT sample without consuming it. |
+| Non-retaining output | absent | No canonical sample Variable is published. |
+
+Input `value` has no initial value and does not echo the last Write. Reading or
+monitoring it returns `BadNotReadable`. A type or rank mismatch returns
+`BadTypeMismatch`. Repeated Writes of an equal value remain separate delivery
+attempts. A successful Write means that the bridge accepted delivery to the
+RTT port; it does not mean that component logic has processed the sample.
+
+Retaining output `value` returns `BadWaitingForInitialData` until the first
+sample exists. Later reads are non-consuming and return the current retained
+sample. This is a latest-state contract: intermediate samples may be coalesced
+or missed. It does not project RTT connection policy, FIFO depth, buffering,
+locking, transport, or other QoS into OPC UA.
+
+There are no canonical `Ports/<name>/read` or `Ports/<name>/write` Methods.
+The ordinary RTT-generated port service remains recursively mapped below
+`Services/<name>`, including operations such as `read`, `clear`, `write`, or
+`last` when RTT provides them. Those operations belong to the service mapping;
+they are not the canonical OPC UA dataport transfer surface.
 
 ## Task State Contract
 
@@ -100,9 +123,18 @@ and `RtString`. Remote endpoints cannot trigger local plugin loading.
 ## Proxy And TaskBrowser
 
 `TaskContextProxy` reconstructs the supported RTT service graph, resource
-mutability, operations, and ports from the endpoint. It invokes the native
-`getTaskState` and `getTargetState` Methods independently and validates their
-exact `TaskState` result schema. Its lifecycle predicates invoke the matching
+mutability, operations, and ports from the endpoint. It validates each port's
+`direction`, `value` datatype, value rank, and access before creating a local
+mirror. Proxy inputs write the remote Variable. Proxy outputs poll its latest
+value at `port_poll_interval`; they do not reconstruct server-side sample
+history or `FlowStatus`. Polling may publish an unchanged retained value again,
+so local `NewData` identifies a proxy update, not necessarily a distinct remote
+RTT write. Outputs without `value` are not mirrored as ports, while their
+generated services remain available.
+
+The proxy invokes the native `getTaskState` and `getTargetState` Methods
+independently and validates their exact `TaskState` result schema. Its
+lifecycle predicates invoke the matching
 native Boolean operations rather than inferring results from enum ordering.
 An unavailable Method, incompatible result, or invalid state code marks the
 remote interface stale.
