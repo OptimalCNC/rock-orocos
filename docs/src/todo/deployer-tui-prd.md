@@ -14,6 +14,13 @@ Date: 2026-07-18
 - [ ] Add pseudo-terminal acceptance coverage and installed-prefix integration.
 - [ ] Verify GNU/Linux behavior and Xenomai target parity.
 
+## Stable Contracts
+
+Implementation must preserve the existing operator commands in the
+[User Guide](../user-guide.md), the installed executable contract in the
+[Install Contract](../install-contract.md), and the target-selection rules in
+[Xenomai 3 Integration](../xenomai3-integration.md).
+
 ## Problem Statement
 
 The OCL deployer provides a capable interactive TaskBrowser, but the current

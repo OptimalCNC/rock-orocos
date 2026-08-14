@@ -14,6 +14,13 @@ Date: 2026-08-14
 - [ ] Remove the transport-only `lifecycleState` Variable.
 - [ ] Verify current and target state during normal and transitional states.
 
+## Stable Contracts
+
+Implementation must preserve the repository boundary in
+[Architecture](../architecture.md), the downstream artifact guarantees in the
+[Install Contract](../install-contract.md), and the current mapping and
+lifetime rules in the [Native OPC UA Reference](../opcua-reference.md).
+
 ## Purpose
 
 Expose the existing RTT current and target task-state getters through the
@@ -228,6 +235,17 @@ Maintained `rtt_opcua` tests prove:
 OCL integration and the temporary interface probe prove that TaskBrowser lists
 both native operations, can call them, and does not display a synthetic
 `lifecycleState` component child.
+
+## Acceptance Criteria
+
+- Every ordinary `TaskContext` exposes both getters through native RTT service
+  discovery with the canonical `TaskState` return type.
+- The generic OPC UA operation mapper publishes both getters and rejects
+  invalid state codes without lifecycle-specific transport code.
+- `TaskContextProxy` reports distinct current and target states during a
+  transition and retains the documented stale-interface behavior.
+- Published components contain no synthetic `lifecycleState` child.
+- RTT, `rtt_opcua`, OCL, and clean-prefix integration tests pass together.
 
 ## Non-Goals
 

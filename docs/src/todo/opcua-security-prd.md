@@ -19,6 +19,14 @@ Date: 2026-08-11
 - [ ] Add product-owned identity and permission policy outside this repository.
 - [ ] Prove secure client, denial, revocation, and audit behavior.
 
+## Stable Contracts
+
+Implementation must preserve the ownership boundary in
+[Architecture](../architecture.md), the current static publication and
+loopback-only security limits in the
+[Native OPC UA Reference](../opcua-reference.md), and the downstream artifact
+guarantees in the [Install Contract](../install-contract.md).
+
 ## Problem Statement
 
 The current native OPC UA integration is suitable for isolated loopback use,

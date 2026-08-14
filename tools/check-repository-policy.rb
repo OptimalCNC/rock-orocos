@@ -24,6 +24,31 @@ tracked_superpowers.lines.map(&:strip).reject(&:empty?).each do |path|
   errors << "#{path}: docs/superpowers files must remain untracked"
 end
 
+tracked_markdown, markdown_status = Open3.capture2(
+  "git", "-C", root, "ls-files", "-z", "--", "*.md"
+)
+
+if !markdown_status.success?
+  errors << "failed to inspect tracked Markdown files"
+else
+  tracked_markdown.split("\0").reject(&:empty?).sort.each do |relative|
+    page = File.join(root, relative)
+    next unless File.file?(page)
+
+    File.read(page).scan(/\]\(([^)]+)\)/).flatten.each do |target|
+      local_target = target.split("#", 2).first
+      next if local_target.empty?
+      next unless local_target.end_with?(".md")
+      next if local_target.match?(/\A[a-z][a-z0-9+.-]*:/i)
+
+      resolved = File.expand_path(local_target, File.dirname(page))
+      unless File.file?(resolved)
+        errors << "#{relative}: missing link target #{local_target}"
+      end
+    end
+  end
+end
+
 required_policy_links = {
   "README.md" => "./README.md",
   "docs/src/architecture.md" => "./docs/src/architecture.md",
@@ -126,29 +151,17 @@ else
     errors << "docs/src/SUMMARY.md: missing target #{path.delete_prefix("#{root}/")}"
   end
 
-  source_pages.each do |page|
-    File.read(page).scan(/\]\(([^)]+)\)/).flatten.each do |target|
-      local_target = target.split("#", 2).first
-      next if local_target.empty?
-      next unless local_target.end_with?(".md")
-      next if local_target.match?(/\A[a-z][a-z0-9+.-]*:/i)
-
-      resolved = File.expand_path(local_target, File.dirname(page))
-      unless File.file?(resolved)
-        errors << "#{page.delete_prefix("#{root}/")}: missing link target #{local_target}"
-      end
-    end
-  end
-
-  implementation_plans = source_pages.select do |path|
+  implementation_plans = source_pages.reject do |path|
+    path.start_with?("#{todo_dir}/")
+  end.select do |path|
     File.basename(path).end_with?("-plan.md")
   end
   implementation_plans.each do |path|
-    errors << "#{path.delete_prefix("#{root}/")}: completed implementation plans do not belong in the public book"
+    errors << "#{path.delete_prefix("#{root}/")}: implementation plans belong below docs/src/todo"
   end
 end
 
-Dir[File.join(todo_dir, "*.md")].sort.each do |path|
+Dir[File.join(todo_dir, "**", "*.md")].sort.each do |path|
   next if File.basename(path) == "index.md"
 
   content = File.read(path)
@@ -156,8 +169,17 @@ Dir[File.join(todo_dir, "*.md")].sort.each do |path|
   unless content.include?("Status: Planned and not implemented")
     errors << "#{relative}: missing planned-status marker"
   end
-  unless content.match?(/^## TODO$/)
-    errors << "#{relative}: missing TODO section"
+  todo = content[/^## TODO$\n(.*?)(?=^## |\z)/m, 1]
+  unless todo&.match?(/^- \[ \] /)
+    errors << "#{relative}: missing TODO outcome checklist"
+  end
+  stable_contracts = content[/^## Stable Contracts$\n(.*?)(?=^## |\z)/m, 1]
+  unless stable_contracts&.match?(/\]\(\.\.\/[^)#]+\.md(?:#[^)]+)?\)/)
+    errors << "#{relative}: missing stable-contract links"
+  end
+  acceptance_criteria = content[/^## Acceptance Criteria$\n(.*?)(?=^## |\z)/m, 1]
+  unless acceptance_criteria&.match?(/^(?:- |\d+\. )/)
+    errors << "#{relative}: missing acceptance criteria"
   end
 end
 
