@@ -2,7 +2,17 @@
 
 Date: 2026-08-14
 
-Status: Approved for implementation
+> [!IMPORTANT]
+> Status: Planned and not implemented. This page is not part of the current
+> install contract.
+
+## TODO
+
+- [ ] Register `getTaskState()` and `getTargetState()` as native RTT operations.
+- [ ] Register and transport the existing `TaskState` type generically.
+- [ ] Make `TaskContextProxy` use the two native operations.
+- [ ] Remove the transport-only `lifecycleState` Variable.
+- [ ] Verify current and target state during normal and transitional states.
 
 ## Purpose
 

@@ -1,13 +1,23 @@
 # OPC UA PKI Authentication And Authorization PRD
 
-Status: design approved in discussion; written review pending
-
 Date: 2026-08-11
+
+> [!IMPORTANT]
+> Status: Planned and not implemented. This page is not part of the current
+> install contract.
 
 > [!IMPORTANT]
 > This document defines a cross-repository product contract. Orocos provides
 > generic OPC UA security mechanisms. MetaNC supplies product identities,
 > roles, and access policy. Neither repository becomes a certificate authority.
+
+## TODO
+
+- [ ] Add trusted OPC UA application certificates and `SignAndEncrypt` endpoints.
+- [ ] Add anonymous and X.509 user-session authentication policy.
+- [ ] Add generic role and resource authorization in the Orocos layer.
+- [ ] Add product-owned identity and permission policy outside this repository.
+- [ ] Prove secure client, denial, revocation, and audit behavior.
 
 ## Problem Statement
 

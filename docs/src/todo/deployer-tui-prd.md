@@ -1,8 +1,18 @@
 # Deployer TUI Product Requirements And Design
 
-Status: design approved in discussion; written review pending
-
 Date: 2026-07-18
+
+> [!IMPORTANT]
+> Status: Planned and not implemented. This page is not part of the current
+> install contract.
+
+## TODO
+
+- [ ] Extract a headless TaskBrowser session while preserving classic behavior.
+- [ ] Add the bounded results, log, history, and runtime snapshot models.
+- [ ] Build the FTXUI workbench and serialized command worker.
+- [ ] Add pseudo-terminal acceptance coverage and installed-prefix integration.
+- [ ] Verify GNU/Linux behavior and Xenomai target parity.
 
 ## Problem Statement
 
