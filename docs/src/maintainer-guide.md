@@ -15,6 +15,24 @@ downstream projects can consume as a normal third-party dependency.
 - Changes to `rock-orocos` land through pull requests. Do not push directly to
   `main` during normal maintenance.
 
+## Documentation Lifecycle
+
+The mdBook is the stable public documentation for the supported toolchain.
+
+- Guides and reference chapters describe current shipped behavior only.
+- Approved but unimplemented work belongs below `docs/src/todo/` and must say
+  that it is outside the current install contract.
+- When planned work ships, move its durable contract into a guide or reference
+  chapter and delete the TODO page.
+- Delete completed implementation plans after preserving current behavior and
+  repeatable verification requirements.
+- Do not commit workflow artifacts below `docs/superpowers/`, generated
+  `docs/book/` output, temporary paths, or one-time execution transcripts.
+- Add every Markdown page below `docs/src/` to `SUMMARY.md`.
+
+Current source and the installed-prefix contract take precedence over stale
+design text.
+
 ## Script Flow
 
 | Script | What it does | Main output |

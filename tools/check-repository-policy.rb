@@ -1,11 +1,25 @@
 #!/usr/bin/env ruby
 
+require "open3"
+
 root = File.expand_path("..", __dir__)
 agents_path = File.join(root, "AGENTS.md")
 readme_path = File.join(root, "README.md")
 workflow_path = File.join(root, ".github", "workflows", "repository-policy.yml")
 xenomai3_path = File.join(root, "docs", "src", "xenomai3-integration.md")
 errors = []
+
+tracked_superpowers, git_status = Open3.capture2(
+  "git", "-C", root, "ls-files", "--", "docs/superpowers"
+)
+
+unless git_status.success?
+  errors << "failed to inspect tracked docs/superpowers files"
+end
+
+tracked_superpowers.lines.map(&:strip).reject(&:empty?).each do |path|
+  errors << "#{path}: docs/superpowers files must remain untracked"
+end
 
 required_policy_links = {
   "README.md" => "./README.md",
