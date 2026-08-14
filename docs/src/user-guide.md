@@ -158,9 +158,8 @@ Legacy script-visible names such as `int`, `short`, `double`, and `string` are
 not registered.
 
 RTT service requester code uses `requests()` because `requires` is a C++20
-keyword. See
-[C++20 And OPC UA Modernization Design](./cpp20-opcua-modernization-design.md)
-for the complete migration and transport contract.
+keyword. See [Native OPC UA Reference](./opcua-reference.md) for the current
+datatype, publication, and transport contracts.
 
 ## Optional Shell Startup
 

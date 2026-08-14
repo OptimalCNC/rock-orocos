@@ -9,6 +9,7 @@
   - [Dual-Organization Publication](./dual-organization-publication.md)
   - [Dual-Organization Publication Plan](./dual-organization-publication-plan.md)
   - [Install Contract](./install-contract.md)
+  - [Native OPC UA Reference](./opcua-reference.md)
   - [Xenomai 3 Integration](./xenomai3-integration.md)
   - [Bootstrap Workflow](./bootstrap-workflow.md)
   - [Modernization Plan](./modernization-plan.md)
