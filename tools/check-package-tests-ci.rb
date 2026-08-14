@@ -215,9 +215,9 @@ if !File.file?(results_path)
   errors << "missing docs/src/package-test-results.md"
 else
   results = File.read(results_path)
-  errors << "package test results must describe CI matrix status" unless results.include?("CI Matrix Status")
+  errors << "package test results must define the package verification matrix" unless results.include?("# Package Verification Matrix")
   errors << "package test results must not refer to the old MetaNC branch" if results.include?("MetaNC")
-  errors << "package test results must mention dev branch fixes" unless results.include?("`dev`")
+  errors << "package test results must identify tracked source selections" unless results.include?("`autoproj/overrides.yml`")
   package_test_contracts.each do |package_test, contract|
     errors << "package test results must document #{package_test}" unless results.include?("| `#{package_test}` |")
     contract.fetch(:result_tokens).each do |token|

@@ -37,3 +37,5 @@ Autoproj workspace.
 - [Architecture](./docs/src/architecture.md)
 - [Package Policy](./docs/src/package-policy.md)
 - [Install Contract](./docs/src/install-contract.md)
+- [Native OPC UA Reference](./docs/src/opcua-reference.md)
+- [Planned Work / TODO](./docs/src/todo/index.md)

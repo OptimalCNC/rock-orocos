@@ -1,84 +1,62 @@
-# Package Test Results
+# Package Verification Matrix
 
-This page records the package-level test status while the workflow is
-experimental and non-required.
+This page defines the maintained package and installed-prefix verification
+surface. It is a repeatable contract, not a record of one local run.
 
-The package-test workflow runs on Ubuntu 22.04, Ubuntu 24.04, and Debian
-13/Trixie. It keeps `continue-on-error: true` while cross-distribution legacy
-package behavior is being classified. Package test steps return their real
-exit status.
+The package-test workflow covers Ubuntu 22.04, Ubuntu 24.04, and Debian
+13/Trixie. Package steps return their real exit status even while a workflow is
+configured as non-required.
 
-## CI Matrix Status
+## Package Gates
 
-The established package-test entries use the public maintenance branches in
-`autoproj/overrides.yml`. The OPC UA entry has local coverage and is awaiting
-its first cross-distribution CI run.
+The package entries use the public maintenance branches selected in
+`autoproj/overrides.yml`.
 
-| Package test | Required subset | Current status |
+| Package gate | Maintained coverage | Gate status |
 |---|---|---|
-| `utilmm` | `Suite` from `utilmm_testsuite` | Passes in CI after fixes on `liufang-robot/utilmm` `dev`. |
-| `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Passes in CI after fixes on `liufang-robot/tools-typelib` `dev`. |
-| `rtt-typelib` | Rebuilds `rtt-typelib`, runs `get_marshaller_for_test`, and checks `rtt_typelib-gnulinux` metadata | Passes in CI after fixes on `liufang-robot/tools-rtt_typelib` `dev`. |
-| `rtt-core` | `main-test`, `list-test`, `core-test`, `task-test`, `mqueue-test`, and `mqueue_archive_test` | Existing CI evidence covers the core/task subset after scheduler-capability fixes on `liufang-robot/rtt` `dev`; the maintained contract configures mqueue with CORBA disabled. |
-| `rtt-opcua` | All `rtt_opcua_*_test` and split `ocl_opcua_deployment_*` cases, OPC UA deployer/browser targets, and `rtt_opcua-gnulinux` plus OCL pkg-config metadata | Passes the local loopback installed-prefix gate; cross-distribution CI remains pending. |
-| `ocl-basic` | `timer` and `taskb` | Passes in CI after standalone CTest fixes on `liufang-robot/ocl` `dev`. |
-| `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` | Passes in CI on `dev`; `ncreport` is optional when NetCDF is unavailable, and the interactive state-machine browser remains outside this subset. |
+| `utilmm` | `Suite` from `utilmm_testsuite` | Cross-distribution package workflow |
+| `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Cross-distribution package workflow |
+| `rtt-typelib` | `rtt-typelib`, `get_marshaller_for_test`, and `rtt_typelib-gnulinux` metadata | Cross-distribution package workflow |
+| `rtt-core` | `main-test`, `list-test`, `core-test`, `task-test`, `mqueue-test`, and `mqueue_archive_test` | Maintained selected subset |
+| `rtt-opcua` | `rtt_opcua_*_test`, `ocl_opcua_deployment_*`, commands, and `rtt_opcua-gnulinux` metadata | Installed-prefix gate; cross-distribution CI pending |
+| `ocl-basic` | `timer` and `taskb` | Cross-distribution package workflow |
+| `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` | Cross-distribution package workflow |
 
-## Fresh Verification Status
+The optional NetCDF reporting case runs only when NetCDF is available. The
+interactive state-machine browser remains outside the maintained OCL subset.
 
-| Surface | Task 8 result |
-|---|---|
-| Source and dependency revision audit | Passed at root `652ad0637d68c3e228ac298099445cdc3d1aa67b`, RTT `f529ac1d7c2ea74242883df91fafa599fcc208b8`, `rtt_opcua` `f993906c251497af06e24c005ee4f9ee938203af`, and OCL `fb018446af77d52c8a9466275cda984ce8f12ca2`. |
-| Warning-clean maintained package builds | Passed with GCC 13.3, CMake 3.28.3, C++20, CORBA disabled, and `rtt_opcua` warnings treated as errors. |
-| Maintained package tests | RTT 2/2, `rtt_opcua` 10/10, and OCL lifecycle plus browser CLI 11/11 passed. |
-| Sanitizer tests | `rtt_opcua` 10/10 and OCL lifecycle 6/6 passed under AddressSanitizer and UndefinedBehaviorSanitizer, with LeakSanitizer suppressing only two reproduced stock dependency allocation frames. |
-| Installed standalone and Deployer fixture | Passed separate-process custom datatype round trips, stopped-endpoint rejection, explicit startup, complete Deployer publication, strict component publication, and unload protection. |
-| Manual `ctaskbrowser-opcua` validation | Passed writable `Gain` and `Status`, `echo(42)`, read-only `Limit`, exact six-operation `opcua` service, and absence of the rejected unsupported component. |
-| Home-prefix and CORBA contamination checks | Passed: the isolated home has no `.orocos`, and maintained `ldd`, logs, caches, and installed metadata resolve neither `~/.orocos` nor CORBA/OmniORB. |
+## Installed-Prefix Acceptance
 
-The verified stock dependency revisions are open62541 v1.4.15
-`45e4cd3ef6c79a8e503d37c9f5c89fefe90d99db` and open62541pp v0.21.2
-`b1696768b26a12d0f40fdac5ec62ad78d25fa236`. Their sources were clean and
-unchanged. `UA_BUILD_UNIT_TESTS` and `UAPP_BUILD_TESTS` were both `OFF`; no
-third-party test suite was built or run.
+An installed-prefix acceptance run must:
 
-The release install is `/tmp/orocos-opcua-maintained-final-review.LUHwJa`, with
-build evidence in `/tmp/orocos-opcua-maintained-final-review.LUHwJa-work`.
-Detached sources, the stock dependency prefix, sanitizer builds, raw and
-filtered sanitizer logs, manual transcripts, and the final mdBook are below
-`/tmp/orocos-opcua-task8.iaxbIP`.
+- source `env.sh` and `dev-env.sh` from an isolated prefix;
+- run the deployer and native OPC UA commands for the selected target;
+- verify target-specific mqueue and OPC UA transport discovery;
+- run the application-neutral custom datatype and explicit-start fixture;
+- verify complete Deployer publication and strict component publication;
+- verify TaskBrowser inspection, updates, and operation calls;
+- verify no CORBA or home-prefix contamination; and
+- configure a downstream Orocos package.
 
-The raw LeakSanitizer run identifies allocations rooted only in unchanged stock
-open62541pp `opcua::detail::allocNativeString` and open62541 `UA_Array_copy`.
-The passing sanitizer matrix uses a two-frame suppression file so all other
-leaks and every AddressSanitizer or UndefinedBehaviorSanitizer error remain
-fatal. In particular, the immediate shutdown after an operation timeout case
-ran and retained the invocation until completion. The server test also proves
-that concurrent `start()` callers share one serialized startup. Loader records
-confirm that the `rtt_opcua` and OCL sanitizer tests use their build-tree
-libraries rather than installed release copies.
+The GNU/Linux mqueue acceptance requires
+`toolchain/lib/orocos/gnulinux/types/librtt-transport-mqueue-gnulinux.so` with
+`ENABLE_MQ=ON` and `ENABLE_CORBA=OFF`.
 
-The verification contract uses unmodified stock open62541 and open62541pp
-sources and does not build third-party unit tests. A non-returning RTT operation
-can still delay endpoint shutdown indefinitely because its lease and invocation
-storage must not be released early. Target Xenomai validation,
-cross-distribution CI, downstream application migration, and OPC UA PubSub port
-mapping remain separate gates.
+## Target Status
 
-## GNU/Linux Mqueue Installation Acceptance
+- GNU/Linux package and installed-prefix acceptance is maintained.
+- Xenomai compilation and selected package tests are maintained; target-machine
+  real-time acceptance remains a separate hardware gate.
+- Cross-distribution OPC UA package results become authoritative only when the
+  repository workflow runs them as required checks.
 
-The fresh GNU/Linux installation acceptance passed at root
-`f7dab129dff2835dbc1cdbb5432b7c146f185ed1`, RTT
-`73831c62598ddc5cedc85378f759af7ef6ce4609`, `rtt_opcua`
-`f993906c251497af06e24c005ee4f9ee938203af`, and OCL
-`d465bb83f6870503a53571a93a36adf01a8cdfc1`. The isolated install prefix was
-`/tmp/orocos-mqueue.VlcY0D/prefix`.
+## Known Limits
 
-RTT passed all 6 selected tests, including `mqueue-test` and
-`mqueue_archive_test`; `rtt_opcua` passed 10/10 tests; and OCL passed 12/12
-selected deployment and TaskBrowser tests. The installed custom-datatype
-fixture, explicit-start Deployer lifecycle, and `ctaskbrowser-opcua` acceptance
-also passed. The required transport is installed at
-`lib/orocos/gnulinux/types/librtt-transport-mqueue-gnulinux.so`, with
-`ENABLE_MQ=ON` and `ENABLE_CORBA=OFF` recorded in the fresh RTT cache. GNU/Linux
-is accepted; Xenomai runtime acceptance remains pending.
+- A non-returning RTT operation can delay endpoint shutdown because its
+  component lease and invocation storage must not be released early.
+- Third-party open62541 and open62541pp unit suites are not part of this
+  workspace's maintained gate.
+- Target-machine timing and EtherCAT behavior require the Xenomai validation
+  described in [Xenomai 3 Integration](./xenomai3-integration.md).
+- OPC UA PubSub port mapping and downstream application migration are separate
+  contracts.

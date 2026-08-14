@@ -5,9 +5,8 @@ target in the `liufang-robot/*` fork set while keeping `orocos-rock` as a
 standalone toolchain boundary.
 
 The current default install path remains the generic `gnulinux` toolchain. A
-Xenomai build is a deliberate variant selected with `--target xenomai`, staged
-on explicit branches, and installed to an explicit prefix such as
-`~/.orocos`.
+Xenomai build is a deliberate variant selected with `--target xenomai` and
+installed to an explicit prefix such as `~/.orocos`.
 
 ## Current Build Status
 
@@ -16,15 +15,19 @@ The Xenomai 3 build contract configures RTT with `-DENABLE_MQ=ON` and
 into `.autoproj/config.yml`, so OmniORB is not required for the default
 Xenomai 3 toolchain build. Install validation requires
 `toolchain/lib/orocos/xenomai/types/librtt-transport-mqueue-xenomai.so`;
-mqueue-specific
-runtime evidence under this contract remains deferred to the Xenomai host gates
-below.
+mqueue-specific runtime evidence under this contract remains deferred to the
+Xenomai host gates below.
 
 The verified local build uses Xenomai 3.3.3 from `/usr/xenomai` and exports:
 
 - `OROCOS_TARGET=xenomai`
 - `XENOMAI_DIR=/usr/xenomai`
 - `XENOMAI_ROOT_DIR=/usr/xenomai`
+
+The configured RTT tests link the typekit selected by `OROCOS_TARGET`; they do
+not add a GNU/Linux-only typekit dependency to Xenomai tests. The OCL OPC UA
+test process initializes RTT once and uses the Xenomai-safe
+`StartStopManager` shutdown path after the suite completes.
 
 The current RTT support is still transitional. It can build and smoke-run on
 Xenomai 3 through the native/trank compatibility headers, but it is not yet a
@@ -50,7 +53,7 @@ Use it to recover the intent of the Xenomai 3 port:
 - define a Xenomai 3 policy for `IRQActivity`
 
 Do not copy the implementation mechanically. The branch was written against an
-older RTT baseline, while this workspace carries C++17, rtlog, and Xenomai
+older RTT baseline, while this workspace carries C++20, rtlog, and Xenomai
 compatibility fixes on `liufang-robot/*` `dev` branches.
 
 ## Blocking RTT Review Items
@@ -74,46 +77,6 @@ The CPU affinity and task lifetime items are merge blockers. They are easy to
 miss because the code can still compile while having the wrong runtime
 semantics.
 
-## Branching Plan
-
-Create a staging branch in the RTT fork:
-
-```bash
-git remote add orocos https://github.com/orocos-toolchain/rtt.git
-git fetch orocos toolchain-2.9 ahoarau-xenomai3-support-v2
-git switch -c dev-xeno3 origin/dev
-```
-
-Use the old branch only as a range-diff and path-diff source:
-
-```bash
-git range-diff orocos/toolchain-2.9...orocos/ahoarau-xenomai3-support-v2 origin/dev...HEAD
-
-git diff orocos/toolchain-2.9...orocos/ahoarau-xenomai3-support-v2 -- \
-  config/FindXenomai.cmake \
-  config/FindXenomaiPosix.cmake \
-  config/check_depend.cmake \
-  rtt/CMakeLists.txt \
-  rtt/os/xenomai/fosi.h \
-  rtt/os/xenomai/fosi_internal.cpp \
-  rtt/Activity.cpp \
-  rtt/ExecutionEngine.cpp \
-  rtt/extras/IRQActivity.cpp \
-  rtt/extras/IRQActivity.hpp
-```
-
-Split the work into reviewable RTT pull requests:
-
-| PR | Scope |
-|---|---|
-| A | `FindXenomai*`, dependency checks, and RTT CMake linking. |
-| B | `rtt/os/xenomai` Alchemy/POSIX implementation and local shims for CPU masks and task teardown. |
-| C | `Activity`, `ExecutionEngine`, condition-variable audit, and `IRQActivity` policy. |
-| D | RTT unit tests and stress tests for Xenomai 3 semantics. |
-| E | `rock-orocos` branch override, deployment templates, and target-machine validation. |
-
-Only PR E belongs in this repository.
-
 ## `rock-orocos` Wiring
 
 The current RTT source pin is:
@@ -126,8 +89,9 @@ overrides:
     branch: dev
 ```
 
-Use a different branch only when the RTT staging branch has passed the checks
-below. Keep any staging override explicit and reviewable.
+Source changes must land through the normal package review workflow before a
+release build selects them. Keep temporary validation overrides explicit and
+reviewable.
 
 The standard build command is:
 
@@ -177,7 +141,7 @@ Use three separate gates. A green compile does not prove real-time behavior.
 
 | Gate | Runs where | Purpose |
 |---|---|---|
-| Generic package tests | Existing container CI | Keep C++17 and generic Orocos behavior from regressing. |
+| Generic package tests | Existing container CI | Keep C++20 and generic Orocos behavior from regressing. |
 | Xenomai host smoke | Target machine | Verify Cobalt, Alchemy/POSIX flags, CPU mask expectations, installed prefix, and optional EtherLab access. |
 | Real-time regression | Target machine | Exercise RTT activities, ports, EtherCAT loop phase split, latency, and stress behavior. |
 
@@ -201,7 +165,7 @@ xenomai
 based on Xenomai/cobalt v3.x
 ```
 
-The minimum target-machine regression after the RTT patch lands is:
+The minimum target-machine regression is:
 
 - `latency`
 - `xeno-test -p 10`

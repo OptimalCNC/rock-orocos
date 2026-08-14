@@ -85,21 +85,21 @@ Minimum validation after bootstrap and install:
 
 If a package fails:
 
-- first decide whether the package is truly required in phase 1
+- first decide whether the package is truly required by the supported toolchain
 - if required, patch it in a public maintenance fork or pin a known-good
   revision
-- if not required, remove it from the initial workspace scope
+- if not required, remove it from the workspace scope
 
 Do not compensate for a missing generator stack by switching immediately to a
 manual typekit implementation.
 
-## First Implementation Scope
+## Scope Boundary
 
-Phase 1 should stop after:
+The workspace scope stops after:
 
 - runtime toolchain works
 - generator toolchain works
 - deployer and RTT scripting work
 - downstream Orocos packages can build against the installed result
 
-Do not expand into higher-level Rock orchestration packages in the first phase.
+Do not expand into higher-level Rock orchestration packages.

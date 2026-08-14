@@ -73,25 +73,9 @@ together:
 - `tools/check-autoproj-policy.rb`, which enforces those source selections;
 - `docs/src/package-policy.md`, which names the active organization source.
 
-Historical design, plan, and test-result documents retain the repository names
-that describe where their original work was performed.
-
-The first OptimalCNC publication can fast-forward its existing `main` to the
-shared implementation history and then add the OptimalCNC policy commit. Later
-canonical changes are merged into that lineage without removing its policy
-commit. The OptimalCNC policy checks must pass after every such merge.
-
-## Repository Creation
-
-Before the first complete OptimalCNC publication, create these missing public
-repositories and establish their default branches through the first push:
-
-- `OptimalCNC/farbot` with `master`;
-- `OptimalCNC/rtlog-cpp` with `main`;
-- `OptimalCNC/rtt_opcua` with `dev`.
-
-Repository creation is idempotent: an existing repository is inspected and
-used, not replaced.
+Canonical changes are merged into the OptimalCNC lineage without removing its
+organization policy commit. The OptimalCNC policy checks must pass after every
+such merge.
 
 ## Validation Gates
 

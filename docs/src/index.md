@@ -13,6 +13,9 @@ configure, build, test, and deployment workflows.
 |---|---|---|
 | Toolchain user | [User Guide](./user-guide.md) | Simple install and source commands |
 | Toolchain maintainer | [Maintainer Guide](./maintainer-guide.md) | Script flow, install effects, and validation rules |
+| Future contributor | [Planned Work / TODO](./todo/index.md) | Approved work that is not implemented |
+
+Planned Work pages are design inputs, not part of the current install contract.
 
 ## What This Repository Produces
 
