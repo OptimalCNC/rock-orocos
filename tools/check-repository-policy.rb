@@ -12,16 +12,18 @@ summary_path = File.join(docs_src, "SUMMARY.md")
 todo_dir = File.join(docs_src, "todo")
 errors = []
 
-tracked_superpowers, git_status = Open3.capture2(
-  "git", "-C", root, "ls-files", "--", "docs/superpowers"
-)
+%w[docs/book docs/superpowers].each do |directory|
+  tracked_files, git_status = Open3.capture2(
+    "git", "-C", root, "ls-files", "--", directory
+  )
 
-unless git_status.success?
-  errors << "failed to inspect tracked docs/superpowers files"
-end
+  unless git_status.success?
+    errors << "failed to inspect tracked #{directory} files"
+  end
 
-tracked_superpowers.lines.map(&:strip).reject(&:empty?).each do |path|
-  errors << "#{path}: docs/superpowers files must remain untracked"
+  tracked_files.lines.map(&:strip).reject(&:empty?).each do |path|
+    errors << "#{path}: #{directory} files must remain untracked"
+  end
 end
 
 tracked_markdown, markdown_status = Open3.capture2(
@@ -118,7 +120,9 @@ else
     "AGENTS.md"
     "README.md"
     ".github/workflows/repository-policy.yml"
+    "docs/book/**"
     "docs/src/**"
+    "docs/superpowers/**"
     "tools/check-repository-policy.rb"
   ].each do |path|
     errors << "repository policy workflow must watch #{path}" unless workflow.include?(path)

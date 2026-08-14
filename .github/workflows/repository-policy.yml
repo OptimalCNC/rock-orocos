@@ -6,7 +6,9 @@ on:
       - "AGENTS.md"
       - "README.md"
       - ".github/workflows/repository-policy.yml"
+      - "docs/book/**"
       - "docs/src/**"
+      - "docs/superpowers/**"
       - "tools/check-repository-policy.rb"
   push:
     branches:
@@ -15,7 +17,9 @@ on:
       - "AGENTS.md"
       - "README.md"
       - ".github/workflows/repository-policy.yml"
+      - "docs/book/**"
       - "docs/src/**"
+      - "docs/superpowers/**"
       - "tools/check-repository-policy.rb"
   workflow_dispatch:
 
