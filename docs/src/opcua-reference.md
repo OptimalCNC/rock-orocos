@@ -1,8 +1,8 @@
 # Native OPC UA Reference
 
 This chapter defines the native OPC UA behavior currently exported by the
-installed Orocos/Rock toolchain. Planned security and lifecycle changes are
-listed separately under Planned Work.
+installed Orocos/Rock toolchain. Planned security changes are listed
+separately under Planned Work.
 
 > [!IMPORTANT]
 > The current endpoint is loopback-only. Non-loopback listening remains
@@ -61,6 +61,31 @@ Input ports expose typed write behavior. Output ports expose typed read
 behavior. The remote proxy validates direction, sample type, method schema,
 and status representation before creating a local mirror port.
 
+## Task State Contract
+
+Every ordinary `TaskContext` provides the root operations `getTaskState()` and
+`getTargetState()`. They are read-only `ClientThread` operations: the first
+reports the state currently occupied, while the second reports the transition
+destination. Their values can differ while a lifecycle transition is in
+progress.
+
+Both operations are published through the ordinary operation mapper as OPC UA
+Methods. Their RTT result type remains `TaskState`, represented on the wire by
+one scalar built-in `Int32`:
+
+| Code | RTT state |
+|---:|---|
+| `0` | `Init` |
+| `1` | `PreOperational` |
+| `2` | `FatalError` |
+| `3` | `Exception` |
+| `4` | `Stopped` |
+| `5` | `Running` |
+| `6` | `RunTimeError` |
+
+Other scalar types, arrays, and codes outside `0..6` are schema errors. The
+component object has no synthetic `lifecycleState` child.
+
 ## Custom Datatypes
 
 RTT typekits own C++ structure and sequence metadata. OPC UA transport plugins
@@ -75,9 +100,12 @@ and `RtString`. Remote endpoints cannot trigger local plugin loading.
 ## Proxy And TaskBrowser
 
 `TaskContextProxy` reconstructs the supported RTT service graph, resource
-mutability, operations, and ports from the endpoint. The current proxy reads
-the published `lifecycleState` value for task-state queries; replacing that
-transport-only value with native RTT operations remains planned work.
+mutability, operations, and ports from the endpoint. It invokes the native
+`getTaskState` and `getTargetState` Methods independently and validates their
+exact `TaskState` result schema. Its lifecycle predicates invoke the matching
+native Boolean operations rather than inferring results from enum ordering.
+An unavailable Method, incompatible result, or invalid state code marks the
+remote interface stale.
 
 The installed TaskBrowser can inspect and edit supported scalar and structured
 values, invoke mapped operations, and reconnect without depending on the

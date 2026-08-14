@@ -13,6 +13,5 @@
   - [Xenomai 3 Integration](./xenomai3-integration.md)
   - [Package Verification Matrix](./package-test-results.md)
 - [Planned Work / TODO](./todo/index.md)
-  - [Native RTT Task State Operations](./todo/opcua-native-task-state-operations-design.md)
   - [OPC UA PKI And Authorization](./todo/opcua-security-prd.md)
   - [Deployer TUI](./todo/deployer-tui-prd.md)
