@@ -2,9 +2,11 @@
 
 This directory contains the small wrapper scripts that operate the workspace.
 
-User entrypoint:
+User entrypoints:
 
 - `setup.sh`
+- `update.sh` updates the root and configured Autoproj package sources without
+  building or installing them
 
 Maintainer building blocks:
 
@@ -14,6 +16,10 @@ Maintainer building blocks:
 - `install-autoproj.sh`
 - `validate-install.sh`
 - `docker-build.sh`
+
+Focused regression tests:
+
+- `test-update.sh`
 
 These scripts should stay thin.
 

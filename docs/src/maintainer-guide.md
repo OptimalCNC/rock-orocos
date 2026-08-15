@@ -38,6 +38,7 @@ design text.
 | Script | What it does | Main output |
 |---|---|---|
 | `tools/setup.sh` | User-facing wrapper that runs Autoproj install, bootstrap, install, and validation in order | A validated installed prefix |
+| `tools/update.sh` | Fast-forwards the root and updates the complete configured Autoproj layout without building or installing | Updated source checkouts |
 | `tools/install-autoproj.sh` | Installs Autoproj into the current user's RubyGems area if `autoproj` is not already usable | User gem executables, usually under RubyGems' user bin directory |
 | `tools/bootstrap.sh` | Generates local Autoproj workspace config, runs `autoproj reconfigure`, and optionally installs OS dependencies | `.autoproj/config.yml`, `.autoproj/Gemfile`, `.autoproj/bin/*`, refreshed package-set state |
 | `tools/install.sh` | Updates forked packages, refreshes source-declared OS dependencies, builds the selected package layout, stages Ruby generator tools, and exports environment scripts | Built packages under the configured prefix plus `env.sh` and `dev-env.sh` |
@@ -88,6 +89,33 @@ the installed prefix, keeps the OS and Ruby packages needed to use that prefix,
 and validates that `deployer-gnulinux`, `orogen`, and `typegen` work without an
 Autoproj workspace.
 
+## Update-Only Sequence
+
+`tools/update.sh` is separate from the install sequence. It accepts the same
+`--prefix` and `--target` selectors, but stops after updating source checkouts:
+
+```mermaid
+flowchart TD
+    S["update.sh --prefix PREFIX"] --> P["validate clean root and configured upstream"]
+    P --> G["git pull --ff-only"]
+    G --> C{"root HEAD changed?"}
+    C -->|yes| R["re-execute updated update.sh once"]
+    C -->|no| W["prepare existing Autoproj workspace"]
+    R --> W
+    W --> A["autoproj update complete selected layout"]
+```
+
+The script does not duplicate a package list. `autoproj/manifest` and the
+tracked overrides determine the selected packages, branches, tags, and
+organization-specific forks. It disables configuration, Bundler, Autoproj,
+and osdeps updates, and never invokes a build, install, reset, force-reset, or
+stash operation.
+
+Root preflight requires a clean named branch with a configured upstream. A
+root fast-forward may complete before a package update fails; the independent
+Git repositories are intentionally not treated as a transaction and completed
+updates are not rolled back.
+
 ## What Gets Installed Or Changed
 
 | Layer | Installed or generated content | Owner | Notes |
@@ -132,8 +160,10 @@ ruby tools/check-repository-policy.rb
 ruby tools/check-autoproj-policy.rb
 ruby tools/check-clean-room-docker.rb
 bash tools/test-autoproj-launcher.sh
+bash tools/test-update.sh
 bash tools/test-workspace-env-nounset.sh
-bash -n tools/common.sh tools/bootstrap.sh tools/install.sh tools/export-env.sh tools/validate-install.sh
+bash -n tools/common.sh tools/bootstrap.sh tools/install.sh tools/update.sh tools/test-update.sh
+bash -n tools/export-env.sh tools/validate-install.sh
 bash -n tools/setup.sh tools/docker-build.sh
 ```
 
