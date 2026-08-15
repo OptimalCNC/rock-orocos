@@ -51,6 +51,34 @@ no-update maintainer workflow in
 The GNU/Linux build also keeps CORBA disabled. Native remote access is provided
 by the OPC UA transport.
 
+## Update Sources Without Building
+
+To update this repository and every package selected by its Autoproj layout,
+run this command from the repository root:
+
+```bash
+./tools/update.sh --prefix ~/.orocos --target gnulinux
+```
+
+The command first fast-forwards the current root branch from its configured
+upstream, then updates the complete Autoproj-managed package layout. If the
+root changes, the updated command re-executes itself once before package
+sources are updated.
+
+Tracked package policy remains authoritative: branch selections advance to
+their configured branch tips, tag selections remain pinned, and the current
+root variant selects the maintained `liufang-robot` or `OptimalCNC` forks.
+
+This command updates sources only. It does not build, install, install OS
+dependencies, reset local changes, or update Autoproj itself. The root must be
+on a clean named branch with a configured upstream. Autoproj rejects unsafe
+package updates using its normal checks.
+
+> [!NOTE]
+> The repositories are updated independently. If a later package fails, an
+> earlier root or package fast-forward is not rolled back. Resolve the reported
+> checkout and run the command again.
+
 ## Use The Installed Toolchain
 
 For development, source the development environment before configuring or
