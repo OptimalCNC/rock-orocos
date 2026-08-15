@@ -160,6 +160,7 @@ ruby tools/check-repository-policy.rb
 ruby tools/check-autoproj-policy.rb
 ruby tools/check-clean-room-docker.rb
 bash tools/test-autoproj-launcher.sh
+bash tools/test-install-env-transaction.sh
 bash tools/test-update.sh
 bash tools/test-workspace-env-nounset.sh
 bash -n tools/common.sh tools/bootstrap.sh tools/install.sh tools/update.sh tools/test-update.sh

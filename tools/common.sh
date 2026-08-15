@@ -29,6 +29,100 @@ orocos_rock_require_file() {
     [ -f "$1" ] || orocos_rock_die "required file is missing: $1"
 }
 
+orocos_rock_cleanup_install_env_snapshot() {
+    local snapshot="$1"
+
+    rm -f -- \
+        "$snapshot/env.sh" \
+        "$snapshot/dev-env.sh" \
+        "$snapshot/env.sh.missing" \
+        "$snapshot/dev-env.sh.missing" || return 1
+    rmdir -- "$snapshot" || return 1
+}
+
+orocos_rock_snapshot_install_env() {
+    local prefix="$1"
+    local snapshot="$2"
+    local entry
+    local source
+
+    for entry in env.sh dev-env.sh; do
+        source="$prefix/$entry"
+        if [ -L "$source" ] || [ -f "$source" ]; then
+            cp -a -- "$source" "$snapshot/$entry" || return 1
+        elif [ -e "$source" ]; then
+            orocos_rock_info "Cannot preserve installed environment entry that is not a file: $source"
+            return 1
+        else
+            : >"$snapshot/$entry.missing" || return 1
+        fi
+    done
+}
+
+orocos_rock_restore_install_env() {
+    local prefix="$1"
+    local snapshot="$2"
+    local entry
+    local destination
+
+    for entry in env.sh dev-env.sh; do
+        if [ ! -e "$snapshot/$entry" ] && [ ! -L "$snapshot/$entry" ] &&
+           [ ! -f "$snapshot/$entry.missing" ]; then
+            orocos_rock_info "Installed environment snapshot is incomplete: $snapshot"
+            return 1
+        fi
+
+        destination="$prefix/$entry"
+        if [ -d "$destination" ] && [ ! -L "$destination" ]; then
+            orocos_rock_info "Cannot restore installed environment over a directory: $destination"
+            return 1
+        fi
+    done
+
+    mkdir -p "$prefix" || return 1
+    for entry in env.sh dev-env.sh; do
+        destination="$prefix/$entry"
+        rm -f -- "$destination" || return 1
+        if [ -e "$snapshot/$entry" ] || [ -L "$snapshot/$entry" ]; then
+            cp -a -- "$snapshot/$entry" "$destination" || return 1
+        fi
+    done
+
+    orocos_rock_cleanup_install_env_snapshot "$snapshot" || return 1
+}
+
+orocos_rock_run_preserving_install_env() {
+    local prefix="$1"
+    local snapshot
+    local command_status
+    local restore_status
+    shift
+
+    snapshot="$(mktemp -d "${TMPDIR:-/tmp}/orocos-rock-install-env.XXXXXX")" || return 1
+    if ! orocos_rock_snapshot_install_env "$prefix" "$snapshot"; then
+        orocos_rock_cleanup_install_env_snapshot "$snapshot" || true
+        return 1
+    fi
+
+    if "$@"; then
+        command_status=0
+    else
+        command_status=$?
+    fi
+
+    if orocos_rock_restore_install_env "$prefix" "$snapshot"; then
+        restore_status=0
+    else
+        restore_status=$?
+        orocos_rock_info "Failed to restore installed environment from $snapshot"
+    fi
+
+    if [ "$restore_status" -ne 0 ]; then
+        return "$restore_status"
+    fi
+    return "$command_status"
+}
+
 orocos_rock_user_gem_home() {
     ruby -rrubygems -e 'print Gem.user_dir'
 }

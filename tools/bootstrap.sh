@@ -66,9 +66,15 @@ fi
 cd "$OROCOS_ROCK_ROOT"
 
 orocos_rock_info "Refreshing Autoproj configuration"
-orocos_rock_autoproj reconfigure --no-interactive
+orocos_rock_run_preserving_install_env "$PREFIX" \
+    orocos_rock_autoproj reconfigure --no-interactive
+
+orocos_rock_info "Checking resolved dependency policy"
+GEM_PATH="$(orocos_rock_user_gem_path)" \
+    ruby "$SCRIPT_DIR/check-resolved-dependencies.rb"
 
 if [ "$INSTALL_OSDEPS" -eq 1 ]; then
     orocos_rock_info "Installing operating-system dependencies through Autoproj"
-    orocos_rock_autoproj osdeps --no-interactive
+    orocos_rock_run_preserving_install_env "$PREFIX" \
+        orocos_rock_autoproj osdeps --no-interactive
 fi

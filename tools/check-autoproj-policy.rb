@@ -23,6 +23,7 @@ manifest_path = File.join(root, "autoproj", "manifest")
 overrides_path = File.join(root, "autoproj", "overrides.yml")
 local_autobuild_path = File.join(root, "autoproj", "local.autobuild")
 install_path = File.join(root, "tools", "install.sh")
+bootstrap_path = File.join(root, "tools", "bootstrap.sh")
 install_autoproj_path = File.join(root, "tools", "install-autoproj.sh")
 setup_path = File.join(root, "tools", "setup.sh")
 update_path = File.join(root, "tools", "update.sh")
@@ -37,6 +38,7 @@ native_ci_check_path = File.join(root, "tools", "check-native-ci.rb")
 package_tests_ci_check_path = File.join(root, "tools", "check-package-tests-ci.rb")
 cpp20_policy_check_path = File.join(root, "tools", "check-cpp20-policy.rb")
 rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
+resolved_dependencies_check_path = File.join(root, "tools", "check-resolved-dependencies.rb")
 
 expected_sources = {
   "farbot" => { "url" => "https://github.com/liufang-robot/farbot.git", "branch" => "master" },
@@ -77,6 +79,7 @@ expected_sources.each do |package, source|
 end
 
 install_script = File.read(install_path)
+bootstrap_script = File.read(bootstrap_path)
 install_autoproj_script = File.read(install_autoproj_path)
 setup_script = File.file?(setup_path) ? File.read(setup_path) : nil
 update_script = File.file?(update_path) ? File.read(update_path) : ""
@@ -217,6 +220,11 @@ unless rtt_setup.include?('pkg.define "ENABLE_CORBA", "OFF"')
   errors << "autoproj/overrides.rb: rtt must keep CORBA disabled"
 end
 
+unless rtt_setup.include?('pkg.description.dependencies.delete_if { |dependency| dependency.name == "omniorb" }') &&
+       rtt_setup.include?('pkg.remove_dependency "omniorb"')
+  errors << "autoproj/overrides.rb: rtt must remove the package.xml omniorb dependency for no-CORBA builds"
+end
+
 ocl_setup = active_ruby_statements(setup_package_body(overrides_script, "ocl"))
 unless ocl_setup.include?('pkg.depends_on "rtt_opcua"') &&
        ocl_setup.include?('pkg.define "BUILD_OPCUA", "ON"')
@@ -237,6 +245,12 @@ end
 unless install_script.include?("--target TARGET") &&
        install_script.include?('"$SCRIPT_DIR/export-env.sh" --prefix "$PREFIX" --target "$TARGET"')
   errors << "tools/install.sh: must accept --target and pass it to export-env.sh"
+end
+
+unless common_script.include?("orocos_rock_run_preserving_install_env") &&
+       bootstrap_script.scan('orocos_rock_run_preserving_install_env "$PREFIX"').size == 2 &&
+       install_script.scan('orocos_rock_run_preserving_install_env "$PREFIX"').size == 3
+  errors << "bootstrap/install wrappers must preserve public environment scripts around Autoproj commands"
 end
 
 unless export_env_script.include?("--target TARGET") &&
@@ -321,6 +335,46 @@ errors << "tools/check-native-ci.rb: missing native CI policy check" unless File
 errors << "tools/check-package-tests-ci.rb: missing package test CI policy check" unless File.file?(package_tests_ci_check_path)
 errors << "tools/check-cpp20-policy.rb: missing C++20 policy check" unless File.file?(cpp20_policy_check_path)
 errors << "tools/check-rtlog-prefix.sh: missing rtlog installed-prefix smoke test" unless File.file?(rtlog_prefix_check_path)
+errors << "tools/check-resolved-dependencies.rb: missing resolved dependency policy check" unless File.file?(resolved_dependencies_check_path)
+
+if File.file?(resolved_dependencies_check_path)
+  resolved_dependencies_script = File.read(resolved_dependencies_check_path)
+  unless resolved_dependencies_script.include?("Autoproj::CLI::InspectionTool") &&
+         resolved_dependencies_script.include?("non_imported_packages: :return") &&
+         resolved_dependencies_script.include?("rtt.os_packages.to_a")
+    errors << "tools/check-resolved-dependencies.rb: must inspect the resolved Autoproj graph in read-only mode"
+  end
+  if resolved_dependencies_script.include?("installation-manifest")
+    errors << "tools/check-resolved-dependencies.rb: must not rely on the potentially stale installation manifest"
+  end
+end
+
+reconfigure = bootstrap_script.index("orocos_rock_autoproj reconfigure")
+bootstrap_resolved_dependencies_check = bootstrap_script.index('ruby "$SCRIPT_DIR/check-resolved-dependencies.rb"')
+bootstrap_osdeps = bootstrap_script.index("orocos_rock_autoproj osdeps")
+if bootstrap_resolved_dependencies_check.nil?
+  errors << "bootstrap.sh: missing resolved dependency policy check"
+elsif reconfigure && bootstrap_resolved_dependencies_check < reconfigure
+  errors << "bootstrap.sh: resolved dependency policy check must run after reconfigure"
+elsif bootstrap_osdeps && bootstrap_resolved_dependencies_check > bootstrap_osdeps
+  errors << "bootstrap.sh: resolved dependency policy check must run before osdeps"
+end
+
+install_resolved_dependencies_check = install_script.index('ruby "$SCRIPT_DIR/check-resolved-dependencies.rb"')
+if install_resolved_dependencies_check.nil?
+  errors << "install.sh: missing resolved dependency policy check"
+elsif source_update && install_resolved_dependencies_check < source_update
+  errors << "install.sh: resolved dependency policy check must run after source update"
+elsif osdeps && install_resolved_dependencies_check > osdeps
+  errors << "install.sh: resolved dependency policy check must run before osdeps"
+end
+
+[bootstrap_script, install_script].each do |script|
+  unless script.include?('GEM_PATH="$(orocos_rock_user_gem_path)"')
+    errors << "resolved dependency policy checks must use the Autoproj user/default gem path"
+    break
+  end
+end
 
 unless install_script.include?('"$SCRIPT_DIR/install-ruby-tools.sh" --prefix "$PREFIX"')
   errors << "install.sh: must stage Ruby generator tools into the install prefix"
@@ -393,8 +447,8 @@ unless local_osdeps_data.dig("ruby-dev", "debian,ubuntu") == "ruby-dev"
   errors << "autoproj/orocos-rock.osdeps: must define ruby-dev for Debian/Ubuntu package-set compatibility"
 end
 
-unless local_osdeps_data.dig("omniorb", "debian,ubuntu") == ["omniidl", "libomniorb4-dev"]
-  errors << "autoproj/orocos-rock.osdeps: must override omniorb without unavailable omniorb-nameserver on Debian/Ubuntu"
+if local_osdeps_data.key?("omniorb")
+  errors << "autoproj/orocos-rock.osdeps: must not map omniorb for the no-CORBA build"
 end
 
 %w[ncurses libncurses libncurses-dev].each do |ncurses_osdep|

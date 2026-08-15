@@ -66,6 +66,11 @@ It should make a shell ready for:
 It should not require source-tree state from this workspace or any downstream
 project to be useful.
 
+Bootstrap, update, and build failures must not replace an existing installed
+`env.sh` or `dev-env.sh` with an Autoproj workspace forwarding script. The
+public entrypoints remain usable until a successful install exports their
+replacement.
+
 ### `dev-env.sh`
 
 Development-oriented environment.

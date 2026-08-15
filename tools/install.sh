@@ -73,16 +73,23 @@ orocos_rock_prepare_autoproj_workspace "$PREFIX" "none" "$TARGET"
 cd "$OROCOS_ROCK_ROOT"
 
 orocos_rock_info "Updating Autoproj sources"
-orocos_rock_autoproj update --no-interactive --no-osdeps --no-config --no-bundler --no-autoproj "${SOURCE_PACKAGES[@]}"
+orocos_rock_run_preserving_install_env "$PREFIX" \
+    orocos_rock_autoproj update --no-interactive --no-osdeps --no-config --no-bundler --no-autoproj "${SOURCE_PACKAGES[@]}"
+
+orocos_rock_info "Checking resolved dependency policy"
+GEM_PATH="$(orocos_rock_user_gem_path)" \
+    ruby "$SCRIPT_DIR/check-resolved-dependencies.rb"
 
 orocos_rock_info "Checking C++20 package policy"
 ruby "$SCRIPT_DIR/check-cpp20-policy.rb"
 
 orocos_rock_info "Installing source-declared operating-system dependencies"
-orocos_rock_autoproj osdeps --no-interactive
+orocos_rock_run_preserving_install_env "$PREFIX" \
+    orocos_rock_autoproj osdeps --no-interactive
 
 orocos_rock_info "Building Autoproj layout"
-orocos_rock_autoproj build --no-interactive "${BUILD_ARGS[@]}"
+orocos_rock_run_preserving_install_env "$PREFIX" \
+    orocos_rock_autoproj build --no-interactive "${BUILD_ARGS[@]}"
 
 "$SCRIPT_DIR/install-ruby-tools.sh" --prefix "$PREFIX"
 
