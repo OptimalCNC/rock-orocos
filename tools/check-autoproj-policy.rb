@@ -25,6 +25,8 @@ local_autobuild_path = File.join(root, "autoproj", "local.autobuild")
 install_path = File.join(root, "tools", "install.sh")
 install_autoproj_path = File.join(root, "tools", "install-autoproj.sh")
 setup_path = File.join(root, "tools", "setup.sh")
+update_path = File.join(root, "tools", "update.sh")
+update_test_path = File.join(root, "tools", "test-update.sh")
 rtt_manifest_path = File.join(root, "autoproj", "manifests", "rtt.xml")
 local_osdeps_path = File.join(root, "autoproj", "orocos-rock.osdeps")
 export_env_path = File.join(root, "tools", "export-env.sh")
@@ -77,6 +79,7 @@ end
 install_script = File.read(install_path)
 install_autoproj_script = File.read(install_autoproj_path)
 setup_script = File.file?(setup_path) ? File.read(setup_path) : nil
+update_script = File.file?(update_path) ? File.read(update_path) : ""
 common_script = File.read(common_path)
 overrides_script = File.read(File.join(root, "autoproj", "overrides.rb"))
 local_autobuild_script = File.file?(local_autobuild_path) ? File.read(local_autobuild_path) : ""
@@ -84,6 +87,22 @@ local_osdeps = File.file?(local_osdeps_path) ? File.read(local_osdeps_path) : ""
 local_osdeps_data = local_osdeps.empty? ? {} : (YAML.safe_load(local_osdeps) || {})
 export_env_script = File.read(export_env_path)
 validate_install_script = File.read(validate_install_path)
+
+errors << "missing executable tools/update.sh" unless File.executable?(update_path)
+errors << "missing executable tools/test-update.sh" unless File.executable?(update_test_path)
+unless update_script.include?("git pull --ff-only")
+  errors << "update.sh: must fast-forward the configured root upstream"
+end
+unless update_script.include?("orocos_rock_autoproj update")
+  errors << "update.sh: must update the Autoproj layout"
+end
+errors << "update.sh: must disable osdeps" unless update_script.include?("--no-osdeps")
+if update_script.match?(/orocos_rock_autoproj\s+build/)
+  errors << "update.sh: must not build packages"
+end
+if update_script.match?(/--(?:force-)?reset/)
+  errors << "update.sh: must not reset package repositories"
+end
 
 if manifest.match?(/\bstdint_typekit\b/)
   errors << "autoproj/manifest: stdint_typekit is retired because RTT provides fixed-width built-ins"
