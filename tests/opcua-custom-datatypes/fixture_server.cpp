@@ -87,6 +87,7 @@ int ORO_main(int argc, char **argv) {
     }
 
     RTT::opcua::ServerOptions server_options;
+    server_options.bind_address = "0.0.0.0";
     server_options.port = port;
     server_options.additional_namespace_uris = {
         "urn:orocos:rtt:fixture:unrelated"};
