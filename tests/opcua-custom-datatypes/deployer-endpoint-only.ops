@@ -1,0 +1,3 @@
+import("orocos_opcua_fixture")
+loadComponent("sample", "orocos::opcua::fixture::FixtureComponent")
+opcua.start()

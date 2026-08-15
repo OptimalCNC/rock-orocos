@@ -2,6 +2,7 @@
 
 #include <rtt/InputPort.hpp>
 #include <rtt/OutputPort.hpp>
+#include <rtt/Service.hpp>
 #include <rtt/rt_string.hpp>
 
 #include <cstddef>
@@ -76,7 +77,8 @@ struct FixtureComponent::Impl {
         point("Point", Point{1.0, 2.0}),
         envelope("Envelope", Envelope{{3.0, 4.0}, 5}),
         point_array("PointArray", {{6.0, 7.0}, {8.0, 9.0}}),
-        large_point_array(makeLargePointArray()) {
+        large_point_array(makeLargePointArray()),
+        internal(RTT::Service::Create("internal")) {
     owner.addProperty("Gain", gain);
     owner.addAttribute("Status", status);
     owner.addConstant("Limit", limit);
@@ -91,9 +93,12 @@ struct FixtureComponent::Impl {
     publishSurface(owner, envelope);
     publishSurface(owner, point_array);
     owner.addAttribute("LargePointArrayAttribute", large_point_array);
+    internal->addOperation("reset", &Impl::reset, this, RTT::OwnThread);
+    owner.provides()->addService(internal);
   }
 
   std::int32_t echo(std::int32_t value) { return value; }
+  void reset() {}
 
   std::int32_t gain{1};
   std::string status{"idle"};
@@ -107,6 +112,7 @@ struct FixtureComponent::Impl {
   Surface<Envelope> envelope;
   Surface<PointArray> point_array;
   PointArray large_point_array;
+  RTT::Service::shared_ptr internal;
 };
 
 FixtureComponent::FixtureComponent(const std::string &name)

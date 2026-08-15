@@ -276,12 +276,13 @@ TASKBROWSER="$PREFIX/bin/ctaskbrowser-opcua"
 TASKBROWSER_BINARY="$PREFIX/bin/ctaskbrowser-opcua-$TARGET"
 TASKBROWSER_ACCEPTANCE="$OROCOS_ROCK_ROOT/tests/opcua-custom-datatypes/ctaskbrowser_acceptance.rb"
 NO_START_SCRIPT="$PREFIX/share/orocos-opcua-fixture/deployer-no-start.ops"
+ENDPOINT_ONLY_SCRIPT="$PREFIX/share/orocos-opcua-fixture/deployer-endpoint-only.ops"
 START_SCRIPT="$PREFIX/share/orocos-opcua-fixture/deployer-start.ops"
 for artifact in \
     "$TYPEKIT" "$TRANSPORT" "$COMPONENT" "$SERVER" "$CLIENT" \
     "$DEPLOYER" "$DEPLOYER_BINARY" "$TASKBROWSER" \
     "$TASKBROWSER_BINARY" "$TASKBROWSER_ACCEPTANCE" \
-    "$NO_START_SCRIPT" "$START_SCRIPT"
+    "$NO_START_SCRIPT" "$ENDPOINT_ONLY_SCRIPT" "$START_SCRIPT"
 do
     orocos_rock_require_file "$artifact"
 done
@@ -432,8 +433,70 @@ if ! wait "$DEPLOYER_PID"; then
 fi
 DEPLOYER_PID=""
 
+ENDPOINT_ONLY_PORT="$(unused_port)"
+while [ "$ENDPOINT_ONLY_PORT" = "$NO_START_PORT" ]; do
+    ENDPOINT_ONLY_PORT="$(unused_port)"
+done
+ENDPOINT_ONLY_ENDPOINT="opc.tcp://$LAN_IPV4:$ENDPOINT_ONLY_PORT/rtt"
+ENDPOINT_ONLY_LOG="$TEST_ROOT/deployer-endpoint-only.log"
+ENDPOINT_ONLY_CLIENT_LOG="$TEST_ROOT/deployer-endpoint-only-client.log"
+orocos_rock_info \
+    "Starting endpoint-only deployer on port $ENDPOINT_ONLY_PORT"
+"$DEPLOYER" \
+    --opcua-port "$ENDPOINT_ONLY_PORT" \
+    --opcua-endpoint-path /rtt \
+    "$ENDPOINT_ONLY_SCRIPT" </dev/null >"$ENDPOINT_ONLY_LOG" 2>&1 &
+DEPLOYER_PID="$!"
+
+endpoint_only_ready=0
+for _ in $(seq 1 60); do
+    if ipv4_wildcard_listener "$ENDPOINT_ONLY_PORT"; then
+        endpoint_only_ready=1
+        break
+    fi
+    if ! kill -0 "$DEPLOYER_PID" 2>/dev/null; then
+        break
+    fi
+    sleep 0.05
+done
+if [ "$endpoint_only_ready" -ne 1 ]; then
+    sed -n '1,240p' "$ENDPOINT_ONLY_LOG" >&2
+    ss -H -ltn "sport = :$ENDPOINT_ONLY_PORT" >&2 || true
+    orocos_rock_die "endpoint-only OPC UA listener did not become ready"
+fi
+ss -H -4 -ltn "sport = :$ENDPOINT_ONLY_PORT" \
+    >"$TEST_ROOT/deployer-endpoint-only-listener.ss"
+
+if "$CLIENT" \
+    --deployer \
+    --probe-only \
+    --component Deployer \
+    --typekit "$TYPEKIT" \
+    --transport "$TRANSPORT" \
+    --endpoint "$ENDPOINT_ONLY_ENDPOINT" \
+    >"$ENDPOINT_ONLY_CLIENT_LOG" 2>&1
+then
+    orocos_rock_die \
+        "client created a Deployer proxy without explicit publication"
+fi
+
+kill -TERM "$DEPLOYER_PID"
+if ! wait "$DEPLOYER_PID"; then
+    sed -n '1,240p' "$ENDPOINT_ONLY_LOG" >&2
+    orocos_rock_die "endpoint-only deployer failed during shutdown"
+fi
+DEPLOYER_PID=""
+
+if listening_socket "$ENDPOINT_ONLY_PORT" | grep -q .; then
+    listening_socket "$ENDPOINT_ONLY_PORT" >&2
+    orocos_rock_die \
+        "endpoint-only OPC UA port remained open after deployer shutdown"
+fi
+
 START_PORT="$(unused_port)"
-while [ "$START_PORT" = "$NO_START_PORT" ]; do
+while [ "$START_PORT" = "$NO_START_PORT" ] || \
+    [ "$START_PORT" = "$ENDPOINT_ONLY_PORT" ]
+do
     START_PORT="$(unused_port)"
 done
 START_ENDPOINT="opc.tcp://$LAN_IPV4:$START_PORT/rtt"
@@ -518,6 +581,8 @@ RUNTIME_ENV="$TEST_ROOT/runtime-env.sh"
     printf 'export OROCOS_OPCUA_TRANSPORT=%q\n' "$TRANSPORT"
     printf 'export OROCOS_OPCUA_COMPONENT=%q\n' "$COMPONENT"
     printf 'export OROCOS_OPCUA_NO_START_SCRIPT=%q\n' "$NO_START_SCRIPT"
+    printf 'export OROCOS_OPCUA_ENDPOINT_ONLY_SCRIPT=%q\n' \
+        "$ENDPOINT_ONLY_SCRIPT"
     printf 'export OROCOS_OPCUA_START_SCRIPT=%q\n' "$START_SCRIPT"
 } >"$RUNTIME_ENV"
 

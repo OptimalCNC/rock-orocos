@@ -1,5 +1,6 @@
 #include "fixture_types.hpp"
 
+#include <rtt/opcua/node_id.hpp>
 #include <rtt/opcua/task_context_proxy.hpp>
 #include <rtt/opcua/type_protocol.hpp>
 
@@ -28,6 +29,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <initializer_list>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -53,10 +55,9 @@ std::string argumentValue(int argc, char **argv, std::string_view name) {
 }
 
 bool hasFlag(int argc, char **argv, std::string_view name) {
-  return std::any_of(argv + 1, argv + argc,
-                     [name](const char *argument) {
-                       return std::string_view(argument) == name;
-                     });
+  return std::any_of(argv + 1, argv + argc, [name](const char *argument) {
+    return std::string_view(argument) == name;
+  });
 }
 
 void require(bool condition, std::string message) {
@@ -84,18 +85,17 @@ void loadTypesAndTransports(const std::string &typekit,
 }
 
 void verifyTypeInfoContract() {
-  const auto point_name =
-      std::string(orocos::opcua::fixture::kPointTypeName);
+  const auto point_name = std::string(orocos::opcua::fixture::kPointTypeName);
   const auto envelope_name =
       std::string(orocos::opcua::fixture::kEnvelopeTypeName);
 
-  const RTT::types::TypeInfo *point_info = RTT::types::Types()->type(point_name);
+  const RTT::types::TypeInfo *point_info =
+      RTT::types::Types()->type(point_name);
   const RTT::types::TypeInfo *envelope_info =
       RTT::types::Types()->type(envelope_name);
   require(point_info != nullptr, "Point TypeInfo is missing");
   require(envelope_info != nullptr, "Envelope TypeInfo is missing");
-  require(point_info->getMemberNames() ==
-              std::vector<std::string>({"x", "y"}),
+  require(point_info->getMemberNames() == std::vector<std::string>({"x", "y"}),
           "Point member names mismatch");
   require(envelope_info->getMemberNames() ==
               std::vector<std::string>({"point", "quality"}),
@@ -120,17 +120,16 @@ void verifyTypeInfoContract() {
 
   RTT::internal::AssignableDataSource<Envelope>::shared_ptr envelope =
       new RTT::internal::ValueDataSource<Envelope>(Envelope{{1.0, 2.0}, 3});
-  require(envelope_info->toString(envelope) ==
-              "Envelope{Point{1, 2}, 3}",
+  require(envelope_info->toString(envelope) == "Envelope{Point{1, 2}, 3}",
           "Envelope stream output mismatch");
   require(envelope_info->fromString("Envelope{Point{4, 5}, 6}", envelope),
           "Envelope stream input failed");
   require(envelope->get() == Envelope{{4.0, 5.0}, 6},
           "Envelope stream value mismatch");
   const Envelope envelope_before_invalid = envelope->get();
-  require(!envelope_info->fromString(
-              "Envelope{Point{7, 8}, 9}garbage", envelope),
-          "Envelope trailing input was accepted");
+  require(
+      !envelope_info->fromString("Envelope{Point{7, 8}, 9}garbage", envelope),
+      "Envelope trailing input was accepted");
   require(envelope->get() == envelope_before_invalid,
           "Envelope trailing input changed the destination");
   require(!envelope_info->fromString("Envelope{Point{7, 8}; 9}", envelope),
@@ -179,8 +178,7 @@ bool equalValue(const RTT::rt_string &left, const RTT::rt_string &right) {
 template <typename Result, typename Argument>
 Result callOne(RTT::Service &service, const std::string &operation_name,
                const Argument &argument) {
-  RTT::OperationInterfacePart *operation =
-      service.getOperation(operation_name);
+  RTT::OperationInterfacePart *operation = service.getOperation(operation_name);
   require(operation != nullptr, "missing operation " + operation_name);
   Result result{};
   RTT::internal::OperationCallerC caller(
@@ -191,10 +189,23 @@ Result callOne(RTT::Service &service, const std::string &operation_name,
   return result;
 }
 
+template <typename Result, typename FirstArgument, typename SecondArgument>
+Result callTwo(RTT::Service &service, const std::string &operation_name,
+               const FirstArgument &first, const SecondArgument &second) {
+  RTT::OperationInterfacePart *operation = service.getOperation(operation_name);
+  require(operation != nullptr, "missing operation " + operation_name);
+  Result result{};
+  RTT::internal::OperationCallerC caller(
+      operation, operation_name, RTT::internal::GlobalEngine::Instance());
+  caller.argC(first).argC(second).ret(result);
+  caller.check();
+  require(caller.call(), "operation call failed: " + operation_name);
+  return result;
+}
+
 template <typename Result>
 Result callZero(RTT::Service &service, const std::string &operation_name) {
-  RTT::OperationInterfacePart *operation =
-      service.getOperation(operation_name);
+  RTT::OperationInterfacePart *operation = service.getOperation(operation_name);
   require(operation != nullptr, "missing operation " + operation_name);
   Result result{};
   RTT::internal::OperationCallerC caller(
@@ -297,105 +308,30 @@ void requireOperationNames(RTT::Service &service,
                            const std::vector<std::string> &expected,
                            const std::string &interface_name) {
   const std::vector<std::string> actual = operationNames(service);
-  require(actual == expected,
-          interface_name + " operation set mismatch; expected: [" +
-              formatNames(expected) + "]; actual: [" + formatNames(actual) +
-              "]");
+  require(actual == expected, interface_name +
+                                  " operation set mismatch; expected: [" +
+                                  formatNames(expected) + "]; actual: [" +
+                                  formatNames(actual) + "]");
 }
 
 const std::vector<std::string> kExpectedOpcUaOperations{
-    "endpointUrl",      "isRunning", "lastError",
-    "publishComponent", "start",     "unsupportedResources"};
+    "endpointUrl",
+    "isRunning",
+    "lastError",
+    "publicationDiagnostics",
+    "publishComponent",
+    "publishComponentSelected",
+    "start",
+    "unsupportedResources"};
 
 const std::vector<std::string> kExpectedDeployerOperations{
-    "activate",
-    "addPeer",
-    "aliasPeer",
-    "cleanup",
-    "cleanupComponents",
-    "clearConfiguration",
-    "configure",
-    "configureComponent",
-    "configureComponents",
-    "connect",
-    "connectOperations",
-    "connectPeers",
-    "connectPorts",
-    "connectServices",
-    "connectTwoPorts",
-    "createStream",
-    "displayComponentTypes",
-    "error",
-    "getComponentTypes",
-    "getCpuAffinity",
-    "getPeriod",
-    "import",
-    "inException",
-    "inFatalError",
-    "inRunTimeError",
-    "isActive",
-    "isConfigured",
-    "isRunning",
-    "kickOut",
-    "kickOutAll",
-    "kickOutComponent",
-    "kickStart",
-    "loadComponent",
-    "loadComponents",
-    "loadConfiguration",
-    "loadConfigurationString",
-    "loadLibrary",
-    "loadService",
-    "path",
-    "recover",
-    "reloadLibrary",
-    "removePeer",
-    "runScript",
-    "setActivity",
-    "setActivityOnCPU",
-    "setCpuAffinity",
-    "setFileDescriptorActivity",
-    "setMasterSlaveActivity",
-    "setPeriod",
-    "setPeriodicActivity",
-    "setPeriodicActivityOnCPU",
-    "setSequentialActivity",
-    "setSlaveActivity",
-    "setWaitPeriodPolicy",
-    "start",
-    "startComponent",
-    "startComponents",
-    "stop",
-    "stopComponent",
-    "stopComponents",
-    "stream",
-    "trigger",
-    "unloadComponent",
-    "unloadComponents",
-    "update",
-    "waitForInterrupt",
-    "waitForSignal"};
-
-void requireConnPolicyArgument(RTT::Service &service,
-                               const std::string &operation_name,
-                               std::size_t expected_arity) {
-  RTT::OperationInterfacePart *operation =
-      service.getOperation(operation_name);
-  require(operation != nullptr, "missing Deployer operation " + operation_name);
-  const std::vector<RTT::ArgumentDescription> arguments =
-      operation->getArgumentList();
-  require(arguments.size() == expected_arity,
-          "unexpected argument count for " + operation_name);
-  require(!arguments.empty() && arguments.back().type == "ConnPolicy",
-          operation_name + " does not expose its ConnPolicy argument");
-}
+    "getTargetState", "getTaskState",   "inException",
+    "inFatalError",   "inRunTimeError", "isActive",
+    "isConfigured",   "isRunning",      "unloadComponent"};
 
 void verifyDeployerInterface(RTT::TaskContext &deployer) {
   RTT::Service &root = *deployer.provides();
   requireOperationNames(root, kExpectedDeployerOperations, "remote Deployer");
-  requireConnPolicyArgument(root, "createStream", 3U);
-  requireConnPolicyArgument(root, "connect", 3U);
-  requireConnPolicyArgument(root, "stream", 2U);
 
   RTT::Service::shared_ptr opcua = root.getService("opcua");
   require(opcua != nullptr, "remote Deployer is missing the opcua service");
@@ -412,16 +348,17 @@ void exerciseSupportedComponent(RTT::TaskContext &proxy) {
   require(callOne<std::int32_t>(service, "echo", std::int32_t{42}) == 42,
           "built-in echo operation round trip failed");
 
-  auto *gain = dynamic_cast<RTT::Property<std::int32_t> *>(
-      service.getProperty("Gain"));
+  auto *gain =
+      dynamic_cast<RTT::Property<std::int32_t> *>(service.getProperty("Gain"));
   require(gain != nullptr, "missing writable Gain property");
   gain->set(9);
   require(gain->get() == 9, "Gain property write failed");
 
   RTT::base::AttributeBase *status = service.getAttribute("Status");
   require(status != nullptr, "missing writable Status attribute");
-  auto *status_source = RTT::internal::AssignableDataSource<std::string>::narrow(
-      status->getDataSource().get());
+  auto *status_source =
+      RTT::internal::AssignableDataSource<std::string>::narrow(
+          status->getDataSource().get());
   require(status_source != nullptr, "Status attribute is not writable");
   status_source->set("running");
   require(status_source->get() == "running", "Status attribute write failed");
@@ -437,12 +374,10 @@ void exerciseSupportedComponent(RTT::TaskContext &proxy) {
           "Limit constant is unexpectedly writable");
 
   exercise(proxy, "Float64Array", std::vector<double>{1.25, 2.5},
-           std::vector<double>{3.75, 5.0},
-           std::vector<double>{6.25, 7.5},
+           std::vector<double>{3.75, 5.0}, std::vector<double>{6.25, 7.5},
            std::vector<double>{8.75, 10.0});
   exercise(proxy, "Int32Array", std::vector<std::int32_t>{10, 20},
-           std::vector<std::int32_t>{30, 40},
-           std::vector<std::int32_t>{50, 60},
+           std::vector<std::int32_t>{30, 40}, std::vector<std::int32_t>{50, 60},
            std::vector<std::int32_t>{70, 80});
   exercise(proxy, "StringArray", std::vector<std::string>{"alpha", "beta"},
            std::vector<std::string>{"gamma", "delta"},
@@ -462,20 +397,71 @@ void exerciseSupportedComponent(RTT::TaskContext &proxy) {
            PointArray{{18.0, 19.0}, {20.0, 21.0}});
 }
 
+std::uint16_t namespaceIndex(::opcua::Client &client, std::string_view uri,
+                             std::string_view description) {
+  const auto namespaces = client.namespaceArray();
+  const auto found = std::find(namespaces.begin(), namespaces.end(), uri);
+  require(found != namespaces.end(), std::string(description) + " is missing");
+  const auto distance = std::distance(namespaces.begin(), found);
+  require(distance >= 0 &&
+              distance <= std::numeric_limits<std::uint16_t>::max(),
+          std::string(description) + " index is invalid");
+  return static_cast<std::uint16_t>(distance);
+}
+
+::opcua::NodeId modelNodeId(std::uint16_t namespace_index,
+                            std::initializer_list<std::string_view> segments) {
+  const std::vector<std::string_view> path_segments(segments);
+  return ::opcua::NodeId(namespace_index,
+                         RTT::opcua::makeNodePath(path_segments));
+}
+
+void requireMissingNode(::opcua::Client &client, const ::opcua::NodeId &id,
+                        const std::string &description) {
+  const auto result = ::opcua::services::readNodeClass(client, id);
+  require(!result, description + " unexpectedly exists");
+  require(result.code() == UA_STATUSCODE_BADNODEIDUNKNOWN,
+          description + " did not return BadNodeIdUnknown");
+}
+
+void requireMissingModelNode(const std::string &endpoint,
+                             std::initializer_list<std::string_view> segments,
+                             const std::string &description) {
+  ::opcua::ClientConfig config;
+  config.setTimeout(2000U);
+  ::opcua::Client client(std::move(config));
+  client.connect(endpoint);
+  const std::uint16_t namespace_index = namespaceIndex(
+      client, RTT::opcua::kNamespaceUri, "RTT OPC UA namespace URI");
+  requireMissingNode(client, modelNodeId(namespace_index, segments),
+                     description);
+  client.disconnect();
+}
+
+void requireSelectedServicesAbsent(RTT::TaskContext &proxy) {
+  RTT::Service &root = *proxy.provides();
+  require(root.getService("internal") == nullptr,
+          "selected sample unexpectedly exposes internal service");
+  for (const std::string_view stem :
+       {"Float64Array", "Int32Array", "StringArray", "RtString", "Point",
+        "Envelope", "PointArray"}) {
+    for (const std::string_view suffix : {"Input", "Output"}) {
+      const std::string service_name = std::string(stem) + std::string(suffix);
+      require(root.getService(service_name) == nullptr,
+              "selected sample unexpectedly exposes generated port service " +
+                  service_name);
+    }
+  }
+}
+
 void verifyCustomNodes(const std::string &endpoint) {
   ::opcua::ClientConfig config;
   config.setTimeout(2000U);
   ::opcua::Client client(std::move(config));
   client.connect(endpoint);
-  const auto namespaces = client.namespaceArray();
-  const auto found = std::find(namespaces.begin(), namespaces.end(),
-                               orocos::opcua::fixture::kNamespaceUri);
-  require(found != namespaces.end(), "fixture namespace URI is missing");
-  const auto distance = std::distance(namespaces.begin(), found);
-  require(distance > 1, "fixture namespace unexpectedly used index 1");
-  require(distance <= std::numeric_limits<std::uint16_t>::max(),
-          "fixture namespace index overflow");
-  const auto namespace_index = static_cast<std::uint16_t>(distance);
+  const std::uint16_t namespace_index = namespaceIndex(
+      client, orocos::opcua::fixture::kNamespaceUri, "fixture namespace URI");
+  require(namespace_index > 1, "fixture namespace unexpectedly used index 1");
 
   for (const std::string_view name : {"Point", "Envelope"}) {
     const ::opcua::NodeId type_id(namespace_index,
@@ -526,8 +512,8 @@ int ORO_main(int argc, char **argv) {
     std::string error;
     auto create_proxy = [&](const std::string &name) {
       error.clear();
-      auto proxy = RTT::opcua::TaskContextProxy::create(endpoint, name, options,
-                                                        &error);
+      auto proxy =
+          RTT::opcua::TaskContextProxy::create(endpoint, name, options, &error);
       require(proxy != nullptr,
               error.empty() ? "unable to create proxy for " + name : error);
       return proxy;
@@ -552,28 +538,61 @@ int ORO_main(int argc, char **argv) {
       RTT::Service::shared_ptr opcua = root.getService("opcua");
       require(opcua != nullptr, "remote Deployer is missing the opcua service");
 
+      const std::vector<std::string> sample_selectors{
+          "operations/*", "properties/*", "attributes/*", "ports/*"};
       auto sample = create_proxy(component);
-      require(callOne<bool>(*opcua, "publishComponent", component),
-              "first repeated publication failed");
-      require(callOne<bool>(*opcua, "publishComponent", component),
-              "second repeated publication failed");
+      require(callTwo<bool>(*opcua, "publishComponentSelected", component,
+                            sample_selectors),
+              "repeated selected publication failed");
       exerciseSupportedComponent(*sample);
+      requireSelectedServicesAbsent(*sample);
+      requireMissingModelNode(endpoint,
+                              {"components", component, "services", "internal"},
+                              "selected sample internal service node");
 
-      require(!callOne<bool>(*opcua, "publishComponent",
-                             std::string("unsupported")),
-              "unsupported component publication unexpectedly succeeded");
+      auto sample_full = create_proxy("sample-full");
+      RTT::Service::shared_ptr internal =
+          sample_full->provides()->getService("internal");
+      require(internal != nullptr,
+              "fully published sample is missing internal service");
+      require(internal->getOperation("reset") != nullptr,
+              "fully published sample internal service is missing reset");
+
+      const std::vector<std::string> unsupported_selectors{
+          "properties/UnsupportedProperty", "properties/Missing",
+          "properties//Malformed"};
+      require(!callTwo<bool>(*opcua, "publishComponentSelected",
+                             std::string("unsupported"), unsupported_selectors),
+              "unsupported selected publication unexpectedly succeeded");
       require(callZero<std::string>(*opcua, "lastError") ==
-                  "strict OPC UA publication rejected component 'unsupported'",
-              "unexpected strict-publication error");
-      const std::vector<std::string> expected_diagnostics{
+                  "selective OPC UA publication rejected component "
+                  "'unsupported' with 3 diagnostic(s)",
+              "unexpected selected-publication error");
+      const std::vector<std::string> expected_publication_diagnostics{
+          "OPC UA publication: component 'unsupported' rejected selector "
+          "'properties//Malformed': selector contains an empty segment.",
+          "OPC UA publication: component 'unsupported' selector "
+          "'properties/Missing' matched no RTT resource.",
+          "OPC UA publication: component 'unsupported' rejected resource "
+          "'properties/UnsupportedProperty': property uses RTT type "
+          "'/orocos/fixture/UnsupportedValue' which has no registered OPC UA "
+          "protocol."};
+      require(callOne<std::vector<std::string>>(*opcua,
+                                                "publicationDiagnostics",
+                                                std::string("unsupported")) ==
+                  expected_publication_diagnostics,
+              "unexpected selected-publication diagnostics");
+      const std::vector<std::string> expected_legacy_diagnostics{
           "OPC UA: component 'unsupported' rejected property "
           "'UnsupportedProperty' because RTT type "
           "'/orocos/fixture/UnsupportedValue' has no registered OPC UA "
           "protocol."};
-      require(callOne<std::vector<std::string>>(
-                  *opcua, "unsupportedResources", std::string("unsupported")) ==
-                  expected_diagnostics,
+      require(callOne<std::vector<std::string>>(*opcua, "unsupportedResources",
+                                                std::string("unsupported")) ==
+                  expected_legacy_diagnostics,
               "unexpected unsupported-resource diagnostics");
+      requireMissingModelNode(endpoint, {"components", "unsupported"},
+                              "unsupported component root");
 
       require(!callOne<bool>(root, "unloadComponent", component),
               "published component unload unexpectedly succeeded");

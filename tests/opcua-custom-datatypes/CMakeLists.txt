@@ -121,7 +121,10 @@ install(
   DESTINATION include/orocos/orocos_opcua_fixture
 )
 install(
-  FILES deployer-no-start.ops deployer-start.ops
+  FILES
+    deployer-endpoint-only.ops
+    deployer-no-start.ops
+    deployer-start.ops
   DESTINATION share/orocos-opcua-fixture
 )
 

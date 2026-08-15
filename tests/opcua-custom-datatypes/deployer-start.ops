@@ -1,5 +1,14 @@
 import("orocos_opcua_fixture")
 loadComponent("sample", "orocos::opcua::fixture::FixtureComponent")
+loadComponent("sample-full", "orocos::opcua::fixture::FixtureComponent")
 loadComponent("unsupported", "orocos::opcua::fixture::UnsupportedComponent")
+
+var StringArray deployer_selectors = StringArray(
+    "operations/unloadComponent", "services/opcua/**")
+var StringArray sample_selectors = StringArray(
+    "operations/*", "properties/*", "attributes/*", "ports/*")
+
 opcua.start()
-opcua.publishComponent("sample")
+opcua.publishComponentSelected("Deployer", deployer_selectors)
+opcua.publishComponentSelected("sample", sample_selectors)
+opcua.publishComponent("sample-full")
