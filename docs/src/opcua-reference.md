@@ -1,18 +1,19 @@
 # Native OPC UA Reference
 
 This chapter defines the native OPC UA behavior currently exported by the
-installed Orocos/Rock toolchain. Planned security changes are listed
-separately under Planned Work.
+installed Orocos/Rock toolchain.
 
 > [!IMPORTANT]
-> The current endpoint is loopback-only. Non-loopback listening remains
-> rejected until the planned PKI and authorization contract is implemented.
+> The installed endpoint listens on all IPv4 interfaces by default. It uses
+> `SecurityPolicy None` and currently has no authentication or authorization;
+> restrict access with network controls.
 
 ## Commands And Endpoint
 
 - `deployer-opcua` selects the executable for `OROCOS_TARGET`.
 - `ctaskbrowser-opcua URL COMPONENT` connects to a published component.
-- The default URL is `opc.tcp://127.0.0.1:4840/rtt`.
+- The default listener is `opc.tcp://0.0.0.0:4840/rtt`; clients use a concrete
+  server IPv4 address.
 - `--opcua-port` and `--opcua-endpoint-path` select a different local endpoint.
 
 ## Startup And Datatype Registry
@@ -20,21 +21,123 @@ separately under Planned Work.
 Import every required typekit and OPC UA transport plugin before the first
 `opcua.start()` attempt. The first start attempt freezes the process-wide
 datatype registry. `opcua.endpointUrl()` reports configuration while stopped;
-`opcua.isRunning()` becomes true only after listener startup and complete
-Deployer publication.
+`opcua.isRunning()` reports only listener startup.
 
-Starting an already running endpoint is a successful no-op. A failed startup
-does not expose a partially published Deployer.
+`opcua.start()` is endpoint-only: it freezes the registry, starts the listener,
+and creates an empty object model. It publishes no RTT component, including the
+Deployer. Starting an already running endpoint is a successful no-op. A failed
+startup exposes no endpoint.
 
-## Static Component Publication
+## Publication API
 
-`opcua.publishComponent(name)` validates and publishes the complete supported
-RTT interface as one transaction. Publishing the same component instance again
-is a successful no-op. `Server=true` does not publish a component.
+Every component is published explicitly after startup. The OCL deployment
+service provides:
 
-Publication is static: resources added after publication are not added to the
-endpoint. There is no public unpublish or replacement operation, and the
-Deployer rejects unloading a published component while the endpoint exists.
+```text
+bool publishComponent(String component)
+bool publishComponentSelected(String component, StringArray selectors)
+StringArray publicationDiagnostics(String component)
+StringArray unsupportedResources(String component)
+```
+
+`publishComponentSelected` is the selective API; `StringArray` is required and
+must contain at least one selector. `publishComponent` remains the separate
+complete-publication API. It validates the full supported interface and is
+strict: one unsupported operation, property, attribute, constant, port, or
+service rejects the whole component. `Server=true` does not publish a component.
+
+For example:
+
+```text
+var StringArray deployer_selectors = StringArray(
+    "operations/unloadComponent", "services/opcua/**")
+
+opcua.start()
+opcua.publishComponentSelected("Deployer", deployer_selectors)
+opcua.publishComponent("diagnostic_fixture")
+```
+
+## Selectors And Resource Bundles
+
+Selectors are canonical paths over semantic logical RTT resources, not regular
+expressions.
+The root forms are `operations/<operation>`, `properties/<property>`,
+`attributes/<attribute>`, `ports/<port>`, and `services/<service>`, with
+nested service contents below `services/<service>/...`.
+
+- An exact selector matches that resource.
+- `*` occupies a whole segment and matches exactly one segment.
+- `**` occupies a whole final segment and recursively matches descendants.
+
+Partial wildcards, regex syntax, empty segments, and a non-terminal `**` are
+invalid. Every selector must match at least one logical resource, even when
+other selectors match. An exact service selector chooses that service object;
+use `services/<service>/**` to select its contents.
+
+Literal segments use the same canonical percent escaping as NodeId paths:
+unreserved ASCII characters are literal and every other byte is uppercase
+`%HH`. A literal service named `motion/raw*`, for example, is selected as
+`services/motion%2Fraw%2A/**`; the `*` inside the escaped name is not a glob.
+
+Each selected logical resource maps as one complete atomic OPC UA node bundle,
+including its required metadata and values. Service ancestors are included as
+needed. A port and a same-named generated service are independent resources:
+`ports/Command` does not select `services/Command/**`, and vice versa.
+
+## Mandatory Proxy Baseline
+
+Selected publication always includes and validates these eight root lifecycle
+query operations, even if no selector names them:
+
+```text
+getTaskState
+getTargetState
+isConfigured
+isActive
+isRunning
+inFatalError
+inException
+inRunTimeError
+```
+
+They must have proxy-compatible schemas. Mutating lifecycle operations are not
+included automatically. This baseline allows `TaskContextProxy` and
+`ctaskbrowser-opcua` to work against an intentionally sparse publication.
+
+## Validation, Diagnostics, And Static Topology
+
+Selected publication validates only the effective selected set, required
+service ancestors, and mandatory baseline. Unsupported unselected resources do
+not reject the attempt and do not appear in `unsupportedResources` for it.
+Complete publication remains strict over the whole interface.
+
+Selector, inventory, selected-resource, mandatory-baseline, and publication
+mode or effective-set conflicts are collected before commit in deterministic
+order. Native callers receive structured `PublicationDiagnostic` records; the
+OCL `publicationDiagnostics(component)` operation returns their complete,
+stable messages in a `StringArray`. `lastError()` supplies a concise summary.
+`unsupportedResources(component)` remains the legacy unsupported-resource
+view, so callers should use `publicationDiagnostics` when they need selector
+or topology failures. A failed publication creates no component subtree.
+
+Publication is static. Repeating publication of the same component instance,
+mode, and normalized effective resource set is a successful no-op; selector
+order, duplicates, and overlaps do not change that identity. Switching between
+complete and selected modes, changing the effective set, or replacing the
+component instance fails. If a wildcard would match a different live interface,
+the new topology also fails. Apply those changes by restarting the endpoint or
+process; there is no public unpublish, replacement, or live policy update.
+
+## Publication And Authorization
+
+Publication controls whether a resource exists in the endpoint. Authorization,
+when added later, controls whether a session may browse, observe, write, or
+call an existing resource. Authorization cannot grant access to an unselected
+resource because no NodeId exists for it.
+
+Resources added after publication are not added to the endpoint. There is no
+public unpublish or replacement operation, and the Deployer rejects unloading
+a published component while the endpoint exists.
 
 ## RTT Interface Mapping
 
@@ -148,10 +251,6 @@ values, invoke mapped operations, and reconnect without depending on the
 server's source tree.
 
 ## Failure And Lifetime Rules
-
-One unsupported resource rejects the whole component publication. Diagnostics
-remain available through `opcua.unsupportedResources(name)`. Failed
-publication leaves no partial component subtree.
 
 Published callbacks retain the component and operation storage they use. A
 non-returning OwnThread operation can delay endpoint shutdown; its storage is

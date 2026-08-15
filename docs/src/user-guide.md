@@ -123,14 +123,40 @@ deployer-xenomai --version
 ## Use The OPC UA Deployer
 
 Create a startup script that imports every required typekit before starting the
-endpoint, then explicitly publishes each custom component:
+endpoint. `opcua.start()` starts only the endpoint: every component, including
+the Deployer, needs an explicit publication call.
 
 ```text
 import("sample_typekit")
 loadComponent("sample", "SampleComponent")
+
+var StringArray deployer_selectors = StringArray(
+    "operations/unloadComponent", "services/opcua/**")
+var StringArray sample_selectors = StringArray(
+    "operations/*", "properties/*", "attributes/*", "ports/*")
+
 opcua.start()
+opcua.publishComponentSelected("Deployer", deployer_selectors)
+opcua.publishComponentSelected("sample", sample_selectors)
+```
+
+`StringArray(...)` constructs the selector argument. A selector is a canonical
+resource-path glob, not a regular expression: an exact path selects one
+resource, `*` matches one complete path segment, and terminal `**` selects
+descendants. Every selector must match. See the
+[Native OPC UA Reference](./opcua-reference.md) for the complete path grammar
+and percent escaping rules.
+
+To publish a component's complete supported interface, choose that behavior
+explicitly:
+
+```text
 opcua.publishComponent("sample")
 ```
+
+Complete publication remains strict: any unsupported resource rejects the
+whole component. It is separate from selected publication, not an empty
+selector list.
 
 Start the deployer with that script:
 
@@ -156,19 +182,20 @@ commands dispatch to the executable for the selected `OROCOS_TARGET`.
 > `deployer-opcua` constructs the local Deployer with its OPC UA listener
 > stopped. Import typekits and their OPC UA transport plugins before
 > `opcua.start()`: the first start freezes the process-wide datatype registry.
-> `ctaskbrowser-opcua` cannot connect until start succeeds and the complete
-> Deployer interface has been published.
+> `ctaskbrowser-opcua` can connect only after start succeeds and the requested
+> Deployer surface has been explicitly published.
 
 `opcua.endpointUrl()` reports the configured URL even while stopped.
-`opcua.isRunning()` becomes true only after the listener is running and the
-Deployer publication is complete. Starting an already running endpoint and
-publishing the same component instance again are successful no-ops.
+`opcua.isRunning()` reports listener state; it does not prove that any RTT
+component has been published. Starting an already running endpoint and
+repeating the same component publication with the same mode and effective set
+are successful no-ops.
 
-Publication is strict and static. The complete supported RTT interface is
-published, including nested services, operations, properties, attributes,
-constants, and ports. One unsupported resource rejects the whole component and
-leaves diagnostics available through `opcua.unsupportedResources(name)`.
-Resources added after publication are not added to the endpoint.
+Selected publication validates only the matched resources and the mandatory
+proxy baseline, so an unsupported unselected resource does not reject it.
+Selected resources are published as complete atomic node bundles; ports and
+same-named generated services are independent choices. Resources added after
+publication are not added to the endpoint.
 
 `Server=true` does not publish a component through OPC UA. This version has no
 unpublish operation, so a component that has been published cannot be unloaded

@@ -18,7 +18,7 @@ The package entries use the public maintenance branches selected in
 | `typelib-cxx` | `CxxSuiteInstalledPlugins` and `CxxSuiteLocalPlugins` | Cross-distribution package workflow |
 | `rtt-typelib` | `rtt-typelib`, `get_marshaller_for_test`, and `rtt_typelib-gnulinux` metadata | Cross-distribution package workflow |
 | `rtt-core` | `main-test`, `list-test`, `core-test`, `task-test`, `mqueue-test`, and `mqueue_archive_test` | Maintained selected subset |
-| `rtt-opcua` | Target-correct maintained Xenomai subsets of `rtt_opcua_*_test`, split `ocl_opcua_deployment_*`, and TaskBrowser argument cases; OPC UA deployer/browser targets; `rtt_opcua-xenomai` plus installed OCL pkg-config metadata; and installed-prefix IPv4 LAN acceptance with wildcard listener, separate LAN client and TaskBrowser connections, shutdown closure, and home-prefix isolation | Xenomai maintained gate; GNU/Linux `rtt_opcua_*_test`, `rtt_opcua-gnulinux` metadata, and installed-prefix LAN verification pending |
+| `rtt-opcua` | Target-correct maintained Xenomai subsets of `rtt_opcua_*_test`, split `ocl_opcua_deployment_*`, and TaskBrowser argument cases; OPC UA deployer/browser targets; `rtt_opcua-xenomai` plus installed OCL pkg-config metadata; and installed-prefix selective-publication acceptance | Xenomai maintained gate; GNU/Linux `rtt_opcua_*_test`, `rtt_opcua-gnulinux` metadata, and installed-prefix LAN verification pending |
 | `ocl-basic` | `timer` and `taskb` | Cross-distribution package workflow |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` | Cross-distribution package workflow |
 
@@ -32,10 +32,15 @@ An installed-prefix acceptance run must:
 - source `env.sh` and `dev-env.sh` from an isolated prefix;
 - run the deployer and native OPC UA commands for the selected target;
 - verify target-specific mqueue and OPC UA transport discovery;
-- run the application-neutral custom datatype and explicit-start fixture;
-- verify complete Deployer publication and strict component publication;
-- verify TaskBrowser inspection, updates, and operation calls;
-- verify no CORBA or home-prefix contamination; and
+- prove endpoint-only `opcua.start()` and an initially absent Deployer;
+- explicitly publish selected Deployer and component surfaces, then separately
+  prove complete Deployer/component publication remains available and strict;
+- prove unselected-resource NodeIds are absent with
+  `BadNodeIdUnknown`, and selector failures return every diagnostic;
+- verify direct-client and TaskBrowser inspection, updates, and operation calls
+  through a non-loopback IPv4 address;
+- verify wildcard IPv4 listening, socket closure after shutdown, and no CORBA
+  or home-prefix contamination; and
 - configure a downstream Orocos package.
 
 The GNU/Linux mqueue acceptance requires

@@ -162,9 +162,14 @@ An install is considered minimally valid when it can:
 9. support a downstream Orocos configure step
 
 The installed-prefix OPC UA acceptance additionally starts the deployer,
-proves its socket is wildcard IPv4, connects separate installed client and
-TaskBrowser processes through a non-loopback IPv4 address, and proves the port
-closes after deployer shutdown.
+proves that `opcua.start()` exposes an endpoint without publishing a component,
+then explicitly proves selected and complete Deployer/component publication.
+It verifies that unselected deterministic NodeIds return `BadNodeIdUnknown`,
+that a selector failure returns complete diagnostics, and that selected nodes
+are usable from separate direct-client and TaskBrowser processes through a
+non-loopback IPv4 address. It also proves the listener is wildcard IPv4, the
+port closes after deployer shutdown, and the run has no home-prefix
+contamination.
 
 ## Relationship To Downstream Projects
 
