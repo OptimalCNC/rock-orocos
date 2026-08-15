@@ -9,6 +9,7 @@ of the current install contract.
 
 | Planned capability | Current gap |
 |---|---|
+| [OPC UA Selective Publication](./opcua-selective-publication-design.md) | A published component currently exposes its complete supported RTT interface. |
 | [OPC UA PKI And Authorization](./opcua-security-prd.md) | The native endpoint remains loopback-only. |
 | [Deployer TUI](./deployer-tui-prd.md) | The supported operator interface remains the classic deployer and TaskBrowser. |
 
