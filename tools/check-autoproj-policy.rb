@@ -37,17 +37,17 @@ cpp20_policy_check_path = File.join(root, "tools", "check-cpp20-policy.rb")
 rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
 
 expected_sources = {
-  "farbot" => { "url" => "https://github.com/liufang-robot/farbot.git", "branch" => "master" },
-  "rtlog-cpp" => { "url" => "https://github.com/liufang-robot/rtlog-cpp.git", "branch" => "main" },
+  "farbot" => { "url" => "https://github.com/OptimalCNC/farbot.git", "branch" => "master" },
+  "rtlog-cpp" => { "url" => "https://github.com/OptimalCNC/rtlog-cpp.git", "branch" => "main" },
   "open62541" => { "url" => "https://github.com/open62541/open62541.git", "tag" => "v1.4.15" },
   "open62541pp" => { "url" => "https://github.com/open62541pp/open62541pp.git", "tag" => "v0.21.2" },
-  "rtt" => { "url" => "https://github.com/liufang-robot/rtt.git", "branch" => "dev" },
-  "rtt_opcua" => { "url" => "https://github.com/liufang-robot/rtt_opcua.git", "branch" => "dev" },
-  "ocl" => { "url" => "https://github.com/liufang-robot/ocl.git", "branch" => "dev" },
-  "orogen" => { "url" => "https://github.com/liufang-robot/tools-orogen.git", "branch" => "dev" },
-  "typelib" => { "url" => "https://github.com/liufang-robot/tools-typelib.git", "branch" => "dev" },
-  "utilmm" => { "url" => "https://github.com/liufang-robot/utilmm.git", "branch" => "dev" },
-  "rtt_typelib" => { "url" => "https://github.com/liufang-robot/tools-rtt_typelib.git", "branch" => "dev" }
+  "rtt" => { "url" => "https://github.com/OptimalCNC/rtt.git", "branch" => "dev" },
+  "rtt_opcua" => { "url" => "https://github.com/OptimalCNC/rtt_opcua.git", "branch" => "dev" },
+  "ocl" => { "url" => "https://github.com/OptimalCNC/ocl.git", "branch" => "dev" },
+  "orogen" => { "url" => "https://github.com/OptimalCNC/tools-orogen.git", "branch" => "dev" },
+  "typelib" => { "url" => "https://github.com/OptimalCNC/tools-typelib.git", "branch" => "dev" },
+  "utilmm" => { "url" => "https://github.com/OptimalCNC/utilmm.git", "branch" => "dev" },
+  "rtt_typelib" => { "url" => "https://github.com/OptimalCNC/tools-rtt_typelib.git", "branch" => "dev" }
 }
 local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua]
 
