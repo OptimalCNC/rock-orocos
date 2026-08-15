@@ -467,17 +467,18 @@ fi
 ss -H -4 -ltn "sport = :$ENDPOINT_ONLY_PORT" \
     >"$TEST_ROOT/deployer-endpoint-only-listener.ss"
 
-if "$CLIENT" \
+if ! "$CLIENT" \
     --deployer \
-    --probe-only \
+    --require-missing-deployer-root \
     --component Deployer \
     --typekit "$TYPEKIT" \
     --transport "$TRANSPORT" \
     --endpoint "$ENDPOINT_ONLY_ENDPOINT" \
     >"$ENDPOINT_ONLY_CLIENT_LOG" 2>&1
 then
+    sed -n '1,240p' "$ENDPOINT_ONLY_CLIENT_LOG" >&2
     orocos_rock_die \
-        "client created a Deployer proxy without explicit publication"
+        "client did not confirm the endpoint-only Deployer root is absent"
 fi
 
 kill -TERM "$DEPLOYER_PID"

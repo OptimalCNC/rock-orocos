@@ -500,6 +500,8 @@ int ORO_main(int argc, char **argv) {
     const bool standalone = hasFlag(argc, argv, "--standalone");
     const bool deployer_mode = hasFlag(argc, argv, "--deployer");
     const bool probe_only = hasFlag(argc, argv, "--probe-only");
+    const bool require_missing_deployer_root =
+        hasFlag(argc, argv, "--require-missing-deployer-root");
     require(standalone != deployer_mode,
             "select exactly one of --standalone or --deployer");
 
@@ -518,6 +520,19 @@ int ORO_main(int argc, char **argv) {
               error.empty() ? "unable to create proxy for " + name : error);
       return proxy;
     };
+
+    if (require_missing_deployer_root) {
+      require(deployer_mode,
+              "--require-missing-deployer-root requires --deployer");
+      require(!probe_only,
+              "--require-missing-deployer-root conflicts with --probe-only");
+      require(component == "Deployer",
+              "--require-missing-deployer-root requires component Deployer");
+      requireMissingModelNode(endpoint, {"components", "Deployer"},
+                              "endpoint-only Deployer component root");
+      std::cout << "Missing Deployer component root confirmed\n";
+      return 0;
+    }
 
     if (probe_only) {
       auto proxy = create_proxy(component);
