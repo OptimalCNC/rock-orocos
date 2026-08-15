@@ -71,12 +71,10 @@ jobs:
             libffi-dev \
             libncurses5-dev \
             libnetcdf-dev \
-            libomniorb4-dev \
             libreadline-dev \
             libxml2-dev \
             libxml-xpath-perl \
             lsb-release \
-            omniidl \
             pkg-config \
             python3 \
             python3-dev \

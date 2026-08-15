@@ -38,6 +38,7 @@ else
   autoproj_install_index = contents.index("./tools/install-autoproj.sh")
   {
     "Autoproj launcher regression" => "bash tools/test-autoproj-launcher.sh",
+    "installed environment transaction regression" => "bash tools/test-install-env-transaction.sh",
     "nounset workspace environment regression" => "bash tools/test-workspace-env-nounset.sh"
   }.each do |name, command|
     command_index = contents.index(command)

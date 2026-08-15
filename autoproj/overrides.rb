@@ -8,6 +8,14 @@ setup_package "rtt" do |pkg|
   pkg.depends_on "rtlog-cpp"
   pkg.define "ENABLE_MQ", "ON"
   pkg.define "ENABLE_CORBA", "OFF"
+
+  # RTT's package.xml currently declares its optional CORBA backend as a
+  # required dependency. Keep the resolved dependency graph consistent with
+  # the no-CORBA build contract.
+  pkg.post_import do
+    pkg.description.dependencies.delete_if { |dependency| dependency.name == "omniorb" }
+    pkg.remove_dependency "omniorb"
+  end
 end
 
 setup_package "ocl" do |pkg|

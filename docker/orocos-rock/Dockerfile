@@ -34,11 +34,9 @@ RUN apt-get update && \
         libboost-system-dev \
         libboost-thread-dev \
         libncurses5-dev \
-        libomniorb4-dev \
         libxml2-dev \
         libxml-xpath-perl \
         lsb-release \
-        omniidl \
         pkg-config \
         python3 \
         python3-dev \
@@ -100,10 +98,8 @@ RUN apt-get update && \
         libboost-system-dev \
         libboost-thread-dev \
         libncurses5-dev \
-        libomniorb4-dev \
         libxml2-dev \
         libxml-xpath-perl \
-        omniidl \
         pkg-config \
         python3 \
         python3-dev \

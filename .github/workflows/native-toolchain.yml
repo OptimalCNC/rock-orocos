@@ -90,6 +90,7 @@ jobs:
       - name: Check focused Autoproj regressions
         run: |
           bash tools/test-autoproj-launcher.sh
+          bash tools/test-install-env-transaction.sh
           bash tools/test-workspace-env-nounset.sh
 
       - name: Check repository policy
