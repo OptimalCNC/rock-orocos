@@ -23,7 +23,7 @@ Date: 2026-08-11
 
 Implementation must preserve the ownership boundary in
 [Architecture](../architecture.md), the current static publication and
-loopback-only security limits in the
+wildcard IPv4/LAN endpoint with no authentication or authorization in the
 [Native OPC UA Reference](../opcua-reference.md), and the downstream artifact
 guarantees in the [Install Contract](../install-contract.md).
 
