@@ -260,15 +260,19 @@ public:
     return new ProxyDataSource<T>(std::move(reader), dataTypeNodeId());
   }
 
-  bool portValue(const RTT::base::OutputPortInterface *port,
-                 ::opcua::Variant *value) const override {
+  RTT::opcua::PortValueStatus
+  portValue(const RTT::base::OutputPortInterface *port,
+            ::opcua::Variant *value) const override {
     const auto *typed = dynamic_cast<const RTT::OutputPort<T> *>(port);
     if (typed == nullptr || value == nullptr || native_type_ == nullptr) {
-      return false;
+      return RTT::opcua::PortValueStatus::error;
     }
-    *value =
-        CodecTraits<T>::encode(typed->getLastWrittenValue(), *native_type_);
-    return true;
+    T sample{};
+    if (!typed->getLastWrittenValue(sample)) {
+      return RTT::opcua::PortValueStatus::waiting_for_initial_data;
+    }
+    *value = CodecTraits<T>::encode(sample, *native_type_);
+    return RTT::opcua::PortValueStatus::value;
   }
 
 private:
