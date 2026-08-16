@@ -23,7 +23,7 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `rtt` | Orocos runtime | Public maintenance fork |
 | `open62541` | OPC UA C stack used by the native RTT transport | Upstream tag `v1.4.15` |
 | `open62541pp` | C++ API used by `rtt_opcua` | Upstream tag `v0.21.2` |
-| `rtt_opcua` | Generic native OPC UA server, RTT object model, proxy, and port transport | `liufang-robot` upstream |
+| `rtt_opcua` | Generic native OPC UA server, RTT object model, proxy, and port transport | `OptimalCNC` upstream |
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
 | `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
 | `typelib` | generator type support | Public maintenance fork while compatibility fixes are needed |

@@ -6,12 +6,12 @@
 version_control:
   - farbot:
     type: git
-    url: https://github.com/liufang-robot/farbot.git
+    url: https://github.com/OptimalCNC/farbot.git
     branch: master
 
   - rtlog-cpp:
     type: git
-    url: https://github.com/liufang-robot/rtlog-cpp.git
+    url: https://github.com/OptimalCNC/rtlog-cpp.git
     branch: main
 
   - open62541:
@@ -26,36 +26,36 @@ version_control:
 
   - rtt_opcua:
     type: git
-    url: https://github.com/liufang-robot/rtt_opcua.git
+    url: https://github.com/OptimalCNC/rtt_opcua.git
     branch: dev
 
 overrides:
   - rtt:
     type: git
-    url: https://github.com/liufang-robot/rtt.git
+    url: https://github.com/OptimalCNC/rtt.git
     branch: dev
 
   - ocl:
     type: git
-    url: https://github.com/liufang-robot/ocl.git
+    url: https://github.com/OptimalCNC/ocl.git
     branch: dev
 
   - orogen:
     type: git
-    url: https://github.com/liufang-robot/tools-orogen.git
+    url: https://github.com/OptimalCNC/tools-orogen.git
     branch: dev
 
   - typelib:
     type: git
-    url: https://github.com/liufang-robot/tools-typelib.git
+    url: https://github.com/OptimalCNC/tools-typelib.git
     branch: dev
 
   - utilmm:
     type: git
-    url: https://github.com/liufang-robot/utilmm.git
+    url: https://github.com/OptimalCNC/utilmm.git
     branch: dev
 
   - rtt_typelib:
     type: git
-    url: https://github.com/liufang-robot/tools-rtt_typelib.git
+    url: https://github.com/OptimalCNC/tools-rtt_typelib.git
     branch: dev
