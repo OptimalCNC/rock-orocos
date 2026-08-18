@@ -1,0 +1,11 @@
+name "windows_smoke"
+
+import_types_from "WindowsSmokeTypes.hpp"
+
+task_context "Task" do
+    output_port "samples", "/windows_smoke/Sample"
+end
+
+deployment "windows_smoke_deployer" do
+    task "task", "Task"
+end

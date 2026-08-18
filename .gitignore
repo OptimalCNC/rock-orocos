@@ -21,6 +21,7 @@ docs/book/
 docs/superpowers/
 
 # Local tool and editor state
+.pixi/
 .worktrees/
 .superpowers/
 .codex
@@ -28,5 +29,6 @@ docs/superpowers/
 .bundle/
 .idea/
 .vscode/
+.tb_history
 *.swp
 *~

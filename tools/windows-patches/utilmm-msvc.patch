@@ -1,0 +1,142 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index be26b53..f53a8bf 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -9,8 +9,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+ set(CMAKE_CXX_EXTENSIONS OFF)
+ 
+ set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+-FIND_PACKAGE(Boost COMPONENTS unit_test_framework)
+-FIND_PACKAGE(Boost REQUIRED graph filesystem thread regex system)
++IF(MSVC)
++    option(ENABLE_TESTS "if tests should be built" OFF)
++    FIND_PACKAGE(Boost CONFIG REQUIRED COMPONENTS graph filesystem thread regex system)
++    IF (ENABLE_TESTS)
++        FIND_PACKAGE(Boost CONFIG REQUIRED COMPONENTS unit_test_framework)
++    ENDIF()
++ELSE()
++    FIND_PACKAGE(Boost COMPONENTS unit_test_framework)
++    FIND_PACKAGE(Boost REQUIRED graph filesystem thread regex system)
++ENDIF()
+ 
+ include_directories(${CMAKE_BINARY_DIR}) # to get cmake-generated utilmm/config/config.h
+ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+@@ -30,8 +38,10 @@ INSTALL(DIRECTORY utilmm/ DESTINATION include/utilmm
+     PATTERN "*.in" EXCLUDE)
+ INSTALL(FILES package.xml DESTINATION share/utilmm)
+ 
++IF(NOT MSVC)
+ set(ENABLE_TESTS ${Boost_UNIT_TEST_FRAMEWORK_FOUND}
+     CACHE BOOL "if tests should be built")
++ENDIF()
+ IF (ENABLE_TESTS)
+     enable_testing()
+     MESSAGE(STATUS "boost/test found ... building test suite")
+diff --git a/src/configsearch/configuration_finder.cc b/src/configsearch/configuration_finder.cc
+index 7d04c52..93f5f0c 100644
+--- a/src/configsearch/configuration_finder.cc
++++ b/src/configsearch/configuration_finder.cc
+@@ -29,7 +29,11 @@ std::string ConfigurationFinder::find( const std::string& configFile, const std:
+ 		fprintf(stderr, "WARNING: ConfigurationFinder: environment variable %s is not set\n", configEnv);
+ 	} else {
+ 
++#ifdef _WIN32
++        boost::split(searchDirectories, configurationDir, boost::is_any_of(";"));
++#else
+ 		boost::split(searchDirectories, configurationDir, boost::is_any_of(":"));
++#endif
+ 	}
+ 
+ 	if(packagename != "")
+diff --git a/src/demangle/demangle.cc b/src/demangle/demangle.cc
+index b37594f..a850c53 100644
+--- a/src/demangle/demangle.cc
++++ b/src/demangle/demangle.cc
+@@ -3,7 +3,7 @@
+  */
+ #include "utilmm/demangle/demangle.hh"
+ 
+-#if 1 // This will be replaced by a test checking <cxxabi.h>
++#if !defined(_MSC_VER) // This will be replaced by a test checking <cxxabi.h>
+ # include <cxxabi.h> 
+ #include <cstdlib>
+ 
+@@ -26,7 +26,9 @@ std::string utilmm::demangle(char const *name) {
+ 
+ #else 
+ 
+-# warning "Name demangling is not supported here"
++# if !defined(_MSC_VER)
++#  warning "Name demangling is not supported here"
++# endif
+ 
+ std::string utilmm::demangle(char const *name) {
+   std::string result(name);
+diff --git a/utilmm/plugin/dll.hh b/utilmm/plugin/dll.hh
+index f70e530..a7529a5 100644
+--- a/utilmm/plugin/dll.hh
++++ b/utilmm/plugin/dll.hh
+@@ -12,8 +12,11 @@
+ #include <boost/bind.hpp>
+ #include <boost/type_traits/remove_pointer.hpp>
+ 
+-// FIXME: that's for Linux only
+-#include <dlfcn.h> 
++#ifdef _WIN32
++# include <windows.h>
++#else
++# include <dlfcn.h>
++#endif
+ 
+ #include <iostream>
+ 
+@@ -26,7 +29,11 @@ namespace utilmm { namespace plugin {
+         void operator()(T)
+         {
+             std::cout << "Killing DLL\n";
++#ifdef _WIN32
++            FreeLibrary(static_cast<HMODULE>(h));
++#else
+             dlclose(h);
++#endif
+         }
+         void* h;
+     };
+@@ -46,10 +53,22 @@ namespace utilmm { namespace plugin {
+             
+             // Open the library. Yes, we do it on every access to 
+             // a symbol, see the design discussion in the documentation.
++#ifdef _WIN32
++            void* handle = LoadLibraryA(m_name.c_str());
++#else
+             void* handle = dlopen(m_name.c_str(), RTLD_LAZY|RTLD_GLOBAL);
++#endif
+             if (!handle) {
+                 throw std::logic_error("Could not open DLL");
+             }
++#ifdef _WIN32
++            void* address = reinterpret_cast<void*>(
++                GetProcAddress(static_cast<HMODULE>(handle), symbol_name.c_str()));
++            if (!address) {
++                FreeLibrary(static_cast<HMODULE>(handle));
++                throw std::logic_error("Could not resolve symbol in DLL");
++            }
++#else
+             // Clear the error state.
+             dlerror();
+             void* address = dlsym(handle, symbol_name.c_str());
+@@ -57,12 +76,11 @@ namespace utilmm { namespace plugin {
+             if (error) {
+                 throw std::logic_error(error);
+             }
++#endif
+             // Cast the to right type.
+             SymbolType s = (SymbolType)(address);
+ 
+-            boost::shared_ptr<PointedType> result(s, 
+-                                                  //killer(handle));
+-                                                  boost::bind(dlclose, handle));
++            boost::shared_ptr<PointedType> result(s, killer(handle));
+             
+             return result;            
+         }        

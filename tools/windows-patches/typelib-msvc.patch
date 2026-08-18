@@ -1,0 +1,325 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2cd2602..c741cf4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -14,8 +14,10 @@ FIND_PACKAGE ( Threads REQUIRED )
+ # is compatible with the NEW policy, so just set it to avoid getting a cmake
+ # warning
+ cmake_policy(SET CMP0007 NEW)
+-add_compile_options(-Werror=return-type)
+-add_compile_options(-Werror=switch)
++if(NOT MSVC)
++    add_compile_options(-Werror=return-type)
++    add_compile_options(-Werror=switch)
++endif()
+ 
+ # make the clang-based importer optional for now. the option is planned to be
+ # removed in the future, after using the new importer as default.
+@@ -39,7 +41,11 @@ if(COMMAND cmake_policy)
+     cmake_policy(SET CMP0003 NEW)
+ endif(COMMAND cmake_policy)
+ 
+-add_definitions(-Wall)
++if(MSVC)
++    add_compile_options(/W3)
++else()
++    add_compile_options(-Wall)
++endif()
+ CMAKE_USE_FULL_RPATH("${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_INSTALL_PREFIX}/lib/typelib")
+ 
+ set(ROCK_USE_SANITIZERS "" CACHE STRING "Which sanitizers to enable during the build (comma separated, compiler specific)")
+diff --git a/bindings/ruby/CMakeLists.txt b/bindings/ruby/CMakeLists.txt
+index 509f059..b5c38a5 100644
+--- a/bindings/ruby/CMakeLists.txt
++++ b/bindings/ruby/CMakeLists.txt
+@@ -25,7 +25,8 @@ TARGET_LINK_LIBRARIES(typelib_ruby typeLib typeLang_cSupport ${Utilmm_LIBRARIES}
+ CONFIGURE_FILE(typelib_ruby.pc.in ${CMAKE_CURRENT_BINARY_DIR}/typelib_ruby.pc @ONLY)
+ 
+ INSTALL(TARGETS typelib_ruby
+-    LIBRARY DESTINATION ${RUBY_EXTENSIONS_INSTALL_DIR})
++    LIBRARY DESTINATION ${RUBY_EXTENSIONS_INSTALL_DIR}
++    RUNTIME DESTINATION ${RUBY_EXTENSIONS_INSTALL_DIR})
+ INSTALL(FILES ext/typelib_ruby.hh
+     DESTINATION ${RUBY_EXTENSIONS_INSTALL_DIR})
+ INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/typelib_ruby.pc DESTINATION lib/pkgconfig)
+diff --git a/bindings/ruby/ext/typelib.hh b/bindings/ruby/ext/typelib.hh
+index c893879..463e3d4 100644
+--- a/bindings/ruby/ext/typelib.hh
++++ b/bindings/ruby/ext/typelib.hh
+@@ -2,6 +2,9 @@
+ #define __RUBY_EXT_TYPELIB_HH__
+ 
+ #include <ruby.h>
++#ifdef copysign
++# undef copysign
++#endif
+ #include <typelib/typemodel.hh>
+ #include <typelib/value.hh>
+ #include <typelib/registry.hh>
+diff --git a/bindings/ruby/ext/typelib_ruby.cc b/bindings/ruby/ext/typelib_ruby.cc
+index 3f7c5ee..06eb019 100644
+--- a/bindings/ruby/ext/typelib_ruby.cc
++++ b/bindings/ruby/ext/typelib_ruby.cc
+@@ -44,7 +44,8 @@ static VALUE typelib_is_big_endian(VALUE mod)
+ #endif
+ }
+ 
+-extern "C" void Init_typelib_ruby()
++extern "C" {
++RUBY_FUNC_EXPORTED void Init_typelib_ruby()
+ {
+     mTypelib  = rb_define_module("Typelib");
+     Typelib_init_values();
+@@ -58,4 +59,5 @@ extern "C" void Init_typelib_ruby()
+     rb_define_singleton_method(rb_mKernel, "immediate?", RUBY_METHOD_FUNC(kernel_is_immediate), 1);
+     rb_define_singleton_method(rb_mKernel, "numeric?", RUBY_METHOD_FUNC(kernel_is_numeric), 1);
+ }
++}
+ 
+diff --git a/bindings/ruby/lib/typelib.rb b/bindings/ruby/lib/typelib.rb
+index 92eb8e6..d818479 100644
+--- a/bindings/ruby/lib/typelib.rb
++++ b/bindings/ruby/lib/typelib.rb
+@@ -165,7 +165,7 @@ def self.load_typelib_plugins(force: false)
+             return
+         end
+ 
+-        ENV["TYPELIB_RUBY_PLUGIN_PATH"].split(":").each do |dir|
++        ENV["TYPELIB_RUBY_PLUGIN_PATH"].split(File::PATH_SEPARATOR).each do |dir|
+             specific_file = File.join(dir, "typelib_plugin.rb")
+             if File.exist?(specific_file)
+                 if require(specific_file)
+diff --git a/bindings/ruby/lib/typelib/gccxml.rb b/bindings/ruby/lib/typelib/gccxml.rb
+index 22e042e..13d8483 100644
+--- a/bindings/ruby/lib/typelib/gccxml.rb
++++ b/bindings/ruby/lib/typelib/gccxml.rb
+@@ -854,7 +854,7 @@ def load(required_files, xml)
+             # have a source file/line
+             registry.each do |type|
+                 if location = type.metadata.get("source_file_line").first
+-                    file, line = location.split(":")
++                    file, _, line = location.rpartition(":")
+                     line = Integer(line)
+                     if doc = GCCXMLLoader.parse_cxx_documentation_before(source_file_content(file), line)
+                         type.metadata.set("doc", doc)
+@@ -864,7 +864,7 @@ def load(required_files, xml)
+                 if type.respond_to?(:field_metadata)
+                     type.field_metadata.each do |field_name, md|
+                         if location = md.get("source_file_line").first
+-                            file, line = location.split(":")
++                            file, _, line = location.rpartition(":")
+                             line = Integer(line)
+                             if doc = GCCXMLLoader.parse_cxx_documentation_before(source_file_content(file), line)
+                                 md.set("doc", doc)
+diff --git a/cmake/RubyExtensions.cmake b/cmake/RubyExtensions.cmake
+index d5fd560..a951b7e 100644
+--- a/cmake/RubyExtensions.cmake
++++ b/cmake/RubyExtensions.cmake
+@@ -50,5 +50,8 @@ ELSEIF(NOT RUBY_EXTENSIONS_AVAILABLE)
+         endforeach()
+         target_link_libraries(${target} ${RUBY_LIBRARY})
+         SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX "")
++        if(WIN32)
++            SET_TARGET_PROPERTIES(${target} PROPERTIES SUFFIX ".so")
++        endif()
+     ENDMACRO(ADD_RUBY_EXTENSION)
+ ENDIF(NOT RUBY_INCLUDE_PATH)
+diff --git a/lang/csupport/CMakeLists.txt b/lang/csupport/CMakeLists.txt
+index 70000e9..9f6430d 100644
+--- a/lang/csupport/CMakeLists.txt
++++ b/lang/csupport/CMakeLists.txt
+@@ -2,5 +2,7 @@ add_library(typeLang_cSupport SHARED containers.cc plugin.cc standard_types.cc)
+ target_link_libraries(typeLang_cSupport typeLib)
+ 
+ install(TARGETS typeLang_cSupport
+-    LIBRARY DESTINATION lib/typelib)
++    LIBRARY DESTINATION lib/typelib
++    RUNTIME DESTINATION lib/typelib
++    ARCHIVE DESTINATION lib)
+ 
+diff --git a/lang/idl/CMakeLists.txt b/lang/idl/CMakeLists.txt
+index 9b1d1fe..4c93b7d 100644
+--- a/lang/idl/CMakeLists.txt
++++ b/lang/idl/CMakeLists.txt
+@@ -3,5 +3,7 @@ ADD_LIBRARY(typeLang_idl SHARED
+ TARGET_LINK_LIBRARIES(typeLang_idl typeLib ${LibXML_LIBRARIES} ${Boost_SYSTEM_LIBRARIES})
+ 
+ INSTALL(TARGETS typeLang_idl
+-    LIBRARY DESTINATION lib/typelib)
++    LIBRARY DESTINATION lib/typelib
++    RUNTIME DESTINATION lib/typelib
++    ARCHIVE DESTINATION lib)
+ 
+diff --git a/lang/tlb/CMakeLists.txt b/lang/tlb/CMakeLists.txt
+index 8317cb6..8d3631e 100644
+--- a/lang/tlb/CMakeLists.txt
++++ b/lang/tlb/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-INCLUDE_DIRECTORIES(${LibXML_INCLUDE_DIR}/libxml2)
++INCLUDE_DIRECTORIES(${LibXML_INCLUDE_DIRS})
+ LINK_DIRECTORIES(${LibXML_LINK_DIR})
+ 
+ ADD_LIBRARY(typeLang_tlb SHARED
+@@ -6,5 +6,7 @@ ADD_LIBRARY(typeLang_tlb SHARED
+ TARGET_LINK_LIBRARIES(typeLang_tlb typeLib ${LibXML_LIBRARIES})
+ 
+ INSTALL(TARGETS typeLang_tlb
+-    LIBRARY DESTINATION lib/typelib)
++    LIBRARY DESTINATION lib/typelib
++    RUNTIME DESTINATION lib/typelib
++    ARCHIVE DESTINATION lib)
+ 
+diff --git a/lang/tlb/xmltools.hh b/lang/tlb/xmltools.hh
+index e4d1d7d..c91043a 100644
+--- a/lang/tlb/xmltools.hh
++++ b/lang/tlb/xmltools.hh
+@@ -2,6 +2,7 @@
+ #define TYPELIB_LANG_TLB_XMLTOOLS_HH
+ 
+ #include <libxml/xmlmemory.h>
++#include <libxml/tree.h>
+ #include "parsing.hh"
+ #include <boost/lexical_cast.hpp>
+ 
+diff --git a/typelib/CMakeLists.txt b/typelib/CMakeLists.txt
+index 7492358..a41fa80 100644
+--- a/typelib/CMakeLists.txt
++++ b/typelib/CMakeLists.txt
+@@ -12,14 +12,18 @@ set_source_files_properties(pluginmanager.cc PROPERTIES
+    COMPILE_FLAGS -DTYPELIB_HARDCODED_PLUGIN_PATH=\\"${TYPELIB_PLUGIN_PATH}\\")
+ endif (NOT TYPELIB_HARDCODED_PLUGIN_PATH)
+ 
+-set_source_files_properties(endianness.cc PROPERTIES
+-    COMPILE_FLAGS -fno-strict-aliasing)
++if(NOT MSVC)
++    set_source_files_properties(endianness.cc PROPERTIES
++        COMPILE_FLAGS -fno-strict-aliasing)
++endif()
+ 
+-target_link_libraries(typeLib pthread ${CMAKE_DL_LIBS} ${Boost_FILESYSTEM_LIBRARIES} ${Boost_SYSTEM_LIBRARIES} ${Boost_THREAD_LIBRARIES})
++target_link_libraries(typeLib Threads::Threads ${CMAKE_DL_LIBS} ${Boost_FILESYSTEM_LIBRARIES} ${Boost_SYSTEM_LIBRARIES} ${Boost_THREAD_LIBRARIES})
+ #TARGET_LINK_LIBRARIES(typeLib typeLang_c typeLang_tlb typeLang_idl)
+ 
+ install(TARGETS typeLib
+-    LIBRARY DESTINATION lib)
++    RUNTIME DESTINATION bin
++    LIBRARY DESTINATION lib
++    ARCHIVE DESTINATION lib)
+ set_target_properties(typeLib PROPERTIES
+     VERSION ${PROJECT_VERSION}
+     SOVERSION ${API_VERSION})
+diff --git a/typelib/pluginmanager.cc b/typelib/pluginmanager.cc
+index 2172e00..bc18f25 100644
+--- a/typelib/pluginmanager.cc
++++ b/typelib/pluginmanager.cc
+@@ -5,7 +5,11 @@
+ 
+ #include <boost/filesystem.hpp>
+ #include <boost/version.hpp>
+-#include <dlfcn.h>
++#ifdef _WIN32
++# include <windows.h>
++#else
++# include <dlfcn.h>
++#endif
+ 
+ using namespace std;
+ using namespace Typelib;
+@@ -42,12 +46,16 @@ PluginManager::PluginManager()
+     // use the environment variable to override the load-path
+     if (const char* pluginPath = getenv("TYPELIB_PLUGIN_PATH")) {
+         // the delimiter inside the env-var
++#ifdef _WIN32
++        const std::string delim(";");
++#else
+         const std::string delim(":");
++#endif
+         // make a copy of the env-var, which we can modify
+         std::string s(pluginPath);
+         // we need ":" at the end, to catch the last entry in the list
+         if (s.find_last_of(delim) != s.length())
+-            s += ":";
++            s += delim;
+         // pos of delim for initial loop
+         size_t pos = s.find(delim);
+         do {
+@@ -96,7 +104,8 @@ bool PluginManager::loadPluginFromDirectory(std::string const& directory)
+     directory_iterator end_it;
+     for (directory_iterator it(plugin_dir); it != end_it; ++it)
+     {
+-        if (it->path().extension() == ".so" || it->path().extension() == ".dylib")
++        if (it->path().extension() == ".so" || it->path().extension() == ".dylib" ||
++            it->path().extension() == ".dll")
+ #if BOOST_VERSION >= 104600
+             success |= loadPlugin(it->path().string());
+ #else
+@@ -112,17 +121,36 @@ bool PluginManager::loadPlugin(std::string const& path)
+ 
+ bool PluginManager::loadPlugin(std::string const& path)
+ {
++#ifdef _WIN32
++    void* libhandle = LoadLibraryA(path.c_str());
++#else
+     void* libhandle = dlopen(path.c_str(), RTLD_LAZY);
++#endif
+     if (!libhandle)
+     {
++#ifdef _WIN32
++        cerr << "typelib: cannot load plugin " << path
++             << ": Windows error " << GetLastError() << endl;
++#else
+         cerr << "typelib: cannot load plugin " << path << ": " << dlerror() << endl;
++#endif
+         return false;
+     }
+ 
++#ifdef _WIN32
++    void* libentry = reinterpret_cast<void*>(GetProcAddress(
++        static_cast<HMODULE>(libhandle), "registerPlugins"));
++#else
+     void* libentry  = dlsym(libhandle, "registerPlugins");
++#endif
+     if (!libentry)
+     {
+         cerr << "typelib: '" << path << "' does not seem to be a valid typelib plugin" << endl;
++#ifdef _WIN32
++        FreeLibrary(static_cast<HMODULE>(libhandle));
++#else
++        dlclose(libhandle);
++#endif
+         return false;
+     }
+ 
+diff --git a/typelib/value_ops.cc b/typelib/value_ops.cc
+index 79ab1e6..3548cad 100644
+--- a/typelib/value_ops.cc
++++ b/typelib/value_ops.cc
+@@ -5,6 +5,9 @@
+ #include "value_ops_details.hh"
+ #include <cstdio>
+ #include <cstring>
++#ifdef _WIN32
++# include <io.h>
++#endif
+ 
+ using namespace Typelib;
+ 
+@@ -650,13 +653,17 @@ struct FDOutputStream : public OutputStream
+ 
+     void write(boost::uint8_t const* data, size_t size)
+     {
++#ifdef _WIN32
++        int ret = ::_write(fd, data, static_cast<unsigned int>(size));
++#else
+         ssize_t ret = ::write(fd, data, size);
++#endif
+         if (ret < 0) {
+             throw std::runtime_error(
+                 "write failed in ValueOps::dump: " + std::string(strerror(errno))
+             );
+         }
+-        else if (ret != static_cast<ssize_t>(size)) {
++        else if (static_cast<size_t>(ret) != size) {
+             throw std::runtime_error("wrote fewer bytes than expected in ValueOps::dump");
+         }
+     }

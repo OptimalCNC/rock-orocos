@@ -16,6 +16,10 @@ Recommended default:
 The exact prefix may be configurable later, but the contract should stay the
 same regardless of location.
 
+The native Windows Pixi build uses `install/windows-msvc` by default and
+exports the same runtime/development split through `env.ps1` and
+`dev-env.ps1`.
+
 ## Required Outputs
 
 The installed prefix must provide:
@@ -23,7 +27,7 @@ The installed prefix must provide:
 - Orocos runtime tools
 - OCL deployer support
 - native RTT OPC UA libraries, type transport, deployer, and TaskBrowser client
-- the target-specific RTT mqueue transport
+- the target-specific RTT mqueue transport for Linux targets
 - RTT scripting support
 - generator tools needed for typekit and component development
 - environment setup for runtime use
@@ -146,6 +150,14 @@ environment. At minimum, the script must:
 Those variables are part of the behavior contract of `dev-env.sh`, even if the
 exact internal directory layout changes later.
 
+On Windows, `env.ps1` and `dev-env.ps1` provide the corresponding PowerShell
+contracts. Runtime-only use through `env.ps1` does not require an active Pixi
+environment. Development through `dev-env.ps1` does: it exposes the
+prefix-local generator gems, Typelib plugins, and the vcpkg development prefix,
+while Ruby, CastXML, CMake, and the compiler remain Pixi-managed dependencies.
+The `win32` generator defaults to the Typelib transport; CORBA and mqueue are
+not part of the Windows contract.
+
 ## Validation Expectations
 
 An install is considered minimally valid when it can:
@@ -160,6 +172,13 @@ An install is considered minimally valid when it can:
 7. run `orogen`
 8. run `typegen`
 9. support a downstream Orocos configure step
+
+The Windows acceptance additionally imports a C++ header through CastXML,
+resolves an installed task library, typekit, and Typelib transport through the
+OroGen pkg-config loader, and runs the generated deployer. It also uses
+`typegen` directly to generate a standalone typekit and Typelib transport,
+runs the generated regeneration target, builds and installs the result, and
+imports the installed typekit in the deployer.
 
 The installed-prefix OPC UA acceptance additionally starts the deployer,
 proves that `opcua.start()` exposes an endpoint without publishing a component,

@@ -1,0 +1,32 @@
+[workspace]
+name = "orocos-rock"
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[dependencies]
+castxml = ">=0.7,<0.8"
+cmake = ">=3.28,<4"
+cxx-compiler = ">=1.11,<3"
+git = ">=2.45,<3"
+pkg-config = ">=0.29,<1"
+ruby = ">=3.4,<3.5"
+zstd = ">=1.5,<2"
+
+[activation.env]
+OROCOS_TARGET = "win32"
+
+[tasks]
+windows-build = { cmd = [
+    "powershell.exe",
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    "tools/build-windows-msvc.ps1",
+    "-Workspace",
+    "build/windows-msvc",
+    "-Prefix",
+    "install/windows-msvc",
+    "-VcpkgRoot",
+    "build/vcpkg",
+], description = "Build and validate the native Windows runtime and OroGen development prefix." }
