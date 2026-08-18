@@ -3,8 +3,35 @@ param(
     [string]$Workspace = (Join-Path (Get-Location) "build\windows-msvc"),
     [string]$Prefix = (Join-Path (Get-Location) "install\windows-msvc"),
     [string]$VcpkgRoot = (Join-Path (Get-Location) "vcpkg"),
+    [string]$FarbotRepository = "https://github.com/liufang-robot/farbot.git",
+    [string]$RtlogRepository = "https://github.com/liufang-robot/rtlog-cpp.git",
+    [string]$RttRepository = "https://github.com/liufang-robot/rtt.git",
+    [string]$Open62541Repository = "https://github.com/open62541/open62541.git",
+    [string]$Open62541ppRepository = "https://github.com/open62541pp/open62541pp.git",
+    [string]$RttOpcuaRepository = "https://github.com/liufang-robot/rtt_opcua.git",
+    [string]$OclRepository = "https://github.com/liufang-robot/ocl.git",
+    [string]$UtilmmRepository = "https://github.com/liufang-robot/utilmm.git",
+    [string]$TypelibRepository = "https://github.com/liufang-robot/tools-typelib.git",
+    [string]$RttTypelibRepository = "https://github.com/liufang-robot/tools-rtt_typelib.git",
+    [string]$UtilrbRepository = "https://github.com/rock-core/tools-utilrb.git",
+    [string]$MetarubyRepository = "https://github.com/rock-core/tools-metaruby.git",
+    [string]$OrogenRepository = "https://github.com/liufang-robot/tools-orogen.git",
+    [string]$VcpkgRepository = "https://github.com/microsoft/vcpkg.git",
+    [string]$FarbotRef = "master",
+    [string]$RtlogRef = "main",
     [string]$RttRef = "dev",
+    [string]$Open62541Ref = "v1.4.15",
+    [string]$Open62541ppRef = "v0.21.2",
+    [string]$RttOpcuaRef = "dev",
     [string]$OclRef = "dev",
+    [string]$UtilmmRef = "dev",
+    [string]$TypelibRef = "dev",
+    [string]$RttTypelibRef = "dev",
+    [string]$UtilrbRef = "master",
+    [string]$MetarubyRef = "master",
+    [string]$OrogenRef = "dev",
+    [string]$Open62541Version = "1.4.15",
+    [string]$VcpkgRef = "master",
     [string]$Generator = "Visual Studio 17 2022"
 )
 
@@ -34,6 +61,22 @@ function Invoke-Native {
     }
 }
 
+function Get-NativeOutput {
+    $FilePath = $args[0]
+    $ArgumentList = @()
+    if ($args.Count -gt 1) {
+        $ArgumentList = $args[1..($args.Count - 1)]
+    }
+
+    $savedErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        (& $FilePath @ArgumentList 2>&1 | Out-String)
+    } finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+}
+
 function Invoke-NativeWithRetry {
     $Attempts = 3
     $DelaySeconds = 5
@@ -60,6 +103,50 @@ function Convert-ToFullPath {
     $executionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
 
+function Resolve-GitRepository {
+    param([string]$Repository)
+
+    if (Test-Path -LiteralPath $Repository) {
+        return Convert-ToFullPath $Repository
+    }
+
+    $Repository
+}
+
+function Get-GitConfigValue {
+    param(
+        [string]$Path,
+        [string]$Name
+    )
+
+    $value = & git -C $Path config --get $Name
+    if ($LASTEXITCODE -eq 1) {
+        return $null
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw "git config --get $Name exited with code $LASTEXITCODE"
+    }
+
+    $value
+}
+
+function Initialize-GitRepository {
+    param(
+        [string]$Repository,
+        [string]$Path
+    )
+
+    $gitPath = Join-Path $Path ".git"
+    if (Test-Path -LiteralPath $gitPath) {
+        Remove-Item -LiteralPath $gitPath -Recurse -Force
+    }
+
+    New-Item -ItemType Directory -Force -Path $Path | Out-Null
+    Invoke-Native git init --quiet $Path
+    Invoke-Native git -C $Path remote add origin $Repository
+    Invoke-Native git -C $Path config core.autocrlf false
+}
+
 function Sync-GitRepository {
     param(
         [string]$Repository,
@@ -67,38 +154,197 @@ function Sync-GitRepository {
         [string]$Path
     )
 
-    if (-not (Test-Path -LiteralPath (Join-Path $Path ".git"))) {
-        Invoke-NativeWithRetry git clone --no-checkout --filter=blob:none $Repository $Path
+    $gitPath = Join-Path $Path ".git"
+    $needsInitialization = -not (Test-Path -LiteralPath $gitPath)
+    if (-not $needsInitialization) {
+        $configuredRepository = Get-GitConfigValue -Path $Path -Name "remote.origin.url"
+        $needsInitialization = $configuredRepository -ne $Repository
     }
 
-    Invoke-NativeWithRetry git -C $Path fetch --depth 1 origin -- $Ref
-    Invoke-Native git -C $Path checkout --force FETCH_HEAD
+    if ($needsInitialization) {
+        Initialize-GitRepository -Repository $Repository -Path $Path
+    } else {
+        Invoke-Native git -C $Path remote set-url origin $Repository
+        Invoke-Native git -C $Path config core.autocrlf false
+    }
+
+    $promisor = Get-GitConfigValue -Path $Path -Name "remote.origin.promisor"
+    $partialCloneFilter = Get-GitConfigValue -Path $Path -Name "remote.origin.partialclonefilter"
+    $fetchArguments = @(
+        "-c", "http.sslBackend=openssl",
+        "-C", $Path,
+        "fetch", "--force", "--depth", "1", "--no-tags", "--no-filter"
+    )
+    if ($promisor -eq "true" -or $null -ne $partialCloneFilter) {
+        $fetchArguments += "--refetch"
+    }
+    $fetchArguments += @("origin", "--", $Ref)
+
+    try {
+        Invoke-NativeWithRetry git @fetchArguments
+    } catch {
+        Write-Warning "Reinitializing disposable checkout after fetch failure: $Path"
+        Initialize-GitRepository -Repository $Repository -Path $Path
+        $promisor = $null
+        $partialCloneFilter = $null
+        Invoke-NativeWithRetry git @fetchArguments
+    }
+
+    if ($null -ne $promisor) {
+        Invoke-Native git -C $Path config --unset-all remote.origin.promisor
+    }
+    if ($null -ne $partialCloneFilter) {
+        Invoke-Native git -C $Path config --unset-all remote.origin.partialclonefilter
+    }
+
+    Invoke-Native git -C $Path checkout --detach --force FETCH_HEAD
+}
+
+function Apply-SourcePatch {
+    param(
+        [string]$Path,
+        [string]$Patch
+    )
+
+    if (-not (Test-Path -LiteralPath $Patch)) {
+        throw "Missing Windows source patch: $Patch"
+    }
+
+    $savedErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & git -C $Path apply --check --unidiff-zero $Patch *> $null
+        $canApply = $LASTEXITCODE -eq 0
+        & git -C $Path apply --reverse --check --unidiff-zero $Patch *> $null
+        $isApplied = $LASTEXITCODE -eq 0
+    } finally {
+        $ErrorActionPreference = $savedErrorActionPreference
+    }
+
+    if ($canApply) {
+        Invoke-Native git -C $Path apply --unidiff-zero $Patch
+        return
+    }
+
+    if ($isApplied) {
+        Write-Host "Patch already present: $Patch"
+        return
+    }
+
+    throw "Windows source patch does not apply cleanly: $Patch"
+}
+
+function Write-Open62541PkgConfig {
+    param(
+        [string]$PrefixPath,
+        [string]$Version
+    )
+
+    $pkgConfigDirectory = Join-Path $PrefixPath "lib\pkgconfig"
+    New-Item -ItemType Directory -Force -Path $pkgConfigDirectory | Out-Null
+    $pkgPrefix = $PrefixPath -replace "\\", "/"
+    $contents = @(
+        "prefix=$pkgPrefix"
+        'libdir=${prefix}/lib'
+        'sharedlibdir=${libdir}'
+        "includedir=$pkgPrefix/include"
+        ""
+        "Name: open62541"
+        "Description: open62541 is an open source C implementation of OPC UA"
+        "Version: $Version"
+        'Cflags: -I${includedir}'
+        'Libs: -L${libdir} -lopen62541'
+    ) -join "`n"
+    [System.IO.File]::WriteAllText(
+        (Join-Path $pkgConfigDirectory "open62541.pc"),
+        "$contents`n",
+        [System.Text.UTF8Encoding]::new($false))
 }
 
 $Workspace = Convert-ToFullPath $Workspace
 $Prefix = Convert-ToFullPath $Prefix
 $VcpkgRoot = Convert-ToFullPath $VcpkgRoot
+$FarbotRepository = Resolve-GitRepository $FarbotRepository
+$RtlogRepository = Resolve-GitRepository $RtlogRepository
+$RttRepository = Resolve-GitRepository $RttRepository
+$Open62541Repository = Resolve-GitRepository $Open62541Repository
+$Open62541ppRepository = Resolve-GitRepository $Open62541ppRepository
+$RttOpcuaRepository = Resolve-GitRepository $RttOpcuaRepository
+$OclRepository = Resolve-GitRepository $OclRepository
+$UtilmmRepository = Resolve-GitRepository $UtilmmRepository
+$TypelibRepository = Resolve-GitRepository $TypelibRepository
+$RttTypelibRepository = Resolve-GitRepository $RttTypelibRepository
+$UtilrbRepository = Resolve-GitRepository $UtilrbRepository
+$MetarubyRepository = Resolve-GitRepository $MetarubyRepository
+$OrogenRepository = Resolve-GitRepository $OrogenRepository
+$VcpkgRepository = Resolve-GitRepository $VcpkgRepository
 $Platform = "x64"
 $VcpkgTriplet = "x64-windows"
 
+$FarbotSource = Join-Path $Workspace "src\farbot"
+$RtlogSource = Join-Path $Workspace "src\rtlog-cpp"
 $RttSource = Join-Path $Workspace "src\rtt"
+$Open62541Source = Join-Path $Workspace "src\open62541"
+$Open62541ppSource = Join-Path $Workspace "src\open62541pp"
+$RttOpcuaSource = Join-Path $Workspace "src\rtt_opcua"
 $OclSource = Join-Path $Workspace "src\ocl"
+$UtilmmSource = Join-Path $Workspace "src\utilmm"
+$TypelibSource = Join-Path $Workspace "src\typelib"
+$RttTypelibSource = Join-Path $Workspace "src\rtt_typelib"
+$UtilrbSource = Join-Path $Workspace "src\utilrb"
+$MetarubySource = Join-Path $Workspace "src\metaruby"
+$OrogenSource = Join-Path $Workspace "src\orogen"
+$FarbotBuild = Join-Path $Workspace "build\farbot"
+$RtlogBuild = Join-Path $Workspace "build\rtlog-cpp"
 $RttBuild = Join-Path $Workspace "build\rtt"
+$Open62541Build = Join-Path $Workspace "build\open62541"
+$Open62541ppBuild = Join-Path $Workspace "build\open62541pp"
+$RttOpcuaBuild = Join-Path $Workspace "build\rtt_opcua"
 $OclBuild = Join-Path $Workspace "build\ocl"
+$UtilmmBuild = Join-Path $Workspace "build\utilmm"
+$TypelibBuild = Join-Path $Workspace "build\typelib"
+$RttTypelibBuild = Join-Path $Workspace "build\rtt_typelib"
+$GeneratorSmokeSource = Join-Path $Workspace "smoke\orogen"
+$GeneratorSmokeBuild = Join-Path $Workspace "smoke\build"
+$TypegenSmokeSource = Join-Path $Workspace "smoke\typegen"
+$TypegenSmokeBuild = Join-Path $Workspace "smoke\typegen-build"
+$PatchRoot = Join-Path $PSScriptRoot "windows-patches"
 
 New-Item -ItemType Directory -Force -Path $Workspace | Out-Null
 New-Item -ItemType Directory -Force -Path $Prefix | Out-Null
 
 $env:OROCOS_TARGET = "win32"
+$env:VCPKG_ROOT = $VcpkgRoot
 
 Invoke-Step "Check out source repositories" {
-    Sync-GitRepository -Repository "https://github.com/liufang-robot/rtt.git" -Ref $RttRef -Path $RttSource
-    Sync-GitRepository -Repository "https://github.com/liufang-robot/ocl.git" -Ref $OclRef -Path $OclSource
+    Sync-GitRepository -Repository $FarbotRepository -Ref $FarbotRef -Path $FarbotSource
+    Sync-GitRepository -Repository $RtlogRepository -Ref $RtlogRef -Path $RtlogSource
+    Sync-GitRepository -Repository $RttRepository -Ref $RttRef -Path $RttSource
+    Sync-GitRepository -Repository $Open62541Repository -Ref $Open62541Ref -Path $Open62541Source
+    Sync-GitRepository -Repository $Open62541ppRepository -Ref $Open62541ppRef -Path $Open62541ppSource
+    Sync-GitRepository -Repository $RttOpcuaRepository -Ref $RttOpcuaRef -Path $RttOpcuaSource
+    Sync-GitRepository -Repository $OclRepository -Ref $OclRef -Path $OclSource
+    Sync-GitRepository -Repository $UtilmmRepository -Ref $UtilmmRef -Path $UtilmmSource
+    Sync-GitRepository -Repository $TypelibRepository -Ref $TypelibRef -Path $TypelibSource
+    Sync-GitRepository -Repository $RttTypelibRepository -Ref $RttTypelibRef -Path $RttTypelibSource
+    Sync-GitRepository -Repository $UtilrbRepository -Ref $UtilrbRef -Path $UtilrbSource
+    Sync-GitRepository -Repository $MetarubyRepository -Ref $MetarubyRef -Path $MetarubySource
+    Sync-GitRepository -Repository $OrogenRepository -Ref $OrogenRef -Path $OrogenSource
+}
+
+Invoke-Step "Apply Windows portability patches" {
+    Apply-SourcePatch -Path $RttSource -Patch (Join-Path $PatchRoot "rtt-msvc-cxx20.patch")
+    Apply-SourcePatch -Path $RttOpcuaSource -Patch (Join-Path $PatchRoot "rtt-opcua-msvc.patch")
+    Apply-SourcePatch -Path $OclSource -Patch (Join-Path $PatchRoot "ocl-opcua-msvc.patch")
+    Apply-SourcePatch -Path $UtilrbSource -Patch (Join-Path $PatchRoot "utilrb-windows.patch")
+    Apply-SourcePatch -Path $UtilmmSource -Patch (Join-Path $PatchRoot "utilmm-msvc.patch")
+    Apply-SourcePatch -Path $TypelibSource -Patch (Join-Path $PatchRoot "typelib-msvc.patch")
+    Apply-SourcePatch -Path $OrogenSource -Patch (Join-Path $PatchRoot "orogen-msvc.patch")
 }
 
 Invoke-Step "Set up vcpkg" {
+    Sync-GitRepository -Repository $VcpkgRepository -Ref $VcpkgRef -Path $VcpkgRoot
     if (-not (Test-Path -LiteralPath (Join-Path $VcpkgRoot "vcpkg.exe"))) {
-        Invoke-NativeWithRetry git clone https://github.com/microsoft/vcpkg.git $VcpkgRoot
         Invoke-Native (Join-Path $VcpkgRoot "bootstrap-vcpkg.bat") -disableMetrics
     }
 }
@@ -116,8 +362,32 @@ Invoke-Step "Install vcpkg dependencies" {
         "boost-uuid:${VcpkgTriplet}" `
         "boost-graph:${VcpkgTriplet}" `
         "boost-program-options:${VcpkgTriplet}" `
+        "boost-regex:${VcpkgTriplet}" `
         "boost-test:${VcpkgTriplet}" `
-        "libxml2:${VcpkgTriplet}"
+        "libxml2:${VcpkgTriplet}" `
+        "readline:${VcpkgTriplet}"
+}
+
+Invoke-Step "Configure farbot" {
+    Invoke-Native cmake -S $FarbotSource -B $FarbotBuild -G $Generator -A $Platform `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install farbot" {
+    Invoke-Native cmake --build $FarbotBuild --config Release --target INSTALL --parallel 4
+}
+
+Invoke-Step "Configure rtlog-cpp" {
+    Invoke-Native cmake -S $RtlogSource -B $RtlogBuild -G $Generator -A $Platform `
+        -DCMAKE_PREFIX_PATH="$Prefix" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DRTLOG_BUILD_TESTS=OFF `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install rtlog-cpp" {
+    Invoke-Native cmake --build $RtlogBuild --config Release --target INSTALL --parallel 4
 }
 
 Invoke-Step "Configure RTT" {
@@ -143,17 +413,70 @@ Invoke-Step "Install RTT" {
     Invoke-Native cmake --build $RttBuild --config Release --target INSTALL --parallel 4
 }
 
+Invoke-Step "Configure open62541" {
+    Invoke-Native cmake -S $Open62541Source -B $Open62541Build -G $Generator -A $Platform `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DBUILD_SHARED_LIBS=ON `
+        -DUA_NAMESPACE_ZERO=REDUCED `
+        -DUA_ENABLE_PUBSUB=OFF `
+        -DUA_ENABLE_PUBSUB_INFORMATIONMODEL=OFF `
+        -DUA_BUILD_EXAMPLES=OFF `
+        -DUA_BUILD_UNIT_TESTS=OFF `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install open62541" {
+    Invoke-Native cmake --build $Open62541Build --config Release --target INSTALL --parallel 4
+    Write-Open62541PkgConfig -PrefixPath $Prefix -Version $Open62541Version
+}
+
+Invoke-Step "Configure open62541pp" {
+    Invoke-Native cmake -S $Open62541ppSource -B $Open62541ppBuild -G $Generator -A $Platform `
+        -DCMAKE_PREFIX_PATH="$Prefix" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DBUILD_SHARED_LIBS=ON `
+        -DUAPP_INTERNAL_OPEN62541=OFF `
+        -DUAPP_BUILD_TESTS=OFF `
+        -DUAPP_BUILD_EXAMPLES=OFF `
+        -DUAPP_BUILD_DOCUMENTATION=OFF `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install open62541pp" {
+    Invoke-Native cmake --build $Open62541ppBuild --config Release --target INSTALL --parallel 4
+}
+
+Invoke-Step "Configure rtt_opcua" {
+    Invoke-Native cmake -S $RttOpcuaSource -B $RttOpcuaBuild -G $Generator -A $Platform `
+        -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
+        -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DOROCOS_TARGET=win32 `
+        -DBUILD_TESTING=OFF `
+        -DRTT_OPCUA_WARNINGS_AS_ERRORS=ON `
+        -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install rtt_opcua" {
+    Invoke-Native cmake --build $RttOpcuaBuild --config Release --target INSTALL --parallel 4
+}
+
 Invoke-Step "Configure OCL" {
+    $env:PKG_CONFIG_PATH = Join-Path $Prefix "lib\pkgconfig"
+    $env:PKG_CONFIG_LIBDIR = $env:PKG_CONFIG_PATH
     Invoke-Native cmake -S $OclSource -B $OclBuild -G $Generator -A $Platform `
         -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
         -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
         -DCMAKE_INSTALL_PREFIX="$Prefix" `
         -DOROCOS_TARGET=win32 `
+        -DBUILD_OPCUA=ON `
         -DENABLE_CORBA=OFF `
         -DBUILD_TESTING=OFF `
         -DBUILD_TESTS=OFF `
         -DBUILD_DOCS=OFF `
         -DBUILD_TASKBROWSER=ON `
+        -DNO_GPL=OFF `
         -DBUILD_DEPLOYMENT=ON `
         -DBUILD_REPORTING=ON `
         -DBUILD_REPORTING_NETCDF=OFF `
@@ -161,24 +484,182 @@ Invoke-Step "Configure OCL" {
         -DBUILD_TIMER=ON `
         -DBUILD_LOGGING=OFF `
         -DCMAKE_BUILD_TYPE=Release
+
+    if (-not (Select-String -LiteralPath (Join-Path $OclBuild "CMakeCache.txt") `
+            -Pattern '^READLINE:INTERNAL=1$' -Quiet)) {
+        throw "OCL did not enable required readline support"
+    }
 }
 
 Invoke-Step "Build OCL deployer tools" {
-    Invoke-Native cmake --build $OclBuild --config Release --target deployer --parallel 4
-    Invoke-Native cmake --build $OclBuild --config Release --target rttscript --parallel 4
+    Invoke-Native cmake --build $OclBuild --config Release `
+        --target deployer rttscript deployer-opcua ctaskbrowser-opcua --parallel 4
 }
 
 Invoke-Step "Install OCL" {
     Invoke-Native cmake --build $OclBuild --config Release --target INSTALL --parallel 4
 }
 
+Invoke-Step "Configure utilmm" {
+    Invoke-Native cmake -S $UtilmmSource -B $UtilmmBuild -G $Generator -A $Platform `
+        -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
+        -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DENABLE_TESTS=OFF `
+        -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install utilmm" {
+    Invoke-Native cmake --build $UtilmmBuild --config Release --target INSTALL --parallel 4
+}
+
+Invoke-Step "Configure Typelib" {
+    $env:PKG_CONFIG_PATH = Join-Path $Prefix "lib\pkgconfig"
+    $env:PKG_CONFIG_LIBDIR = $env:PKG_CONFIG_PATH
+    Invoke-Native cmake -S $TypelibSource -B $TypelibBuild -G $Generator -A $Platform `
+        -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
+        -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DBUILD_CLANG_TLB_IMPORTER=OFF `
+        -DBUILD_TESTING=OFF `
+        -DBUILD_TESTS=OFF `
+        -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install Typelib" {
+    Invoke-Native cmake --build $TypelibBuild --config Release --target INSTALL --parallel 4
+}
+
+Invoke-Step "Configure rtt_typelib" {
+    $env:PKG_CONFIG_PATH = Join-Path $Prefix "lib\pkgconfig"
+    $env:PKG_CONFIG_LIBDIR = $env:PKG_CONFIG_PATH
+    Invoke-Native cmake -S $RttTypelibSource -B $RttTypelibBuild -G $Generator -A $Platform `
+        -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
+        -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DOROCOS_TARGET=win32 `
+        -DBUILD_TESTING=ON `
+        -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install rtt_typelib" {
+    Invoke-Native cmake --build $RttTypelibBuild --config Release --target INSTALL --parallel 4
+}
+
+Invoke-Step "Install Ruby generator tools" {
+    & (Join-Path $PSScriptRoot "install-ruby-tools.ps1") `
+        -Prefix $Prefix `
+        -UtilrbSource $UtilrbSource `
+        -MetarubySource $MetarubySource `
+        -OrogenSource $OrogenSource
+}
+
+Invoke-Step "Export Windows environments" {
+    & (Join-Path $PSScriptRoot "export-windows-env.ps1") `
+        -Prefix $Prefix `
+        -VcpkgRoot $VcpkgRoot `
+        -VcpkgTriplet $VcpkgTriplet `
+        -Target win32
+}
+
+Invoke-Step "Generate Windows OroGen smoke project" {
+    New-Item -ItemType Directory -Force -Path $GeneratorSmokeSource | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "windows-generator-smoke\WindowsSmokeTypes.hpp") `
+        -Destination $GeneratorSmokeSource -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "windows-generator-smoke\windows_smoke.orogen") `
+        -Destination $GeneratorSmokeSource -Force
+
+    . (Join-Path $Prefix "dev-env.ps1")
+    Push-Location $GeneratorSmokeSource
+    try {
+        Invoke-Native (Join-Path $Prefix "toolchain\bin\orogen.bat") `
+            --target=win32 --transports=typelib windows_smoke.orogen
+    } finally {
+        Pop-Location
+    }
+}
+
+Invoke-Step "Build Windows OroGen smoke project" {
+    Invoke-Native cmake -S $GeneratorSmokeSource -B $GeneratorSmokeBuild `
+        -G $Generator -A $Platform `
+        -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
+        -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DCMAKE_BUILD_TYPE=Release
+    Invoke-Native cmake --build $GeneratorSmokeBuild --config Release `
+        --target INSTALL --parallel 4
+}
+
+Invoke-Step "Generate Windows Typegen smoke project" {
+    New-Item -ItemType Directory -Force -Path $TypegenSmokeSource | Out-Null
+    . (Join-Path $Prefix "dev-env.ps1")
+    Invoke-Native (Join-Path $Prefix "toolchain\bin\typegen.bat") `
+        --transports=typelib `
+        --output=$TypegenSmokeSource `
+        windows_typegen_smoke `
+        (Join-Path $PSScriptRoot "windows-generator-smoke\WindowsTypegenTypes.hpp")
+}
+
+Invoke-Step "Build Windows Typegen smoke project" {
+    . (Join-Path $Prefix "dev-env.ps1")
+    Invoke-Native cmake -S $TypegenSmokeSource -B $TypegenSmokeBuild `
+        -G $Generator -A $Platform `
+        -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
+        -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DCMAKE_BUILD_TYPE=Release
+    Invoke-Native cmake --build $TypegenSmokeBuild --config Release `
+        --target regen
+    Invoke-Native cmake --build $TypegenSmokeBuild --config Release `
+        --target INSTALL --parallel 4
+}
+
 Invoke-Step "Validate Windows prefix" {
     $requiredArtifacts = @(
         "bin\orocos-rtt-win32.dll",
+        "bin\orocos-rtt-opcua-win32.dll",
+        "bin\open62541.dll",
+        "bin\open62541pp.dll",
         "bin\deployer-win32.exe",
         "bin\rttscript-win32.exe",
+        "bin\deployer-opcua-win32.exe",
+        "bin\ctaskbrowser-opcua-win32.exe",
+        "bin\orocos-ocl-deployment-opcua-win32.dll",
+        "bin\orocos-ocl-taskbrowser-win32.dll",
+        "bin\utilmm.dll",
+        "bin\typeLib.dll",
+        "bin\rtt-typelib-win32.dll",
+        "bin\windows_smoke_deployer.exe",
+        "lib\cmake\farbot\farbotConfig.cmake",
+        "lib\cmake\rtlog\rtlogConfig.cmake",
+        "lib\utilmm.lib",
+        "lib\typeLib.lib",
+        "lib\rtt-typelib-win32.lib",
+        "lib\typelib\typeLang_cSupport.dll",
+        "lib\orocos\windows_smoke-tasks-win32.dll",
+        "lib\orocos\types\windows_smoke-typekit-win32.dll",
+        "lib\orocos\types\windows_smoke-transport-typelib-win32.dll",
+        "lib\orocos\types\windows_typegen_smoke-typekit-win32.dll",
+        "lib\orocos\types\windows_typegen_smoke-transport-typelib-win32.dll",
         "lib\orocos\win32\plugins\rtt-scripting-win32.dll",
-        "lib\orocos\win32\types\rtt-typekit-win32.dll"
+        "lib\orocos\win32\types\rtt-typekit-win32.dll",
+        "lib\orocos\win32\rtt_opcua\plugins\rtt-transport-opcua-win32.dll",
+        "lib\pkgconfig\open62541.pc",
+        "lib\pkgconfig\rtt_opcua-win32.pc",
+        "lib\pkgconfig\typelib.pc",
+        "lib\pkgconfig\typelib_ruby.pc",
+        "lib\pkgconfig\rtt_typelib-win32.pc",
+        "lib\pkgconfig\windows_typegen_smoke-typekit-win32.pc",
+        "lib\pkgconfig\windows_typegen_smoke-transport-typelib-win32.pc",
+        "share\orogen\windows_smoke.orogen",
+        "share\orogen\windows_typegen_smoke.tlb",
+        "toolchain\bin\orogen.bat",
+        "toolchain\bin\typegen.bat",
+        "env.ps1",
+        "dev-env.ps1"
     )
 
     foreach ($artifact in $requiredArtifacts) {
@@ -188,33 +669,98 @@ Invoke-Step "Validate Windows prefix" {
         }
     }
 
-    $pathEntries = @(
-        (Join-Path $Prefix "bin"),
-        (Join-Path $Prefix "lib"),
-        (Join-Path $Prefix "lib\orocos\win32\ocl"),
-        (Join-Path $Prefix "lib\orocos\win32\ocl\plugins"),
-        (Join-Path $Prefix "lib\orocos\win32\ocl\types"),
-        (Join-Path $Prefix "lib\orocos\win32\plugins"),
-        (Join-Path $Prefix "lib\orocos\win32\types"),
-        $VcpkgBin
-    ) | Where-Object { Test-Path -LiteralPath $_ }
+    . (Join-Path $Prefix "dev-env.ps1")
+    if ($env:OROCOS_PREFIX -ne $Prefix -or $env:OROCOS_TARGET -ne "win32") {
+        throw "Windows environment scripts exported the wrong Orocos prefix or target"
+    }
+    if (($env:PATH -split ";") -notcontains $VcpkgBin) {
+        throw "Windows environment scripts did not add the vcpkg runtime directory"
+    }
+    if (($env:CMAKE_PREFIX_PATH -split ";") -notcontains $VcpkgInstalled) {
+        throw "Windows development environment did not add the vcpkg prefix"
+    }
+    if (($env:PATH -split ";") -notcontains (Join-Path $Prefix "toolchain\bin")) {
+        throw "Windows development environment did not add the generator commands"
+    }
+    if ($env:GEM_HOME -ne (Join-Path $Prefix "toolchain\gems")) {
+        throw "Windows development environment exported the wrong Ruby gem home"
+    }
+    if (($env:TYPELIB_PLUGIN_PATH -split ";") -notcontains `
+            (Join-Path $Prefix "lib\typelib")) {
+        throw "Windows environment did not add the Typelib plugin directory"
+    }
+    $readlineRuntime = Join-Path $VcpkgBin "readline.dll"
+    if (-not (Test-Path -LiteralPath $readlineRuntime -PathType Leaf)) {
+        throw "Missing readline runtime: $readlineRuntime"
+    }
+    $opcuaPluginDirectory = Join-Path $Prefix "lib\orocos\win32\rtt_opcua\plugins"
+    if (($env:RTT_COMPONENT_PATH -split ";") -notcontains $opcuaPluginDirectory) {
+        throw "Windows runtime environment did not add the OPC UA plugin directory"
+    }
+    $componentPathEntries = @($env:RTT_COMPONENT_PATH -split ";")
+    if ($componentPathEntries[0] -ne (Join-Path $Prefix "lib\orocos\win32")) {
+        throw "Windows runtime environment must load the core RTT typekit first"
+    }
 
-    $componentPathEntries = @(
-        (Join-Path $Prefix "lib\orocos\win32\ocl"),
-        (Join-Path $Prefix "lib\orocos\win32\ocl\plugins"),
-        (Join-Path $Prefix "lib\orocos\win32\plugins")
-    ) | Where-Object { Test-Path -LiteralPath $_ }
+    Invoke-Native (Join-Path $RttTypelibBuild "Release\get_marshaller_for_test.exe")
 
-    $env:OROCOS_PREFIX = $Prefix
-    $env:OROCOS_TARGET = "win32"
-    $env:PATH = ($pathEntries -join ";") + ";" + $env:PATH
-    $env:RTT_COMPONENT_PATH = $componentPathEntries -join ";"
+    Invoke-Native ruby `
+        (Join-Path $PSScriptRoot "windows-generator-smoke\validate.rb") `
+        (Join-Path $GeneratorSmokeSource "WindowsSmokeTypes.hpp")
 
-    $deployerVersionOutput = & (Join-Path $Prefix "bin\deployer-win32.exe") --version 2>&1
+    $orogenVersionOutput = Get-NativeOutput `
+        (Join-Path $Prefix "toolchain\bin\orogen.bat") --version
+    if ($orogenVersionOutput -notmatch "orogen") {
+        throw "Installed orogen --version did not print the expected output"
+    }
+
+    $typegenHelpOutput = Get-NativeOutput `
+        (Join-Path $Prefix "toolchain\bin\typegen.bat") --help
+    if ($typegenHelpOutput -notmatch "Usage:") {
+        throw "Installed typegen --help did not print the expected output"
+    }
+
+    Invoke-Native (Join-Path $Prefix "bin\deployer-win32.exe") `
+        --check --no-consolelog `
+        (Join-Path $PSScriptRoot "windows-generator-smoke\typegen-import.ops")
+
+    $smokeDeployerHelp = Get-NativeOutput `
+        (Join-Path $Prefix "bin\windows_smoke_deployer.exe") --help
+    if ($smokeDeployerHelp -notmatch "Options") {
+        throw "Generated Windows deployer --help did not print the expected output"
+    }
+    Invoke-Native (Join-Path $Prefix "bin\windows_smoke_deployer.exe")
+
+    $deployerVersionOutput = Get-NativeOutput (Join-Path $Prefix "bin\deployer-win32.exe") --version
     if ($deployerVersionOutput -notmatch "OROCOS Toolchain version") {
         throw "deployer-win32.exe --version did not print the expected version output"
     }
 
+    $deployerOpcuaHelp = Get-NativeOutput (Join-Path $Prefix "bin\deployer-opcua-win32.exe") --help
+    if ($deployerOpcuaHelp -notmatch "OPC UA options") {
+        throw "deployer-opcua-win32.exe --help did not expose OPC UA options"
+    }
+
+    $taskBrowserOpcuaHelp = Get-NativeOutput (Join-Path $Prefix "bin\ctaskbrowser-opcua-win32.exe") --help
+    if ($taskBrowserOpcuaHelp -notmatch "--import PACKAGE") {
+        throw "ctaskbrowser-opcua-win32.exe --help did not expose the OPC UA client CLI"
+    }
+
+    $taskBrowserDependencies = Get-NativeOutput dumpbin.exe /DEPENDENTS `
+        (Join-Path $Prefix "bin\orocos-ocl-taskbrowser-win32.dll")
+    if ($taskBrowserDependencies -notmatch "(?im)^\s*readline\.dll\s*$") {
+        throw "Installed TaskBrowser is not linked to readline.dll"
+    }
+
     Invoke-Native (Join-Path $Prefix "bin\deployer-win32.exe") --check --no-consolelog
     Invoke-Native (Join-Path $Prefix "bin\rttscript-win32.exe") --check --no-consolelog
+    Invoke-Native (Join-Path $Prefix "bin\deployer-opcua-win32.exe") --check --no-consolelog
+    $opcuaStartOutput = Get-NativeOutput `
+        (Join-Path $Prefix "bin\deployer-opcua-win32.exe") `
+        --opcua-port 4841 --check `
+        (Join-Path $PSScriptRoot "windows-opcua-start-smoke.ops")
+    if ($opcuaStartOutput -notmatch "Starting the EventLoop" -or
+        $opcuaStartOutput -match "\[\s*ERROR\s*\]") {
+        throw "OPC UA startup smoke check failed:`n$opcuaStartOutput"
+    }
 }

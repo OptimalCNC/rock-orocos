@@ -5,16 +5,32 @@ on:
     paths:
       - ".github/workflows/windows-msvc.yml"
       - "tools/build-windows-msvc.ps1"
+      - "tools/export-windows-env.ps1"
+      - "tools/install-ruby-tools.ps1"
+      - "tools/windows-generator-smoke/**"
+      - "tools/windows-opcua-start-smoke.ops"
+      - "tools/windows-patches/**"
+      - "pixi.toml"
+      - "pixi.lock"
       - ".gitattributes"
       - ".gitignore"
+      - "autoproj/**"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/windows-msvc.yml"
       - "tools/build-windows-msvc.ps1"
+      - "tools/export-windows-env.ps1"
+      - "tools/install-ruby-tools.ps1"
+      - "tools/windows-generator-smoke/**"
+      - "tools/windows-opcua-start-smoke.ops"
+      - "tools/windows-patches/**"
+      - "pixi.toml"
+      - "pixi.lock"
       - ".gitattributes"
       - ".gitignore"
+      - "autoproj/**"
   repository_dispatch:
     types:
       - windows-msvc-integration
@@ -28,19 +44,37 @@ on:
         description: OCL branch, tag, or SHA
         required: false
         default: dev
+      utilmm_ref:
+        description: utilmm branch, tag, or SHA
+        required: false
+        default: dev
+      typelib_ref:
+        description: Typelib branch, tag, or SHA
+        required: false
+        default: dev
+      rtt_typelib_ref:
+        description: rtt_typelib branch, tag, or SHA
+        required: false
+        default: dev
+      orogen_ref:
+        description: OroGen branch, tag, or SHA
+        required: false
+        default: dev
 
 jobs:
   build:
-    name: RTT/OCL win32 prefix
+    name: RTT/OCL/OroGen win32 prefix
     runs-on: windows-2022
+    timeout-minutes: 90
 
     env:
       OROCOS_TARGET: win32
-      WINDOWS_WORKSPACE: ${{ github.workspace }}\_windows-ci
-      WINDOWS_PREFIX: ${{ github.workspace }}\install-msvc
-      CI_VCPKG_ROOT: ${{ github.workspace }}\vcpkg
       RTT_REF: ${{ github.event.inputs.rtt_ref || github.event.client_payload.rtt_ref || 'dev' }}
       OCL_REF: ${{ github.event.inputs.ocl_ref || github.event.client_payload.ocl_ref || 'dev' }}
+      UTILMM_REF: ${{ github.event.inputs.utilmm_ref || github.event.client_payload.utilmm_ref || 'dev' }}
+      TYPELIB_REF: ${{ github.event.inputs.typelib_ref || github.event.client_payload.typelib_ref || 'dev' }}
+      RTT_TYPELIB_REF: ${{ github.event.inputs.rtt_typelib_ref || github.event.client_payload.rtt_typelib_ref || 'dev' }}
+      OROGEN_REF: ${{ github.event.inputs.orogen_ref || github.event.client_payload.orogen_ref || 'dev' }}
 
     steps:
       - name: Check out repository
@@ -51,15 +85,24 @@ jobs:
         with:
           arch: x64
 
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: v0.76.2
+          cache: true
+          run-install: false
+
       - name: Build Windows prefix
         shell: pwsh
         run: |
-          .\tools\build-windows-msvc.ps1 `
-            -Workspace "$env:WINDOWS_WORKSPACE" `
-            -Prefix "$env:WINDOWS_PREFIX" `
-            -VcpkgRoot "$env:CI_VCPKG_ROOT" `
+          pixi install --locked
+          pixi run windows-build -- `
             -RttRef "$env:RTT_REF" `
-            -OclRef "$env:OCL_REF"
+            -OclRef "$env:OCL_REF" `
+            -UtilmmRef "$env:UTILMM_REF" `
+            -TypelibRef "$env:TYPELIB_REF" `
+            -RttTypelibRef "$env:RTT_TYPELIB_REF" `
+            -OrogenRef "$env:OROGEN_REF"
 
       - name: Upload Windows build logs
         if: failure()
@@ -68,6 +111,6 @@ jobs:
           name: windows-msvc-logs
           if-no-files-found: ignore
           path: |
-            ${{ env.WINDOWS_WORKSPACE }}\build\**\CMakeFiles\CMakeOutput.log
-            ${{ env.WINDOWS_WORKSPACE }}\build\**\CMakeFiles\CMakeError.log
-            ${{ env.WINDOWS_WORKSPACE }}\build\**\*.log
+            build/windows-msvc/**/CMakeFiles/CMakeOutput.log
+            build/windows-msvc/**/CMakeFiles/CMakeError.log
+            build/windows-msvc/**/*.log

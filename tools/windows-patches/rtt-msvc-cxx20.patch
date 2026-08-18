@@ -1,0 +1,162 @@
+diff --git a/rtt/internal/DataSources.hpp b/rtt/internal/DataSources.hpp
+index 0d0d9f5c..13694eec 100644
+--- a/rtt/internal/DataSources.hpp
++++ b/rtt/internal/DataSources.hpp
+@@ -673 +673 @@ namespace RTT
+-    : public DataSource< typename remove_cr<typename function::result_type>::type >
++    : public DataSource< typename remove_cr<typename binary_function_traits<function>::result_type>::type >
+@@ -675,3 +675,4 @@ namespace RTT
+-    typedef typename remove_cr<typename function::result_type>::type value_t;
+-    typedef typename remove_cr<typename function::first_argument_type>::type  first_arg_t;
+-    typedef typename remove_cr<typename function::second_argument_type>::type second_arg_t;
++    typedef binary_function_traits<function> function_traits;
++    typedef typename remove_cr<typename function_traits::result_type>::type value_t;
++    typedef typename remove_cr<typename function_traits::first_argument_type>::type  first_arg_t;
++    typedef typename remove_cr<typename function_traits::second_argument_type>::type second_arg_t;
+@@ -736 +737 @@ namespace RTT
+-    : public DataSource<typename remove_cr<typename function::result_type>::type>
++    : public DataSource<typename remove_cr<typename unary_function_traits<function>::result_type>::type>
+@@ -738,2 +739,3 @@ namespace RTT
+-    typedef typename remove_cr<typename function::result_type>::type value_t;
+-    typedef typename remove_cr<typename function::argument_type>::type arg_t;
++    typedef unary_function_traits<function> function_traits;
++    typedef typename remove_cr<typename function_traits::result_type>::type value_t;
++    typedef typename remove_cr<typename function_traits::argument_type>::type arg_t;
+diff --git a/rtt/internal/FunctionEffects.hpp b/rtt/internal/FunctionEffects.hpp
+index e22ad9b8..e5319ad9 100644
+--- a/rtt/internal/FunctionEffects.hpp
++++ b/rtt/internal/FunctionEffects.hpp
+@@ -84 +84 @@ namespace RTT
+-#define ORO_REMOVE_NOEXCEPT(QUALIFIERS)                                         \
++#define ORO_REMOVE_NOEXCEPT(...)                                                \
+@@ -86 +86 @@ namespace RTT
+-        struct RemoveNoexcept<R (C::*)(Args...) QUALIFIERS noexcept>           \
++        struct RemoveNoexcept<R (C::*)(Args...) __VA_ARGS__ noexcept>          \
+@@ -88 +88 @@ namespace RTT
+-            typedef R (C::*type)(Args...) QUALIFIERS;                          \
++            typedef R (C::*type)(Args...) __VA_ARGS__;                         \
+diff --git a/rtt/internal/mystd.hpp b/rtt/internal/mystd.hpp
+index 408bc2c5..76de627d 100644
+--- a/rtt/internal/mystd.hpp
++++ b/rtt/internal/mystd.hpp
+@@ -51,0 +52,3 @@
++#include <iterator>
++#include <tuple>
++#include <type_traits>
+@@ -57,0 +61,65 @@ namespace RTT { namespace internal {
++    template<typename Signature>
++    struct function_call_traits;
++
++    template<typename R, typename C, typename... Args>
++    struct function_call_traits<R (C::*)(Args...)>
++    {
++        typedef R result_type;
++        typedef std::tuple<Args...> arguments_type;
++    };
++
++    template<typename R, typename C, typename... Args>
++    struct function_call_traits<R (C::*)(Args...) const>
++        : function_call_traits<R (C::*)(Args...)>
++    {};
++
++    template<typename R, typename C, typename... Args>
++    struct function_call_traits<R (C::*)(Args...) noexcept>
++        : function_call_traits<R (C::*)(Args...)>
++    {};
++
++    template<typename R, typename C, typename... Args>
++    struct function_call_traits<R (C::*)(Args...) const noexcept>
++        : function_call_traits<R (C::*)(Args...)>
++    {};
++
++    template<typename Function, typename = void>
++    struct unary_function_traits
++    {
++        typedef function_call_traits<decltype(&Function::operator())> call_traits;
++        static_assert(std::tuple_size<typename call_traits::arguments_type>::value == 1,
++                      "Unary function object must take one argument");
++        typedef typename std::tuple_element<0, typename call_traits::arguments_type>::type argument_type;
++        typedef typename call_traits::result_type result_type;
++    };
++
++    template<typename Function>
++    struct unary_function_traits<Function,
++        std::void_t<typename Function::argument_type, typename Function::result_type> >
++    {
++        typedef typename Function::argument_type argument_type;
++        typedef typename Function::result_type result_type;
++    };
++
++    template<typename Function, typename = void>
++    struct binary_function_traits
++    {
++        typedef function_call_traits<decltype(&Function::operator())> call_traits;
++        static_assert(std::tuple_size<typename call_traits::arguments_type>::value == 2,
++                      "Binary function object must take two arguments");
++        typedef typename std::tuple_element<0, typename call_traits::arguments_type>::type first_argument_type;
++        typedef typename std::tuple_element<1, typename call_traits::arguments_type>::type second_argument_type;
++        typedef typename call_traits::result_type result_type;
++    };
++
++    template<typename Function>
++    struct binary_function_traits<Function,
++        std::void_t<typename Function::first_argument_type,
++                    typename Function::second_argument_type,
++                    typename Function::result_type> >
++    {
++        typedef typename Function::first_argument_type first_argument_type;
++        typedef typename Function::second_argument_type second_argument_type;
++        typedef typename Function::result_type result_type;
++    };
++
+diff --git a/rtt/os/oro_msvc/oro_arch.h b/rtt/os/oro_msvc/oro_arch.h
+index b66750a0..d713744a 100644
+--- a/rtt/os/oro_msvc/oro_arch.h
++++ b/rtt/os/oro_msvc/oro_arch.h
+@@ -127,3 +126,0 @@ static __forceinline int oro_atomic_set_mask(oro_atomic_t *a_int, int mask)
+-#pragma warning(push)
+-#pragma warning(disable : 4715) // Disable warning on "specified function can potentially not return a value"
+-
+@@ -132,3 +129 @@ template<typename T> inline T oro_cmpxchg(volatile void * ptr, T old, T _new)
+-    switch(sizeof(T))
+-    {
+-    case 2:
++    if constexpr (sizeof(T) == 2) {
+@@ -136 +131 @@ template<typename T> inline T oro_cmpxchg(volatile void * ptr, T old, T _new)
+-    case 4:
++    } else if constexpr (sizeof(T) == 4) {
+@@ -138 +133 @@ template<typename T> inline T oro_cmpxchg(volatile void * ptr, T old, T _new)
+-    case 8:
++    } else if constexpr (sizeof(T) == 8) {
+@@ -139,0 +135,3 @@ template<typename T> inline T oro_cmpxchg(volatile void * ptr, T old, T _new)
++    } else {
++        static_assert(sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8,
++                      "oro_cmpxchg only supports 2, 4, or 8 byte values");
+@@ -143,2 +140,0 @@ template<typename T> inline T oro_cmpxchg(volatile void * ptr, T old, T _new)
+-#pragma warning(pop)
+-
+diff --git a/rtt/os/win32/fosi_internal.cpp b/rtt/os/win32/fosi_internal.cpp
+index a2f87b92..fe21d9af 100644
+--- a/rtt/os/win32/fosi_internal.cpp
++++ b/rtt/os/win32/fosi_internal.cpp
+@@ -56 +56 @@ namespace RTT
+-void ErrorHandler(LPTSTR lpszFunction)
++void ErrorHandler(LPCTSTR lpszFunction)
+diff --git a/rtt/types/OperatorTypes.hpp b/rtt/types/OperatorTypes.hpp
+index 7041b025..13537e9a 100644
+--- a/rtt/types/OperatorTypes.hpp
++++ b/rtt/types/OperatorTypes.hpp
+@@ -58,2 +58,3 @@ namespace RTT
+-            typedef typename internal::remove_cr<typename function::argument_type>::type arg_t;
+-            typedef typename internal::remove_cr<typename function::result_type>::type result_t;
++            typedef internal::unary_function_traits<function> function_traits;
++            typedef typename internal::remove_cr<typename function_traits::argument_type>::type arg_t;
++            typedef typename internal::remove_cr<typename function_traits::result_type>::type result_t;
+@@ -87,3 +88,4 @@ namespace RTT
+-            typedef typename internal::remove_cr<typename function::first_argument_type>::type arg1_t;
+-            typedef typename internal::remove_cr<typename function::second_argument_type>::type arg2_t;
+-            typedef typename internal::remove_cr<typename function::result_type>::type result_t;
++            typedef internal::binary_function_traits<function> function_traits;
++            typedef typename internal::remove_cr<typename function_traits::first_argument_type>::type arg1_t;
++            typedef typename internal::remove_cr<typename function_traits::second_argument_type>::type arg2_t;
++            typedef typename internal::remove_cr<typename function_traits::result_type>::type result_t;

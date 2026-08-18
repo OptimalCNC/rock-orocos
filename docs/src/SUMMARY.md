@@ -8,6 +8,7 @@
   - [Architecture](./architecture.md)
   - [Package Policy](./package-policy.md)
   - [Install Contract](./install-contract.md)
+  - [Windows MSVC Handoff](./windows-msvc-handoff.md)
   - [Native OPC UA Reference](./opcua-reference.md)
   - [Bootstrap Workflow](./bootstrap-workflow.md)
   - [Xenomai 3 Integration](./xenomai3-integration.md)

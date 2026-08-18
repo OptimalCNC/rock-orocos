@@ -1,0 +1,52 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0225ec8..a13cff4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -163,1 +163,2 @@ if(BUILD_OPCUA)
+-    pkg_check_modules(RTT_OPCUA QUIET "rtt_opcua-${OROCOS_TARGET}")
++    pkg_check_modules(RTT_OPCUA QUIET IMPORTED_TARGET GLOBAL
++      "rtt_opcua-${OROCOS_TARGET}")
+diff --git a/bin/CMakeLists.txt b/bin/CMakeLists.txt
+index 4fef263..ff77237 100644
+--- a/bin/CMakeLists.txt
++++ b/bin/CMakeLists.txt
+@@ -53,1 +53,1 @@ IF (BUILD_TASKBROWSER AND BUILD_DEPLOYMENT AND OCL_OPCUA_FOUND)
+-      ${RTT_OPCUA_LDFLAGS} ${EXTRA_LIBRARIES})
++      PkgConfig::RTT_OPCUA ${EXTRA_LIBRARIES})
+@@ -56,1 +56,1 @@ IF (BUILD_TASKBROWSER AND BUILD_DEPLOYMENT AND OCL_OPCUA_FOUND)
+-    target_compile_definitions(ctaskbrowser-opcua PRIVATE RTT_STATIC)
++    target_compile_definitions(ctaskbrowser-opcua PRIVATE RTT_STATIC RTT_EXT_IMPL=)
+@@ -68,1 +68,1 @@ IF (BUILD_TASKBROWSER AND BUILD_DEPLOYMENT AND OCL_OPCUA_FOUND)
+-      ${RTT_OPCUA_LDFLAGS} ${EXTRA_LIBRARIES})
++      PkgConfig::RTT_OPCUA ${EXTRA_LIBRARIES})
+diff --git a/deployment/CMakeLists.txt b/deployment/CMakeLists.txt
+index 4476d87..7536315 100644
+--- a/deployment/CMakeLists.txt
++++ b/deployment/CMakeLists.txt
+@@ -51,1 +51,1 @@ IF ( BUILD_DEPLOYMENT )
+-          orocos-ocl-deployment ${RTT_OPCUA_LDFLAGS})
++          orocos-ocl-deployment PkgConfig::RTT_OPCUA)
+@@ -79,1 +79,1 @@ IF ( BUILD_DEPLOYMENT )
+-          orocos-ocl-deployment-opcua open62541pp::open62541pp ${RTT_OPCUA_LDFLAGS}
++          orocos-ocl-deployment-opcua open62541pp::open62541pp PkgConfig::RTT_OPCUA
+diff --git a/taskbrowser/CMakeLists.txt b/taskbrowser/CMakeLists.txt
+index e399b20..c293384 100644
+--- a/taskbrowser/CMakeLists.txt
++++ b/taskbrowser/CMakeLists.txt
+@@ -46,9 +46,12 @@ IF ( BUILD_TASKBROWSER )
+     IF (READLINE AND NOT NO_GPL)
+-      # MSVC builds link statically with the readline.lib file
++      # Select the import definition used by the vcpkg readline-win32 port.
+       if (MSVC)
+-	# Should this flag be set for mingw too ??
+-	MESSAGE("Taskbrowser NOTE: you need to have a static readline build from a readline MSVC solution !")
+-	ADD_DEFINITIONS( /DREADLINE_STATIC )
++	if(DEFINED VCPKG_TARGET_TRIPLET AND NOT VCPKG_TARGET_TRIPLET MATCHES "-static")
++	  ADD_DEFINITIONS( /DUSE_READLINE_DLL )
++	else()
++	  MESSAGE("Taskbrowser NOTE: you need to have a static readline build from a readline MSVC solution !")
++	  ADD_DEFINITIONS( /DREADLINE_STATIC )
++	endif()
+       endif()
+ 
+       # readline only depends on curses on unixes, not on mingw/msvc

@@ -29,6 +29,7 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `typelib` | generator type support | Public maintenance fork while compatibility fixes are needed |
 | `utilmm` | generator/runtime support | Public maintenance fork while compatibility fixes are needed |
 | `utilrb` | autoproj and generator support | Upstream |
+| `metaruby` | Ruby model layer required by `orogen` | Upstream |
 | `rtt_typelib` | RTT and Typelib bridge | Public maintenance fork while compatibility fixes are needed |
 
 RTT itself owns the fixed-width built-in types. The retired
@@ -88,6 +89,7 @@ Upstream by default:
 - `open62541pp` at the selected compatibility tag
 - `rtt_geometry`
 - `utilrb`
+- `metaruby`
 
 The workspace builds `open62541pp` against the separately selected
 `open62541` package. It does not depend on recursive Git submodules for this

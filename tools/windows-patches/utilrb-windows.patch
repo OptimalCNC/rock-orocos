@@ -1,0 +1,52 @@
+diff --git a/lib/utilrb/configsearch/configuration_finder.rb b/lib/utilrb/configsearch/configuration_finder.rb
+index 3bf4832..8a307eb 100644
+--- a/lib/utilrb/configsearch/configuration_finder.rb
++++ b/lib/utilrb/configsearch/configuration_finder.rb
+@@ -14,7 +14,7 @@ module Utilrb
+             if env_var
+                 # Extract search path from environment variable
+                 configuration_path = Array.new
+-                env_var.split(':').each do | path |
++                env_var.split(File::PATH_SEPARATOR).each do | path |
+                     # Extract path and append package name folder
+                     configuration_path << File.join(path.gsub(/:$/,''), pkg_name)
+                 end
+diff --git a/lib/utilrb/pkgconfig.rb b/lib/utilrb/pkgconfig.rb
+index a6f5fb2..d1acbc5 100644
+--- a/lib/utilrb/pkgconfig.rb
++++ b/lib/utilrb/pkgconfig.rb
+@@ -570,7 +570,7 @@ module Utilrb
+         def self.each_pkgconfig_directory(pkg_config_path: self.pkg_config_path, &block)
+             return enum_for(__method__) if !block_given?
+ 
+-            pkg_config_path.split(':').each(&block) if pkg_config_path
++            pkg_config_path.split(File::PATH_SEPARATOR).each(&block) if pkg_config_path
+             default_search_path.each(&block)
+         end
+ 
+@@ -625,9 +625,10 @@ module Utilrb
+         # Returns the system-wide search path that is embedded in pkg-config
+         def self.default_search_path
+             @default_search_path ||=
+-                `LANG=C pkg-config --variable pc_path pkg-config`
++                IO.popen({ "LANG" => "C" },
++                         ["pkg-config", "--variable", "pc_path", "pkg-config"], &:read)
+                 .strip
+-                .split(":")
++                .split(File::PATH_SEPARATOR)
+                 .grep(PKGCONFIG_PATH_RX)
+                 .to_set
+         end
+@@ -672,9 +673,10 @@ module Utilrb
+         # new prefixes to find pkg-config files
+         def self.default_search_suffixes
+             @default_search_suffixes ||=
+-                `LANG=C pkg-config --variable pc_path pkg-config`
++                IO.popen({ "LANG" => "C" },
++                         ["pkg-config", "--variable", "pc_path", "pkg-config"], &:read)
+                 .strip
+-                .split(":")
++                .split(File::PATH_SEPARATOR)
+                 .grep(PKGCONFIG_PATH_RX)
+                 .map { |l| l.gsub(PKGCONFIG_PATH_RX, '\1') }
+                 .to_set

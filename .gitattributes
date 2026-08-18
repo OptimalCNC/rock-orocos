@@ -12,6 +12,8 @@ Dockerfile text eol=lf
 *.md text eol=lf
 *.patch text eol=lf
 *.toml text eol=lf
+autoproj/manifest text eol=lf
+pixi.lock text eol=lf
 
 *.bat text eol=crlf
 *.cmd text eol=crlf

@@ -2,7 +2,7 @@
 
 Standalone [Orocos](https://www.orocos.org/) / Rock toolchain workspace for
 rebuilding RTT, OCL, `orogen`, `typegen`, and related generator support on
-current Linux distributions.
+current Linux distributions and native Windows.
 
 The repository keeps the scope narrow:
 
@@ -30,10 +30,75 @@ workspace configures CORBA off and does not install CORBA artifacts.
 Downstream projects should consume the installed prefix, not the internal
 Autoproj workspace.
 
+## Windows Development
+
+The native Windows path builds and validates both the RTT/OCL runtime and the
+OroGen development stack. This includes `open62541`, `open62541pp`,
+`rtt_opcua`, `utilmm`, Typelib and its Ruby extension, `rtt_typelib`, `utilrb`,
+`metaruby`, `orogen`, and `typegen`. Its acceptance test generates, builds,
+loads, and runs a small component, typekit, Typelib transport, and deployer
+against the installed prefix. It separately uses `typegen` to generate,
+regenerate, build, install, and import a standalone typekit and Typelib
+transport.
+
+Install Pixi and the Visual Studio 2022 C++ build tools, then create the locked
+development environment and run the build:
+
+```powershell
+pixi install --locked
+pixi run windows-build
+```
+
+Enter the Pixi environment and dot-source the generated runtime or development
+environment. The development environment includes the runtime environment:
+
+```powershell
+pixi shell --locked
+. .\install\windows-msvc\dev-env.ps1
+orogen --version
+typegen --help
+deployer-opcua-win32.exe --check --no-consolelog
+```
+
+Use `env.ps1` instead when only the runtime is needed. OCL also installs
+extensionless launcher scripts for POSIX-compatible shells. The generated
+Windows environments currently record the vcpkg prefix because its runtime
+DLLs have not yet been copied into the installed prefix. The Windows TaskBrowser
+uses vcpkg's GPL-2.0 readline implementation for tab completion, line editing,
+and command history. History is stored in `.tb_history` in the launch directory;
+set `ORO_TB_HISTFILE` to override it. Use `quit`, or Ctrl+Z followed by Enter,
+for end-of-input in a native Windows console.
+
+The Windows generator defaults to the `typelib` transport. CORBA and mqueue
+remain disabled for the `win32` target, so this is a native Windows development
+contract rather than byte-for-byte feature parity with `gnulinux`.
+
+During maintenance-fork development, point the same task at a local Git
+checkout without changing tracked source policy:
+
+```powershell
+pixi run windows-build -- `
+  -RttRepository D:\src\rtt `
+  -RttRef my-windows-branch `
+  -RttOpcuaRepository D:\src\rtt_opcua `
+  -RttOpcuaRef my-windows-branch `
+  -TypelibRepository D:\src\tools-typelib `
+  -TypelibRef my-windows-branch `
+  -OrogenRepository D:\src\tools-orogen `
+  -OrogenRef my-windows-branch
+```
+
+The task writes disposable build state below `build/windows-msvc` and installs
+the validated prefix and its `env.ps1`/`dev-env.ps1` entrypoints below
+`install/windows-msvc`. Windows-only source fixes are kept as tracked patches
+under `tools/windows-patches` until they can be merged into the maintenance
+forks.
+
 ## Documentation
 
 - [User Guide](./docs/src/user-guide.md)
 - [Maintainer Guide](./docs/src/maintainer-guide.md)
+- [Windows MSVC Handoff](./docs/src/windows-msvc-handoff.md)
 - [Architecture](./docs/src/architecture.md)
 - [Package Policy](./docs/src/package-policy.md)
 - [Install Contract](./docs/src/install-contract.md)
