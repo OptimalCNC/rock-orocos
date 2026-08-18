@@ -332,14 +332,8 @@ Invoke-Step "Check out source repositories" {
     Sync-GitRepository -Repository $OrogenRepository -Ref $OrogenRef -Path $OrogenSource
 }
 
-Invoke-Step "Apply Windows portability patches" {
-    Apply-SourcePatch -Path $RttSource -Patch (Join-Path $PatchRoot "rtt-msvc-cxx20.patch")
-    Apply-SourcePatch -Path $RttOpcuaSource -Patch (Join-Path $PatchRoot "rtt-opcua-msvc.patch")
-    Apply-SourcePatch -Path $OclSource -Patch (Join-Path $PatchRoot "ocl-opcua-msvc.patch")
+Invoke-Step "Apply remaining Windows portability patches" {
     Apply-SourcePatch -Path $UtilrbSource -Patch (Join-Path $PatchRoot "utilrb-windows.patch")
-    Apply-SourcePatch -Path $UtilmmSource -Patch (Join-Path $PatchRoot "utilmm-msvc.patch")
-    Apply-SourcePatch -Path $TypelibSource -Patch (Join-Path $PatchRoot "typelib-msvc.patch")
-    Apply-SourcePatch -Path $OrogenSource -Patch (Join-Path $PatchRoot "orogen-msvc.patch")
 }
 
 Invoke-Step "Set up vcpkg" {

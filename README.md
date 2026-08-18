@@ -90,9 +90,9 @@ pixi run windows-build -- `
 
 The task writes disposable build state below `build/windows-msvc` and installs
 the validated prefix and its `env.ps1`/`dev-env.ps1` entrypoints below
-`install/windows-msvc`. Windows-only source fixes are kept as tracked patches
-under `tools/windows-patches` until they can be merged into the maintenance
-forks.
+`install/windows-msvc`. Windows source fixes live on the selected maintenance
+fork defaults. The remaining upstream-only `utilrb` fix is kept under
+`tools/windows-patches` and applied to the disposable checkout.
 
 ## Documentation
 
