@@ -40,8 +40,8 @@ param(
 
 $BoundParameterNames = @($PSBoundParameters.Keys)
 $ErrorActionPreference = "Stop"
-$RubyExecutable = (Get-Command ruby.exe -CommandType Application `
-    -ErrorAction Stop).Source
+$RubyExecutable = Get-Command ruby.exe -CommandType Application `
+    -ErrorAction Stop | Select-Object -First 1 -ExpandProperty Source
 
 function Invoke-Step {
     param(
