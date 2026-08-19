@@ -62,6 +62,10 @@ The default rule is:
 - keep those changes on public branch pins recorded in `autoproj/overrides.yml`
 - use upstream for everything else
 
+An exact commit may be pinned in addition to its maintenance branch to contain
+a confirmed toolchain regression. Remove such a pin only after the affected
+downstream generator scenario has a passing regression test.
+
 Initial public maintenance source set:
 
 - `farbot`

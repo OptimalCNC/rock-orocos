@@ -48,7 +48,11 @@ expected_sources = {
   "rtt" => { "url" => "https://github.com/OptimalCNC/rtt.git", "branch" => "dev" },
   "rtt_opcua" => { "url" => "https://github.com/OptimalCNC/rtt_opcua.git", "branch" => "dev" },
   "ocl" => { "url" => "https://github.com/OptimalCNC/ocl.git", "branch" => "dev" },
-  "orogen" => { "url" => "https://github.com/OptimalCNC/tools-orogen.git", "branch" => "dev" },
+  "orogen" => {
+    "url" => "https://github.com/OptimalCNC/tools-orogen.git",
+    "branch" => "dev",
+    "commit" => "3346b6ac682ad772b57d07b2386cdaef47e4abbe"
+  },
   "typelib" => { "url" => "https://github.com/OptimalCNC/tools-typelib.git", "branch" => "dev" },
   "utilmm" => { "url" => "https://github.com/OptimalCNC/utilmm.git", "branch" => "dev" },
   "rtt_typelib" => { "url" => "https://github.com/OptimalCNC/tools-rtt_typelib.git", "branch" => "dev" }
@@ -70,12 +74,10 @@ expected_sources.each do |package, source|
     next
   end
 
-  actual_url = override["url"]
-  ref_key = source.key?("tag") ? "tag" : "branch"
-  actual_ref = override[ref_key]
-
-  errors << "#{package}: expected url #{source.fetch("url")}, got #{actual_url.inspect}" unless actual_url == source.fetch("url")
-  errors << "#{package}: expected #{ref_key} #{source.fetch(ref_key)}, got #{actual_ref.inspect}" unless actual_ref == source.fetch(ref_key)
+  source.each do |key, expected|
+    actual = override[key]
+    errors << "#{package}: expected #{key} #{expected}, got #{actual.inspect}" unless actual == expected
+  end
 end
 
 install_script = File.read(install_path)
