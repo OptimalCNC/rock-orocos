@@ -401,6 +401,19 @@ New-Item -ItemType Directory -Force -Path $Prefix | Out-Null
 
 $env:OROCOS_TARGET = "win32"
 $env:VCPKG_ROOT = $VcpkgRoot
+foreach ($name in @("VCPKG_DEFAULT_BINARY_CACHE", "VCPKG_DOWNLOADS")) {
+    $configuredPath = [Environment]::GetEnvironmentVariable($name)
+    if ([string]::IsNullOrWhiteSpace($configuredPath)) {
+        continue
+    }
+
+    $resolvedPath = Convert-ToFullPath $configuredPath
+    New-Item -ItemType Directory -Force -Path $resolvedPath | Out-Null
+    [Environment]::SetEnvironmentVariable(
+        $name,
+        $resolvedPath,
+        [EnvironmentVariableTarget]::Process)
+}
 
 Invoke-Step "Check out source repositories" {
     Sync-GitRepository -Repository $FarbotRepository -Ref $FarbotRef -Path $FarbotSource
