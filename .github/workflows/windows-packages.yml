@@ -139,11 +139,42 @@ jobs:
       - name: Prepare verified release bundle
         shell: pwsh
         run: |
-          pixi run --locked -e package powershell.exe `
+          $logPath = 'packaging/conda/output/ci-release-stage.log'
+          $packageDirectory = 'packaging/conda/output/win-64'
+          "Package inventory before release staging:" | Tee-Object -FilePath $logPath
+          Get-ChildItem -LiteralPath $packageDirectory -File -ErrorAction SilentlyContinue |
+            Select-Object Name, Length |
+            Format-Table -AutoSize |
+            Out-String |
+            Tee-Object -FilePath $logPath -Append
+          if (Test-Path -LiteralPath $env:RELEASE_BUNDLE) {
+            "Release directory already exists before staging:" |
+              Tee-Object -FilePath $logPath -Append
+            Get-ChildItem -LiteralPath $env:RELEASE_BUNDLE -Force |
+              Select-Object Name, Length |
+              Format-Table -AutoSize |
+              Out-String |
+              Tee-Object -FilePath $logPath -Append
+          } else {
+            "Release directory does not exist before staging." |
+              Tee-Object -FilePath $logPath -Append
+          }
+          $savedErrorActionPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          & pixi run --locked -e package powershell.exe `
             -NoProfile -ExecutionPolicy Bypass `
             -File tools/prepare-windows-conda-release.ps1 `
             -Mode Stage `
-            -RepositoryCommit "${{ github.sha }}"
+            -RepositoryCommit "${{ github.sha }}" 2>&1 |
+            Tee-Object -FilePath $logPath -Append
+          $stageExitCode = $LASTEXITCODE
+          $ErrorActionPreference = $savedErrorActionPreference
+          if ($stageExitCode -ne 0) {
+            $message = (Get-Content -LiteralPath $logPath -Tail 40) -join "`n"
+            $message = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error title=Windows release staging diagnostic::$message"
+            exit $stageExitCode
+          }
 
       - name: Test clean local-channel consumers
         shell: pwsh
