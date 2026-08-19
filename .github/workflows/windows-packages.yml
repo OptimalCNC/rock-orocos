@@ -53,6 +53,8 @@ env:
   PREFIX_CHANNEL: liufang-robot/orocos
   PUBLIC_CHANNEL_URL: https://prefix.dev/liufang-robot/orocos
   RELEASE_BUNDLE: packaging/conda/output/release
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.cache/vcpkg/archives
+  VCPKG_DOWNLOADS: ${{ github.workspace }}/.cache/vcpkg/downloads
 
 concurrency:
   group: windows-conda-packages-${{ github.ref }}
@@ -82,6 +84,16 @@ jobs:
           cache: true
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
 
+      - name: Restore vcpkg downloads and binary packages
+        uses: actions/cache@v6
+        with:
+          path: |
+            .cache/vcpkg/archives
+            .cache/vcpkg/downloads
+          key: windows-vcpkg-x64-${{ hashFiles('packaging/source-lock.json', 'tools/build-windows-msvc.ps1') }}
+          restore-keys: |
+            windows-vcpkg-x64-
+
       - name: Validate Windows source lock
         shell: pwsh
         run: >-
@@ -95,6 +107,24 @@ jobs:
       - name: Build and test package artifacts
         shell: pwsh
         run: pixi run --locked package-build
+
+      - name: Report package build failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $matches = Get-ChildItem packaging/conda/output -Recurse -File `
+              -Filter conda_build.log -ErrorAction SilentlyContinue |
+            Select-String -Pattern `
+              '(?i)(error|fatal|failed|exception|exited with code)' |
+            Select-Object -Last 10
+          if (-not $matches) {
+            Write-Host '::error title=Windows package build diagnostic::No conda_build.log failure line was found.'
+          }
+          foreach ($match in $matches) {
+            $message = "$($match.Path):$($match.LineNumber): $($match.Line.Trim())"
+            $message = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error title=Windows package build diagnostic::$message"
+          }
 
       - name: Prepare verified release bundle
         shell: pwsh

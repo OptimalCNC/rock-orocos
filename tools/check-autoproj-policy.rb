@@ -21,8 +21,6 @@ def active_ruby_statements(body)
 end
 
 def executable_file?(root, path)
-  return File.executable?(path) unless File::ALT_SEPARATOR
-
   relative_path = Pathname.new(path).relative_path_from(Pathname.new(root))
   output, status = Open3.capture2(
     "git", "-C", root, "ls-files", "--stage", "--", relative_path.to_s

@@ -94,10 +94,13 @@ jobs:
           bash tools/test-workspace-env-nounset.sh
 
       - name: Check repository policy
-        run: |
-          ruby tools/check-repository-policy.rb
-          ruby tools/check-autoproj-policy.rb
-          ruby tools/check-package-tests-ci.rb
+        run: ruby tools/check-repository-policy.rb
+
+      - name: Check Autoproj policy
+        run: ruby tools/check-autoproj-policy.rb
+
+      - name: Check package test CI policy
+        run: ruby tools/check-package-tests-ci.rb
 
       - name: Bootstrap workspace
         run: ./tools/bootstrap.sh --prefix "$OROCOS_PREFIX" --target gnulinux
