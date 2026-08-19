@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
 require "yaml"
+require "open3"
+require "pathname"
 
 def setup_package_body(script, package)
   match = script.match(
@@ -16,6 +18,16 @@ def active_ruby_statements(body)
     statement = line.strip
     statement unless statement.empty? || statement.start_with?("#")
   end
+end
+
+def executable_file?(root, path)
+  return File.executable?(path) unless File::ALT_SEPARATOR
+
+  relative_path = Pathname.new(path).relative_path_from(Pathname.new(root))
+  output, status = Open3.capture2(
+    "git", "-C", root, "ls-files", "--stage", "--", relative_path.to_s
+  )
+  status.success? && output.each_line.any? { |line| line.start_with?("100755 ") }
 end
 
 root = File.expand_path("..", __dir__)
@@ -36,6 +48,7 @@ ruby_tools_path = File.join(root, "tools", "install-ruby-tools.sh")
 common_path = File.join(root, "tools", "common.sh")
 native_ci_check_path = File.join(root, "tools", "check-native-ci.rb")
 package_tests_ci_check_path = File.join(root, "tools", "check-package-tests-ci.rb")
+windows_package_ci_check_path = File.join(root, "tools", "check-windows-package-ci.rb")
 cpp20_policy_check_path = File.join(root, "tools", "check-cpp20-policy.rb")
 rtlog_prefix_check_path = File.join(root, "tools", "check-rtlog-prefix.sh")
 resolved_dependencies_check_path = File.join(root, "tools", "check-resolved-dependencies.rb")
@@ -91,8 +104,8 @@ local_osdeps_data = local_osdeps.empty? ? {} : (YAML.safe_load(local_osdeps) || 
 export_env_script = File.read(export_env_path)
 validate_install_script = File.read(validate_install_path)
 
-errors << "missing executable tools/update.sh" unless File.executable?(update_path)
-errors << "missing executable tools/test-update.sh" unless File.executable?(update_test_path)
+errors << "missing executable tools/update.sh" unless executable_file?(root, update_path)
+errors << "missing executable tools/test-update.sh" unless executable_file?(root, update_test_path)
 unless update_script.include?("git pull --ff-only")
   errors << "update.sh: must fast-forward the configured root upstream"
 end
@@ -333,6 +346,7 @@ end
 
 errors << "tools/check-native-ci.rb: missing native CI policy check" unless File.file?(native_ci_check_path)
 errors << "tools/check-package-tests-ci.rb: missing package test CI policy check" unless File.file?(package_tests_ci_check_path)
+errors << "tools/check-windows-package-ci.rb: missing Windows package CI policy check" unless File.file?(windows_package_ci_check_path)
 errors << "tools/check-cpp20-policy.rb: missing C++20 policy check" unless File.file?(cpp20_policy_check_path)
 errors << "tools/check-rtlog-prefix.sh: missing rtlog installed-prefix smoke test" unless File.file?(rtlog_prefix_check_path)
 errors << "tools/check-resolved-dependencies.rb: missing resolved dependency policy check" unless File.file?(resolved_dependencies_check_path)

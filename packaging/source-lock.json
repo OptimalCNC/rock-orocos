@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "name": "farbot",
+      "repository": "https://github.com/liufang-robot/farbot.git",
+      "revision": "09fd406eef4778511e85b569e3e75cad3d5cf608"
+    },
+    {
+      "name": "rtlog-cpp",
+      "repository": "https://github.com/liufang-robot/rtlog-cpp.git",
+      "revision": "5842ca36c69ad4ba34321eda80891c832298f161"
+    },
+    {
+      "name": "rtt",
+      "repository": "https://github.com/liufang-robot/rtt.git",
+      "revision": "14e237f2c49fa2830f055b71b09f6921c3a07bee"
+    },
+    {
+      "name": "open62541",
+      "repository": "https://github.com/open62541/open62541.git",
+      "revision": "45e4cd3ef6c79a8e503d37c9f5c89fefe90d99db"
+    },
+    {
+      "name": "open62541pp",
+      "repository": "https://github.com/open62541pp/open62541pp.git",
+      "revision": "b1696768b26a12d0f40fdac5ec62ad78d25fa236"
+    },
+    {
+      "name": "rtt_opcua",
+      "repository": "https://github.com/liufang-robot/rtt_opcua.git",
+      "revision": "847669186f79dc206313e0f200604581d7031ad8"
+    },
+    {
+      "name": "ocl",
+      "repository": "https://github.com/liufang-robot/ocl.git",
+      "revision": "b80710cd9ba3c1172e355c351d79e6dab016e214"
+    },
+    {
+      "name": "utilmm",
+      "repository": "https://github.com/liufang-robot/utilmm.git",
+      "revision": "fa212d0d232cf6d841edf9e9d4c43a26d223fedd"
+    },
+    {
+      "name": "typelib",
+      "repository": "https://github.com/liufang-robot/tools-typelib.git",
+      "revision": "20cb127d44dc33f91a67a4c7d7cba7b20e2379eb"
+    },
+    {
+      "name": "rtt_typelib",
+      "repository": "https://github.com/liufang-robot/tools-rtt_typelib.git",
+      "revision": "c5b345a22036019f8ec4ed176299bab3b80aae0a"
+    },
+    {
+      "name": "utilrb",
+      "repository": "https://github.com/rock-core/tools-utilrb.git",
+      "revision": "0028fac920eac5d5f9332c3a3438dcf4b7562953"
+    },
+    {
+      "name": "metaruby",
+      "repository": "https://github.com/rock-core/tools-metaruby.git",
+      "revision": "26d25770fdad163226b5aede3f8f9b8364d22f4c"
+    },
+    {
+      "name": "orogen",
+      "repository": "https://github.com/liufang-robot/tools-orogen.git",
+      "revision": "dfa81b727f002dafb2f9b6b82e3205d375c77a66"
+    },
+    {
+      "name": "vcpkg",
+      "repository": "https://github.com/microsoft/vcpkg.git",
+      "revision": "c5a15727ee70fddf0296f0d8aafc3f58916fefac"
+    }
+  ]
+}

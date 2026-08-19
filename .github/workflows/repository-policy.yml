@@ -6,10 +6,17 @@ on:
       - "AGENTS.md"
       - "README.md"
       - ".github/workflows/repository-policy.yml"
+      - ".github/workflows/windows-packages.yml"
       - "docs/book/**"
       - "docs/src/**"
       - "docs/superpowers/**"
       - "tools/check-repository-policy.rb"
+      - "tools/check-windows-package-ci.rb"
+      - "tools/prepare-windows-conda-release.ps1"
+      - "tools/test-windows-conda-consumer.ps1"
+      - "packaging/**"
+      - "pixi.toml"
+      - "pixi.lock"
   push:
     branches:
       - main
@@ -17,10 +24,17 @@ on:
       - "AGENTS.md"
       - "README.md"
       - ".github/workflows/repository-policy.yml"
+      - ".github/workflows/windows-packages.yml"
       - "docs/book/**"
       - "docs/src/**"
       - "docs/superpowers/**"
       - "tools/check-repository-policy.rb"
+      - "tools/check-windows-package-ci.rb"
+      - "tools/prepare-windows-conda-release.ps1"
+      - "tools/test-windows-conda-consumer.ps1"
+      - "packaging/**"
+      - "pixi.toml"
+      - "pixi.lock"
   workflow_dispatch:
 
 jobs:
@@ -33,4 +47,6 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Check repository policy
-        run: ruby tools/check-repository-policy.rb
+        run: |
+          ruby tools/check-repository-policy.rb
+          ruby tools/check-windows-package-ci.rb

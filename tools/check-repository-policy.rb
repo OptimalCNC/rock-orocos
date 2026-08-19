@@ -120,14 +120,22 @@ else
     "AGENTS.md"
     "README.md"
     ".github/workflows/repository-policy.yml"
+    ".github/workflows/windows-packages.yml"
     "docs/book/**"
     "docs/src/**"
     "docs/superpowers/**"
     "tools/check-repository-policy.rb"
+    "tools/check-windows-package-ci.rb"
+    "tools/prepare-windows-conda-release.ps1"
+    "tools/test-windows-conda-consumer.ps1"
+    "packaging/**"
+    "pixi.toml"
+    "pixi.lock"
   ].each do |path|
     errors << "repository policy workflow must watch #{path}" unless workflow.include?(path)
   end
   errors << "repository policy workflow must run repository policy check" unless workflow.include?("ruby tools/check-repository-policy.rb")
+  errors << "repository policy workflow must run Windows package CI policy check" unless workflow.include?("ruby tools/check-windows-package-ci.rb")
 end
 
 if !File.file?(summary_path)

@@ -20,6 +20,10 @@ logs/
 docs/book/
 docs/superpowers/
 
+# Conda package artifacts
+/output/
+/packaging/conda/output/
+
 # Local tool and editor state
 .pixi/
 .worktrees/

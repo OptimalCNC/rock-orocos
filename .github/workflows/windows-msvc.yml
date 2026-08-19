@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/windows-msvc.yml"
       - "tools/build-windows-msvc.ps1"
+      - "tools/windows-source-lock.ps1"
+      - "tools/test-windows-source-lock.ps1"
       - "tools/export-windows-env.ps1"
       - "tools/install-ruby-tools.ps1"
       - "tools/windows-generator-smoke/**"
@@ -15,12 +17,15 @@ on:
       - ".gitattributes"
       - ".gitignore"
       - "autoproj/**"
+      - "packaging/**"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/windows-msvc.yml"
       - "tools/build-windows-msvc.ps1"
+      - "tools/windows-source-lock.ps1"
+      - "tools/test-windows-source-lock.ps1"
       - "tools/export-windows-env.ps1"
       - "tools/install-ruby-tools.ps1"
       - "tools/windows-generator-smoke/**"
@@ -31,6 +36,7 @@ on:
       - ".gitattributes"
       - ".gitignore"
       - "autoproj/**"
+      - "packaging/**"
   repository_dispatch:
     types:
       - windows-msvc-integration
@@ -91,6 +97,12 @@ jobs:
           pixi-version: v0.76.2
           cache: true
           run-install: false
+
+      - name: Validate Windows source lock
+        shell: pwsh
+        run: >-
+          powershell.exe -NoProfile -ExecutionPolicy Bypass
+          -File tools/test-windows-source-lock.ps1
 
       - name: Build Windows prefix
         shell: pwsh

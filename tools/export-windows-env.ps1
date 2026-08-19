@@ -4,7 +4,8 @@ param(
     [string]$VcpkgRoot = (Join-Path (Get-Location) "build\vcpkg"),
     [string]$VcpkgTriplet = "x64-windows",
     [ValidateSet("win32")]
-    [string]$Target = "win32"
+    [string]$Target = "win32",
+    [switch]$BundledDependencies
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,17 +52,28 @@ function Get-RubyConfigValue {
 }
 
 $Prefix = Convert-ToFullPath $Prefix
-$VcpkgRoot = Convert-ToFullPath $VcpkgRoot
-$VcpkgPrefix = Join-Path $VcpkgRoot "installed\$VcpkgTriplet"
-
-if (-not (Test-Path -LiteralPath $VcpkgPrefix -PathType Container)) {
-    throw "Missing vcpkg installed prefix: $VcpkgPrefix"
+$runtimeVcpkgPrefix = ""
+if ($BundledDependencies) {
+    $VcpkgRoot = ""
+    $bundledVcpkgPrefix = Join-Path $Prefix "vcpkg"
+    if (-not (Test-Path -LiteralPath $bundledVcpkgPrefix -PathType Container)) {
+        throw "Missing bundled development dependencies: $bundledVcpkgPrefix"
+    }
+    $VcpkgPrefix = ""
+} else {
+    $VcpkgRoot = Convert-ToFullPath $VcpkgRoot
+    $VcpkgPrefix = Join-Path $VcpkgRoot "installed\$VcpkgTriplet"
+    if (-not (Test-Path -LiteralPath $VcpkgPrefix -PathType Container)) {
+        throw "Missing vcpkg installed prefix: $VcpkgPrefix"
+    }
+    $runtimeVcpkgPrefix = $VcpkgPrefix
 }
 
 New-Item -ItemType Directory -Force -Path $Prefix | Out-Null
 
 $vcpkgRootLiteral = Convert-ToSingleQuotedLiteral $VcpkgRoot
 $vcpkgPrefixLiteral = Convert-ToSingleQuotedLiteral $VcpkgPrefix
+$runtimeVcpkgPrefixLiteral = Convert-ToSingleQuotedLiteral $runtimeVcpkgPrefix
 $targetLiteral = Convert-ToSingleQuotedLiteral $Target
 $tripletLiteral = Convert-ToSingleQuotedLiteral $VcpkgTriplet
 $rubyVersionLiteral = Convert-ToSingleQuotedLiteral (
@@ -142,9 +154,11 @@ $runtimeTemplate = @'
         (Join-Path $targetOrocosDirectory "ocl\types"),
         (Join-Path $targetOrocosDirectory "plugins"),
         (Join-Path $targetOrocosDirectory "types"),
-        (Join-Path $targetOrocosDirectory "rtt_opcua\plugins"),
-        (Join-Path $VcpkgPrefix "bin")
+        (Join-Path $targetOrocosDirectory "rtt_opcua\plugins")
     ) + $installedOrocosDirectories
+    if (-not [string]::IsNullOrWhiteSpace($VcpkgPrefix)) {
+        $runtimeDirectories += Join-Path $VcpkgPrefix "bin"
+    }
     $pkgConfigDirectory = Join-Path $Prefix "lib\pkgconfig"
     $typelibPluginDirectory = Join-Path $Prefix "lib\typelib"
 
@@ -211,26 +225,48 @@ $developmentTemplate = @'
             "Process")
     }
 
-    $env:VCPKG_ROOT = $VcpkgRoot
+    if ([string]::IsNullOrWhiteSpace($VcpkgPrefix)) {
+        $candidate = Join-Path $Prefix "vcpkg"
+        if (Test-Path -LiteralPath $candidate -PathType Container) {
+            $VcpkgPrefix = $candidate
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($VcpkgRoot)) {
+        [Environment]::SetEnvironmentVariable("VCPKG_ROOT", $null, "Process")
+    } else {
+        $env:VCPKG_ROOT = $VcpkgRoot
+    }
     $env:VCPKG_DEFAULT_TRIPLET = $VcpkgTriplet
     $gemHome = Join-Path $Prefix "toolchain\gems"
     $env:GEM_HOME = $gemHome
-    Set-OrocosRockPathEntries `
-        -Name "PATH" -Values @((Join-Path $Prefix "toolchain\bin"))
+    $developmentPathEntries = @((Join-Path $Prefix "toolchain\bin"))
+    if (-not [string]::IsNullOrWhiteSpace($VcpkgPrefix)) {
+        $developmentPathEntries += Join-Path $VcpkgPrefix "debug\bin"
+    }
+    Set-OrocosRockPathEntries -Name "PATH" -Values $developmentPathEntries
     Set-OrocosRockPathEntries -Name "GEM_PATH" -Values @($gemHome)
     Set-OrocosRockPathEntries -Name "RUBYLIB" -Values @(
         (Join-Path $Prefix "lib\ruby\$RubyVersion"),
         (Join-Path $Prefix "lib\$RubyArch\ruby\$RubyVersion"),
         (Join-Path $Prefix "lib\ruby\$RubyVersion\$RubyArch")
     )
+    $developmentPrefixes = @($Prefix)
+    $pkgConfigDirectories = @(Join-Path $Prefix "lib\pkgconfig")
+    if (-not [string]::IsNullOrWhiteSpace($VcpkgPrefix)) {
+        $developmentPrefixes += $VcpkgPrefix
+        $pkgConfigDirectories += Join-Path $VcpkgPrefix "lib\pkgconfig"
+    }
+    $env:PKG_CONFIG_LIBDIR = $pkgConfigDirectories -join [IO.Path]::PathSeparator
     Set-OrocosRockPathEntries `
-        -Name "CMAKE_PREFIX_PATH" -Values @($Prefix, $VcpkgPrefix)
+        -Name "PKG_CONFIG_PATH" -Values $pkgConfigDirectories
+    Set-OrocosRockPathEntries `
+        -Name "CMAKE_PREFIX_PATH" -Values $developmentPrefixes
 } $PSScriptRoot '@VCPKG_ROOT@' '@VCPKG_PREFIX@' '@VCPKG_TRIPLET@' `
     '@RUBY_VERSION@' '@RUBY_ARCH@'
 '@
 
 $runtimeScript = $runtimeTemplate.Replace(
-    "@VCPKG_PREFIX@", $vcpkgPrefixLiteral).Replace(
+    "@VCPKG_PREFIX@", $runtimeVcpkgPrefixLiteral).Replace(
     "@TARGET@", $targetLiteral)
 $developmentScript = $developmentTemplate.Replace(
     "@VCPKG_ROOT@", $vcpkgRootLiteral).Replace(

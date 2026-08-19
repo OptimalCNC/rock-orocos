@@ -1,0 +1,209 @@
+name: Windows Conda Packages
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-packages.yml"
+      - "packaging/**"
+      - "tools/build-windows-msvc.ps1"
+      - "tools/check-windows-package-ci.rb"
+      - "tools/export-windows-env.ps1"
+      - "tools/install-ruby-tools.ps1"
+      - "tools/prepare-windows-conda-release.ps1"
+      - "tools/test-windows-conda-consumer.ps1"
+      - "tools/test-windows-source-lock.ps1"
+      - "tools/windows-generator-smoke/**"
+      - "tools/windows-opcua-start-smoke.ops"
+      - "tools/windows-patches/**"
+      - "tools/windows-source-lock.ps1"
+      - ".gitattributes"
+      - ".gitignore"
+      - "pixi.toml"
+      - "pixi.lock"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/windows-packages.yml"
+      - "packaging/**"
+      - "tools/build-windows-msvc.ps1"
+      - "tools/check-windows-package-ci.rb"
+      - "tools/export-windows-env.ps1"
+      - "tools/install-ruby-tools.ps1"
+      - "tools/prepare-windows-conda-release.ps1"
+      - "tools/test-windows-conda-consumer.ps1"
+      - "tools/test-windows-source-lock.ps1"
+      - "tools/windows-generator-smoke/**"
+      - "tools/windows-opcua-start-smoke.ops"
+      - "tools/windows-patches/**"
+      - "tools/windows-source-lock.ps1"
+      - ".gitattributes"
+      - ".gitignore"
+      - "pixi.toml"
+      - "pixi.lock"
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PREFIX_CHANNEL: liufang-robot/orocos
+  PUBLIC_CHANNEL_URL: https://prefix.dev/liufang-robot/orocos
+  RELEASE_BUNDLE: packaging/conda/output/release
+
+concurrency:
+  group: windows-conda-packages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
+
+jobs:
+  build-packages:
+    name: Build And Test Windows Packages
+    runs-on: windows-2022
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up locked Pixi package environment
+        uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: v0.76.2
+          environments: package
+          locked: true
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+
+      - name: Validate Windows source lock
+        shell: pwsh
+        run: >-
+          powershell.exe -NoProfile -ExecutionPolicy Bypass
+          -File tools/test-windows-source-lock.ps1
+
+      - name: Render package recipe
+        shell: pwsh
+        run: pixi run --locked package-render
+
+      - name: Build and test package artifacts
+        shell: pwsh
+        run: pixi run --locked package-build
+
+      - name: Prepare verified release bundle
+        shell: pwsh
+        run: |
+          pixi run --locked -e package powershell.exe `
+            -NoProfile -ExecutionPolicy Bypass `
+            -File tools/prepare-windows-conda-release.ps1 `
+            -Mode Stage `
+            -RepositoryCommit "${{ github.sha }}"
+
+      - name: Test clean local-channel consumers
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass `
+            -File tools/test-windows-conda-consumer.ps1 `
+            -ManifestPath "$env:RELEASE_BUNDLE/release-manifest.json" `
+            -LocalChannelPath packaging/conda/output
+
+      - name: Upload verified release bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: orocos-windows-packages-${{ github.sha }}
+          path: ${{ env.RELEASE_BUNDLE }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload package build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: orocos-windows-package-logs-${{ github.sha }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            packaging/conda/output/*.log
+            packaging/conda/output/**/*.log
+            packaging/conda/output/bld/**/CMakeFiles/CMakeOutput.log
+            packaging/conda/output/bld/**/CMakeFiles/CMakeError.log
+
+  publish-packages:
+    name: Publish Windows Packages To Prefix
+    needs: build-packages
+    if: >-
+      github.event_name == 'release' &&
+      github.event.action == 'published' &&
+      github.event.release.prerelease == false &&
+      github.repository == 'liufang-robot/rock-orocos'
+    runs-on: windows-2022
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out release commit
+        uses: actions/checkout@v6
+
+      - name: Set up locked Pixi package environment
+        uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: v0.76.2
+          environments: package
+          locked: true
+          cache: true
+          cache-write: false
+
+      - name: Download verified release bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: orocos-windows-packages-${{ github.sha }}
+          path: ${{ env.RELEASE_BUNDLE }}
+
+      - name: Verify release tag, commit, metadata, and checksums
+        shell: pwsh
+        run: |
+          pixi run --locked -e package powershell.exe `
+            -NoProfile -ExecutionPolicy Bypass `
+            -File tools/prepare-windows-conda-release.ps1 `
+            -Mode Verify `
+            -ExpectedTag "${{ github.event.release.tag_name }}" `
+            -ExpectedRepositoryCommit "${{ github.sha }}"
+
+      - name: Publish immutable packages
+        shell: pwsh
+        run: |
+          $manifest = Get-Content `
+            -LiteralPath "$env:RELEASE_BUNDLE/release-manifest.json" `
+            -Raw | ConvertFrom-Json
+          $packageFiles = @(
+            $manifest.packages | ForEach-Object {
+              Join-Path $env:RELEASE_BUNDLE $_.filename
+            }
+          )
+          if ($packageFiles.Count -ne 2) {
+            throw "Expected exactly two release packages."
+          }
+          & pixi run --locked -e package rattler-build upload prefix `
+            --channel $env:PREFIX_CHANNEL @packageFiles
+          if ($LASTEXITCODE -ne 0) {
+            throw "Prefix package upload failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Test clean public-channel consumers
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass `
+            -File tools/test-windows-conda-consumer.ps1 `
+            -ManifestPath "$env:RELEASE_BUNDLE/release-manifest.json" `
+            -ChannelUrl $env:PUBLIC_CHANNEL_URL `
+            -Attempts 6 `
+            -RetryDelaySeconds 10

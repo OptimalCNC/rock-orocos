@@ -94,6 +94,39 @@ the validated prefix and its `env.ps1`/`dev-env.ps1` entrypoints below
 fork defaults. The remaining upstream-only `utilrb` fix is kept under
 `tools/windows-patches` and applied to the disposable checkout.
 
+## Windows Packages
+
+The same locked source set can be built as two relocatable `win-64` Conda
+packages. `orocos` contains the runtime, while `orocos-dev` contains headers,
+build metadata, the bundled dependency SDK, OroGen, and Typegen. Build and test
+both with:
+
+```powershell
+pixi install --locked -e package
+pixi run --locked package-build
+```
+
+For a downstream Pixi workspace, add the public channel before adding the
+development package:
+
+```powershell
+pixi workspace channel add https://prefix.dev/liufang-robot/orocos
+pixi workspace channel add conda-forge
+pixi add orocos-dev==0.1.0
+pixi shell
+. "$env:CONDA_PREFIX\Library\dev-env.ps1"
+```
+
+The package recipe and local-channel validation workflow are documented in
+[`packaging/README.md`](./packaging/README.md).
+
+The `Windows Conda Packages` GitHub workflow builds and retains verified
+packages for pull requests and `main`. Publishing is limited to a non-prerelease
+GitHub Release in `liufang-robot/rock-orocos` and uses Prefix Repository Access
+through OIDC; the `OptimalCNC` mirror never publishes the shared package names.
+The one-time channel setup and release sequence are documented in the packaging
+guide.
+
 ## Documentation
 
 - [User Guide](./docs/src/user-guide.md)

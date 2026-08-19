@@ -3,6 +3,9 @@ param(
     [string]$Workspace = (Join-Path (Get-Location) "build\windows-msvc"),
     [string]$Prefix = (Join-Path (Get-Location) "install\windows-msvc"),
     [string]$VcpkgRoot = (Join-Path (Get-Location) "vcpkg"),
+    [string]$SourceLockPath,
+    [string]$RubyGemCache,
+    [switch]$RelocatablePrefix,
     [string]$FarbotRepository = "https://github.com/liufang-robot/farbot.git",
     [string]$RtlogRepository = "https://github.com/liufang-robot/rtlog-cpp.git",
     [string]$RttRepository = "https://github.com/liufang-robot/rtt.git",
@@ -35,6 +38,7 @@ param(
     [string]$Generator = "Visual Studio 17 2022"
 )
 
+$BoundParameterNames = @($PSBoundParameters.Keys)
 $ErrorActionPreference = "Stop"
 
 function Invoke-Step {
@@ -78,7 +82,7 @@ function Get-NativeOutput {
 }
 
 function Invoke-NativeWithRetry {
-    $Attempts = 3
+    $Attempts = 6
     $DelaySeconds = 5
     $Command = $args
 
@@ -92,7 +96,7 @@ function Invoke-NativeWithRetry {
             }
 
             Write-Warning "Command failed on attempt $attempt/${Attempts}: $($_.Exception.Message)"
-            Start-Sleep -Seconds $DelaySeconds
+            Start-Sleep -Seconds ($DelaySeconds * $attempt)
         }
     }
 }
@@ -198,6 +202,19 @@ function Sync-GitRepository {
     }
 
     Invoke-Native git -C $Path checkout --detach --force FETCH_HEAD
+
+    if ($Ref -match '^[0-9a-fA-F]{40}$') {
+        $checkedOutRevision = (& git -C $Path rev-parse --verify HEAD | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) {
+            throw "git rev-parse --verify HEAD exited with code $LASTEXITCODE"
+        }
+        if (-not [string]::Equals(
+                $checkedOutRevision,
+                $Ref,
+                [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Locked source '$Repository' resolved to '$checkedOutRevision', expected '$Ref'."
+        }
+    }
 }
 
 function Apply-SourcePatch {
@@ -261,6 +278,64 @@ function Write-Open62541PkgConfig {
         [System.Text.UTF8Encoding]::new($false))
 }
 
+$SourceLock = $null
+if (-not [string]::IsNullOrWhiteSpace($SourceLockPath)) {
+    $sourceOverrideParameters = @(
+        "FarbotRepository", "RtlogRepository", "RttRepository",
+        "Open62541Repository", "Open62541ppRepository", "RttOpcuaRepository",
+        "OclRepository", "UtilmmRepository", "TypelibRepository",
+        "RttTypelibRepository", "UtilrbRepository", "MetarubyRepository",
+        "OrogenRepository", "VcpkgRepository", "FarbotRef", "RtlogRef",
+        "RttRef", "Open62541Ref", "Open62541ppRef", "RttOpcuaRef",
+        "OclRef", "UtilmmRef", "TypelibRef", "RttTypelibRef", "UtilrbRef",
+        "MetarubyRef", "OrogenRef", "VcpkgRef"
+    )
+    $conflictingParameters = @(
+        $sourceOverrideParameters | Where-Object { $BoundParameterNames -contains $_ }
+    )
+    if ($conflictingParameters.Count -gt 0) {
+        throw "-SourceLockPath cannot be combined with source override parameter(s): $($conflictingParameters -join ', ')."
+    }
+
+    $SourceLockPath = Convert-ToFullPath $SourceLockPath
+    . (Join-Path $PSScriptRoot "windows-source-lock.ps1")
+    $SourceLock = Import-OrocosWindowsSourceLock -Path $SourceLockPath
+
+    $FarbotRepository = $SourceLock["farbot"].repository
+    $FarbotRef = $SourceLock["farbot"].revision
+    $RtlogRepository = $SourceLock["rtlog-cpp"].repository
+    $RtlogRef = $SourceLock["rtlog-cpp"].revision
+    $RttRepository = $SourceLock["rtt"].repository
+    $RttRef = $SourceLock["rtt"].revision
+    $Open62541Repository = $SourceLock["open62541"].repository
+    $Open62541Ref = $SourceLock["open62541"].revision
+    $Open62541ppRepository = $SourceLock["open62541pp"].repository
+    $Open62541ppRef = $SourceLock["open62541pp"].revision
+    $RttOpcuaRepository = $SourceLock["rtt_opcua"].repository
+    $RttOpcuaRef = $SourceLock["rtt_opcua"].revision
+    $OclRepository = $SourceLock["ocl"].repository
+    $OclRef = $SourceLock["ocl"].revision
+    $UtilmmRepository = $SourceLock["utilmm"].repository
+    $UtilmmRef = $SourceLock["utilmm"].revision
+    $TypelibRepository = $SourceLock["typelib"].repository
+    $TypelibRef = $SourceLock["typelib"].revision
+    $RttTypelibRepository = $SourceLock["rtt_typelib"].repository
+    $RttTypelibRef = $SourceLock["rtt_typelib"].revision
+    $UtilrbRepository = $SourceLock["utilrb"].repository
+    $UtilrbRef = $SourceLock["utilrb"].revision
+    $MetarubyRepository = $SourceLock["metaruby"].repository
+    $MetarubyRef = $SourceLock["metaruby"].revision
+    $OrogenRepository = $SourceLock["orogen"].repository
+    $OrogenRef = $SourceLock["orogen"].revision
+    $VcpkgRepository = $SourceLock["vcpkg"].repository
+    $VcpkgRef = $SourceLock["vcpkg"].revision
+
+    Write-Host "Using Windows source lock: $SourceLockPath"
+    foreach ($source in $SourceLock.Values) {
+        Write-Host ("  {0,-13} {1}" -f $source.name, $source.revision)
+    }
+}
+
 $Workspace = Convert-ToFullPath $Workspace
 $Prefix = Convert-ToFullPath $Prefix
 $VcpkgRoot = Convert-ToFullPath $VcpkgRoot
@@ -280,6 +355,17 @@ $OrogenRepository = Resolve-GitRepository $OrogenRepository
 $VcpkgRepository = Resolve-GitRepository $VcpkgRepository
 $Platform = "x64"
 $VcpkgTriplet = "x64-windows"
+$prefixForCMake = $Prefix -replace "\\", "/"
+$rttDefaultPluginPath = if ($RelocatablePrefix) {
+    "."
+} else {
+    "$prefixForCMake/lib/orocos"
+}
+$typelibDefaultPluginPath = if ($RelocatablePrefix) {
+    "."
+} else {
+    "$prefixForCMake/lib/typelib"
+}
 
 $FarbotSource = Join-Path $Workspace "src\farbot"
 $RtlogSource = Join-Path $Workspace "src\rtlog-cpp"
@@ -334,12 +420,14 @@ Invoke-Step "Check out source repositories" {
 
 Invoke-Step "Apply remaining Windows portability patches" {
     Apply-SourcePatch -Path $UtilrbSource -Patch (Join-Path $PatchRoot "utilrb-windows.patch")
+    Apply-SourcePatch -Path $OrogenSource -Patch (Join-Path $PatchRoot "orogen-cross-volume-paths.patch")
 }
 
 Invoke-Step "Set up vcpkg" {
     Sync-GitRepository -Repository $VcpkgRepository -Ref $VcpkgRef -Path $VcpkgRoot
-    if (-not (Test-Path -LiteralPath (Join-Path $VcpkgRoot "vcpkg.exe"))) {
-        Invoke-Native (Join-Path $VcpkgRoot "bootstrap-vcpkg.bat") -disableMetrics
+    if ($null -ne $SourceLock -or
+        -not (Test-Path -LiteralPath (Join-Path $VcpkgRoot "vcpkg.exe"))) {
+        Invoke-NativeWithRetry (Join-Path $VcpkgRoot "bootstrap-vcpkg.bat") -disableMetrics
     }
 }
 
@@ -348,7 +436,7 @@ $VcpkgInstalled = Join-Path $VcpkgRoot "installed\$VcpkgTriplet"
 $VcpkgBin = Join-Path $VcpkgInstalled "bin"
 
 Invoke-Step "Install vcpkg dependencies" {
-    Invoke-Native (Join-Path $VcpkgRoot "vcpkg.exe") install `
+    Invoke-NativeWithRetry (Join-Path $VcpkgRoot "vcpkg.exe") install `
         "boost-assign:${VcpkgTriplet}" `
         "boost-filesystem:${VcpkgTriplet}" `
         "boost-serialization:${VcpkgTriplet}" `
@@ -400,6 +488,7 @@ Invoke-Step "Configure RTT" {
         -DPLUGINS_ENABLE_TYPEKIT=ON `
         -DPLUGINS_ENABLE_SCRIPTING=ON `
         -DORO_OS_USE_BOOST_THREAD=ON `
+        -DDEFAULT_PLUGIN_PATH="$rttDefaultPluginPath" `
         -DCMAKE_BUILD_TYPE=Release
 }
 
@@ -519,6 +608,7 @@ Invoke-Step "Configure Typelib" {
         -DBUILD_TESTING=OFF `
         -DBUILD_TESTS=OFF `
         -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+        -DTYPELIB_HARDCODED_PLUGIN_PATH="$typelibDefaultPluginPath" `
         -DCMAKE_BUILD_TYPE=Release
 }
 
@@ -544,11 +634,17 @@ Invoke-Step "Install rtt_typelib" {
 }
 
 Invoke-Step "Install Ruby generator tools" {
+    $rubyToolArguments = @{
+        Prefix = $Prefix
+        UtilrbSource = $UtilrbSource
+        MetarubySource = $MetarubySource
+        OrogenSource = $OrogenSource
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RubyGemCache)) {
+        $rubyToolArguments.GemCache = $RubyGemCache
+    }
     & (Join-Path $PSScriptRoot "install-ruby-tools.ps1") `
-        -Prefix $Prefix `
-        -UtilrbSource $UtilrbSource `
-        -MetarubySource $MetarubySource `
-        -OrogenSource $OrogenSource
+        @rubyToolArguments
 }
 
 Invoke-Step "Export Windows environments" {
@@ -589,12 +685,22 @@ Invoke-Step "Build Windows OroGen smoke project" {
 
 Invoke-Step "Generate Windows Typegen smoke project" {
     New-Item -ItemType Directory -Force -Path $TypegenSmokeSource | Out-Null
+    $typegenSmokeHeader = Join-Path $TypegenSmokeSource `
+        "WindowsTypegenTypes.hpp"
+    Copy-Item -LiteralPath `
+        (Join-Path $PSScriptRoot "windows-generator-smoke\WindowsTypegenTypes.hpp") `
+        -Destination $typegenSmokeHeader -Force
     . (Join-Path $Prefix "dev-env.ps1")
-    Invoke-Native (Join-Path $Prefix "toolchain\bin\typegen.bat") `
-        --transports=typelib `
-        --output=$TypegenSmokeSource `
-        windows_typegen_smoke `
-        (Join-Path $PSScriptRoot "windows-generator-smoke\WindowsTypegenTypes.hpp")
+    Push-Location $TypegenSmokeSource
+    try {
+        Invoke-Native (Join-Path $Prefix "toolchain\bin\typegen.bat") `
+            --transports=typelib `
+            --output=$TypegenSmokeSource `
+            windows_typegen_smoke `
+            $typegenSmokeHeader
+    } finally {
+        Pop-Location
+    }
 }
 
 Invoke-Step "Build Windows Typegen smoke project" {
