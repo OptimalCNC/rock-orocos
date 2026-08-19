@@ -4,6 +4,7 @@ require "yaml"
 
 root = File.expand_path("..", __dir__)
 workflow_path = File.join(root, ".github", "workflows", "windows-packages.yml")
+recipe_path = File.join(root, "packaging", "conda", "recipe.yaml")
 staging_path = File.join(root, "tools", "prepare-windows-conda-release.ps1")
 consumer_path = File.join(root, "tools", "test-windows-conda-consumer.ps1")
 errors = []
@@ -72,7 +73,9 @@ else
   build_steps = Array(build["steps"])
   build_runs = build_steps.filter_map { |step| step["run"] }.join("\n")
   build_uses = build_steps.filter_map { |step| step["uses"] }
-  errors << "Windows package build must set up MSVC x64" unless build_uses.include?("ilammy/msvc-dev-cmd@v1") && contents.include?("arch: x64")
+  if build_uses.any? { |action| action.start_with?("ilammy/msvc-dev-cmd@") }
+    errors << "Windows package build must not activate MSVC outside the recipe build environment"
+  end
   errors << "Windows package build must install the locked package environment" unless contents.include?("environments: package") && contents.include?("locked: true")
   errors << "Windows package build must test the source lock" unless build_runs.include?("tools/test-windows-source-lock.ps1")
   errors << "Windows package build must render the recipe" unless build_runs.include?("pixi run --locked package-render")
@@ -118,6 +121,15 @@ else
          publish_runs.include?("-ChannelUrl $env:PUBLIC_CHANNEL_URL") &&
          publish_runs.include?("-Attempts 6")
     errors << "Prefix publication must test clean consumers through the public channel"
+  end
+end
+
+unless File.file?(recipe_path)
+  errors << "missing packaging/conda/recipe.yaml"
+else
+  recipe = File.read(recipe_path)
+  unless recipe.include?(%q{${{ compiler('cxx') }}})
+    errors << "Windows package recipe must activate the MSVC x64 build environment"
   end
 end
 

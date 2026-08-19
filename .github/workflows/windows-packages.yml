@@ -70,11 +70,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
       - name: Set up locked Pixi package environment
         uses: prefix-dev/setup-pixi@v0.10.1
         with:
