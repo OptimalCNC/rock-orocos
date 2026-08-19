@@ -142,7 +142,8 @@ else
     "runtime/development package set" => '@("orocos", "orocos-dev")',
     "exact runtime dependency" => '"orocos ==$version $($runtime.Metadata.index.build)"',
     "package path overlap check" => "HashSet[string]",
-    "artifact checksums" => "Get-FileHash",
+    "module-independent artifact checksums" =>
+      "[System.Security.Cryptography.SHA256]::Create()",
     "source lock in the release manifest" => "source_lock",
     "the win-64 target platform" => 'target_platform -cne "win-64"',
     "a full repository commit" => 'repository_commit -cnotmatch "^[0-9a-f]{40}$"',
@@ -150,6 +151,9 @@ else
     "immutable checksum manifest" => "SHA256SUMS.txt"
   }.each do |contract, token|
     errors << "release staging must enforce #{contract}" unless staging.include?(token)
+  end
+  if staging.match?(/\bGet-FileHash\b/)
+    errors << "release staging must not depend on the optional Get-FileHash cmdlet"
   end
   errors << "release staging must not publish packages" if staging.include?("upload prefix")
 end

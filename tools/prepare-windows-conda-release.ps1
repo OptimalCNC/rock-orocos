@@ -40,6 +40,26 @@ function Get-FullPath {
     return [System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $Path))
 }
 
+function Get-FileSha256 {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $hash = $sha256.ComputeHash($stream)
+        }
+        finally {
+            $sha256.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+
+    return ([System.BitConverter]::ToString($hash)).Replace("-", "").ToLowerInvariant()
+}
+
 function Invoke-PackageInspect {
     param([Parameter(Mandatory = $true)][string]$PackagePath)
 
@@ -72,7 +92,7 @@ function Get-PackageRecords {
     $records = @()
     foreach ($file in $files) {
         $metadata = Invoke-PackageInspect -PackagePath $file.FullName
-        $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        $hash = Get-FileSha256 -Path $file.FullName
         $records += [PSCustomObject]@{
             File = $file
             Metadata = $metadata
@@ -232,12 +252,8 @@ function Test-ReleaseBundle {
         throw "Release manifest must identify source-lock.json."
     }
 
-    $expectedSourceLockHash = (
-        Get-FileHash -LiteralPath $ExpectedSourceLock -Algorithm SHA256
-    ).Hash.ToLowerInvariant()
-    $bundledSourceLockHash = (
-        Get-FileHash -LiteralPath $bundledSourceLock -Algorithm SHA256
-    ).Hash.ToLowerInvariant()
+    $expectedSourceLockHash = Get-FileSha256 -Path $ExpectedSourceLock
+    $bundledSourceLockHash = Get-FileSha256 -Path $bundledSourceLock
     if ($bundledSourceLockHash -cne $expectedSourceLockHash) {
         throw "The bundled source lock does not match the release commit."
     }
@@ -335,9 +351,7 @@ if ($Mode -eq "Stage") {
     }
     Copy-Item -LiteralPath $resolvedSourceLock -Destination (Join-Path $releasePath "source-lock.json")
 
-    $sourceLockHash = (
-        Get-FileHash -LiteralPath $resolvedSourceLock -Algorithm SHA256
-    ).Hash.ToLowerInvariant()
+    $sourceLockHash = Get-FileSha256 -Path $resolvedSourceLock
     $manifestPackages = @(
         $records |
             Sort-Object { $_.Metadata.index.name } |
