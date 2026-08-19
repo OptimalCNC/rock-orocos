@@ -728,8 +728,22 @@ Invoke-Step "Build Windows Typegen smoke project" {
         -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
         -DCMAKE_INSTALL_PREFIX="$Prefix" `
         -DCMAKE_BUILD_TYPE=Release
-    Invoke-Native cmake --build $TypegenSmokeBuild --config Release `
-        --target regen
+    $savedPath = $env:PATH
+    try {
+        $generatorCommandDirectories = @(
+            (Join-Path $Prefix "toolchain\bin"),
+            (Split-Path -Parent $RubyExecutable)
+        )
+        $env:PATH = @(
+            $env:PATH -split ";" | Where-Object {
+                $generatorCommandDirectories -notcontains $_
+            }
+        ) -join ";"
+        Invoke-Native cmake --build $TypegenSmokeBuild --config Release `
+            --target regen
+    } finally {
+        $env:PATH = $savedPath
+    }
     Invoke-Native cmake --build $TypegenSmokeBuild --config Release `
         --target INSTALL --parallel 4
 }
