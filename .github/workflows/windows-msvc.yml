@@ -120,13 +120,35 @@ jobs:
       - name: Build Windows prefix
         shell: pwsh
         run: |
-          pixi run --locked windows-build -- `
+          New-Item build/windows-msvc -ItemType Directory -Force | Out-Null
+          $savedErrorActionPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          & pixi run --locked windows-build -- `
             -RttRef "$env:RTT_REF" `
             -OclRef "$env:OCL_REF" `
             -UtilmmRef "$env:UTILMM_REF" `
             -TypelibRef "$env:TYPELIB_REF" `
             -RttTypelibRef "$env:RTT_TYPELIB_REF" `
-            -OrogenRef "$env:OROGEN_REF"
+            -OrogenRef "$env:OROGEN_REF" 2>&1 |
+            Tee-Object -FilePath build/windows-msvc/ci-console.log
+          $buildExitCode = $LASTEXITCODE
+          $ErrorActionPreference = $savedErrorActionPreference
+          if ($buildExitCode -ne 0) {
+            exit $buildExitCode
+          }
+
+      - name: Report Windows build failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $logPath = 'build/windows-msvc/ci-console.log'
+          if (Test-Path -LiteralPath $logPath -PathType Leaf) {
+            $message = (Get-Content -LiteralPath $logPath -Tail 30) -join "`n"
+          } else {
+            $message = "Missing Windows build console log: $logPath"
+          }
+          $message = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+          Write-Host "::error title=Windows build diagnostic::$message"
 
       - name: Upload Windows build logs
         if: failure()

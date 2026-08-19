@@ -14,7 +14,8 @@ errors = []
 
 %w[docs/book docs/superpowers].each do |directory|
   tracked_files, git_status = Open3.capture2(
-    "git", "-C", root, "ls-files", "--", directory
+    "git", "-c", "safe.directory=#{root}",
+    "-C", root, "ls-files", "--", directory
   )
 
   unless git_status.success?
@@ -27,7 +28,8 @@ errors = []
 end
 
 tracked_markdown, markdown_status = Open3.capture2(
-  "git", "-C", root, "ls-files", "-z", "--", "*.md"
+  "git", "-c", "safe.directory=#{root}",
+  "-C", root, "ls-files", "-z", "--", "*.md"
 )
 
 if !markdown_status.success?

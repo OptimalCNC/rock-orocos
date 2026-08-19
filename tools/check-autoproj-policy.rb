@@ -23,7 +23,8 @@ end
 def executable_file?(root, path)
   relative_path = Pathname.new(path).relative_path_from(Pathname.new(root))
   output, status = Open3.capture2(
-    "git", "-C", root, "ls-files", "--stage", "--", relative_path.to_s
+    "git", "-c", "safe.directory=#{root}",
+    "-C", root, "ls-files", "--stage", "--", relative_path.to_s
   )
   status.success? && output.each_line.any? { |line| line.start_with?("100755 ") }
 end

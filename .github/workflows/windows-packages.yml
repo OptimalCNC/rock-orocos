@@ -106,25 +106,30 @@ jobs:
 
       - name: Build and test package artifacts
         shell: pwsh
-        run: pixi run --locked package-build
+        run: |
+          New-Item packaging/conda/output -ItemType Directory -Force | Out-Null
+          $savedErrorActionPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          & pixi run --locked package-build 2>&1 |
+            Tee-Object -FilePath packaging/conda/output/ci-package-build.log
+          $buildExitCode = $LASTEXITCODE
+          $ErrorActionPreference = $savedErrorActionPreference
+          if ($buildExitCode -ne 0) {
+            exit $buildExitCode
+          }
 
       - name: Report package build failure
         if: failure()
         shell: pwsh
         run: |
-          $matches = Get-ChildItem packaging/conda/output -Recurse -File `
-              -Filter conda_build.log -ErrorAction SilentlyContinue |
-            Select-String -Pattern `
-              '(?i)(error|fatal|failed|exception|exited with code)' |
-            Select-Object -Last 10
-          if (-not $matches) {
-            Write-Host '::error title=Windows package build diagnostic::No conda_build.log failure line was found.'
+          $logPath = 'packaging/conda/output/ci-package-build.log'
+          if (Test-Path -LiteralPath $logPath -PathType Leaf) {
+            $message = (Get-Content -LiteralPath $logPath -Tail 30) -join "`n"
+          } else {
+            $message = "Missing package build console log: $logPath"
           }
-          foreach ($match in $matches) {
-            $message = "$($match.Path):$($match.LineNumber): $($match.Line.Trim())"
-            $message = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
-            Write-Host "::error title=Windows package build diagnostic::$message"
-          }
+          $message = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+          Write-Host "::error title=Windows package build diagnostic::$message"
 
       - name: Prepare verified release bundle
         shell: pwsh
