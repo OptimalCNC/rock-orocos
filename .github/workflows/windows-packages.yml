@@ -123,10 +123,20 @@ jobs:
         shell: pwsh
         run: |
           $logPath = 'packaging/conda/output/ci-package-build.log'
+          $detailPaths = @(
+            Get-ChildItem packaging/conda/output -Recurse -File `
+              -Filter conda_build.log -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending |
+              Select-Object -First 2 -ExpandProperty FullName
+          )
           if (Test-Path -LiteralPath $logPath -PathType Leaf) {
-            $message = (Get-Content -LiteralPath $logPath -Tail 30) -join "`n"
+            $message = (Get-Content -LiteralPath $logPath -Tail 20) -join "`n"
           } else {
             $message = "Missing package build console log: $logPath"
+          }
+          foreach ($detailPath in $detailPaths) {
+            $detail = (Get-Content -LiteralPath $detailPath -Tail 30) -join "`n"
+            $message += "`n--- $detailPath ---`n$detail"
           }
           $message = $message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
           Write-Host "::error title=Windows package build diagnostic::$message"
