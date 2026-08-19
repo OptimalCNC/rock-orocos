@@ -215,7 +215,7 @@ The latest complete pass resolved these source revisions. They are encoded in
 | `rtt_typelib` | `c5b345a22036019f8ec4ed176299bab3b80aae0a` |
 | `utilrb` | `0028fac920eac5d5f9332c3a3438dcf4b7562953` |
 | `metaruby` | `26d25770fdad163226b5aede3f8f9b8364d22f4c` |
-| OroGen | `dfa81b727f002dafb2f9b6b82e3205d375c77a66` |
+| OroGen | `3346b6ac682ad772b57d07b2386cdaef47e4abbe` |
 | vcpkg | `c5a15727ee70fddf0296f0d8aafc3f58916fefac` |
 
 `.github/workflows/windows-msvc.yml` runs on `windows-2022`, installs the

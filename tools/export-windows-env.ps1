@@ -239,7 +239,15 @@ $developmentTemplate = @'
     $env:VCPKG_DEFAULT_TRIPLET = $VcpkgTriplet
     $gemHome = Join-Path $Prefix "toolchain\gems"
     $env:GEM_HOME = $gemHome
-    $developmentPathEntries = @((Join-Path $Prefix "toolchain\bin"))
+    $rubyCommand = Get-Command ruby.exe -CommandType Application `
+        -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -eq $rubyCommand) {
+        throw "The Orocos development environment requires ruby.exe on PATH."
+    }
+    $developmentPathEntries = @(
+        (Join-Path $Prefix "toolchain\bin"),
+        (Split-Path -Parent $rubyCommand.Source)
+    )
     if (-not [string]::IsNullOrWhiteSpace($VcpkgPrefix)) {
         $developmentPathEntries += Join-Path $VcpkgPrefix "debug\bin"
     }

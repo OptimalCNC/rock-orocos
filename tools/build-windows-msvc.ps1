@@ -799,6 +799,9 @@ Invoke-Step "Validate Windows prefix" {
     if (($env:PATH -split ";") -notcontains (Join-Path $Prefix "toolchain\bin")) {
         throw "Windows development environment did not add the generator commands"
     }
+    if (($env:PATH -split ";") -notcontains (Split-Path -Parent $RubyExecutable)) {
+        throw "Windows development environment did not retain the active Ruby runtime"
+    }
     if ($env:GEM_HOME -ne (Join-Path $Prefix "toolchain\gems")) {
         throw "Windows development environment exported the wrong Ruby gem home"
     }

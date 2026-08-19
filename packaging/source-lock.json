@@ -64,7 +64,7 @@
     {
       "name": "orogen",
       "repository": "https://github.com/liufang-robot/tools-orogen.git",
-      "revision": "dfa81b727f002dafb2f9b6b82e3205d375c77a66"
+      "revision": "3346b6ac682ad772b57d07b2386cdaef47e4abbe"
     },
     {
       "name": "vcpkg",
