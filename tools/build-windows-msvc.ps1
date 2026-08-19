@@ -40,6 +40,8 @@ param(
 
 $BoundParameterNames = @($PSBoundParameters.Keys)
 $ErrorActionPreference = "Stop"
+$RubyExecutable = (Get-Command ruby.exe -CommandType Application `
+    -ErrorAction Stop).Source
 
 function Invoke-Step {
     param(
@@ -678,7 +680,8 @@ Invoke-Step "Generate Windows OroGen smoke project" {
     . (Join-Path $Prefix "dev-env.ps1")
     Push-Location $GeneratorSmokeSource
     try {
-        Invoke-Native (Join-Path $Prefix "toolchain\bin\orogen.bat") `
+        Invoke-Native $RubyExecutable `
+            (Join-Path $Prefix "toolchain\bin\orogen") `
             --target=win32 --transports=typelib windows_smoke.orogen
     } finally {
         Pop-Location
@@ -706,7 +709,8 @@ Invoke-Step "Generate Windows Typegen smoke project" {
     . (Join-Path $Prefix "dev-env.ps1")
     Push-Location $TypegenSmokeSource
     try {
-        Invoke-Native (Join-Path $Prefix "toolchain\bin\typegen.bat") `
+        Invoke-Native $RubyExecutable `
+            (Join-Path $Prefix "toolchain\bin\typegen") `
             --transports=typelib `
             --output=$TypegenSmokeSource `
             windows_typegen_smoke `
@@ -817,18 +821,20 @@ Invoke-Step "Validate Windows prefix" {
 
     Invoke-Native (Join-Path $RttTypelibBuild "Release\get_marshaller_for_test.exe")
 
-    Invoke-Native ruby `
+    Invoke-Native $RubyExecutable `
         (Join-Path $PSScriptRoot "windows-generator-smoke\validate.rb") `
         (Join-Path $GeneratorSmokeSource "WindowsSmokeTypes.hpp")
 
     $orogenVersionOutput = Get-NativeOutput `
-        (Join-Path $Prefix "toolchain\bin\orogen.bat") --version
+        $RubyExecutable `
+        (Join-Path $Prefix "toolchain\bin\orogen") --version
     if ($orogenVersionOutput -notmatch "orogen") {
         throw "Installed orogen --version did not print the expected output"
     }
 
     $typegenHelpOutput = Get-NativeOutput `
-        (Join-Path $Prefix "toolchain\bin\typegen.bat") --help
+        $RubyExecutable `
+        (Join-Path $Prefix "toolchain\bin\typegen") --help
     if ($typegenHelpOutput -notmatch "Usage:") {
         throw "Installed typegen --help did not print the expected output"
     }
