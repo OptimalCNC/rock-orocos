@@ -44,6 +44,7 @@ overrides:
     type: git
     url: https://github.com/liufang-robot/tools-orogen.git
     branch: dev
+    commit: 3346b6ac682ad772b57d07b2386cdaef47e4abbe
 
   - typelib:
     type: git
