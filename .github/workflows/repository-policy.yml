@@ -11,8 +11,10 @@ on:
       - "docs/src/**"
       - "docs/superpowers/**"
       - "tools/check-repository-policy.rb"
+      - "tools/check-source-provenance.rb"
       - "tools/check-windows-package-ci.rb"
       - "tools/prepare-windows-conda-release.ps1"
+      - "tools/test-source-provenance.rb"
       - "tools/test-windows-conda-consumer.ps1"
       - "packaging/**"
       - "pixi.toml"
@@ -29,8 +31,10 @@ on:
       - "docs/src/**"
       - "docs/superpowers/**"
       - "tools/check-repository-policy.rb"
+      - "tools/check-source-provenance.rb"
       - "tools/check-windows-package-ci.rb"
       - "tools/prepare-windows-conda-release.ps1"
+      - "tools/test-source-provenance.rb"
       - "tools/test-windows-conda-consumer.ps1"
       - "packaging/**"
       - "pixi.toml"
@@ -50,3 +54,8 @@ jobs:
         run: |
           ruby tools/check-repository-policy.rb
           ruby tools/check-windows-package-ci.rb
+
+      - name: Check source provenance
+        run: |
+          ruby tools/test-source-provenance.rb
+          ruby tools/check-source-provenance.rb

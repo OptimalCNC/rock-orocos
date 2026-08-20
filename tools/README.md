@@ -30,6 +30,10 @@ Maintainer building blocks:
 
 Focused regression tests:
 
+- `check-source-provenance.rb` validates canonical source repositories across
+  Autoproj, the Windows source lock, and Windows build defaults
+- `test-source-provenance.rb` proves source-provenance rejection behavior with
+  copied policy fixtures
 - `test-update.sh`
 - `test-windows-source-lock.ps1` validates the complete, immutable Windows Git
   source contract and its rejection behavior

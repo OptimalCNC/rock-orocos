@@ -48,6 +48,7 @@ else
     end
   end
   errors << "native CI must run repository policy check" unless contents.include?("ruby tools/check-repository-policy.rb")
+  errors << "native CI must run source provenance check" unless contents.include?("ruby tools/check-source-provenance.rb")
   errors << "native CI must run Autoproj policy check" unless contents.include?("ruby tools/check-autoproj-policy.rb")
   errors << "native CI must run package test workflow policy check" unless contents.include?("ruby tools/check-package-tests-ci.rb")
   errors << "native CI must bootstrap gnulinux through the wrapper" unless contents.include?('./tools/bootstrap.sh --prefix "$OROCOS_PREFIX" --target gnulinux')
