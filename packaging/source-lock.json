@@ -44,7 +44,7 @@
     {
       "name": "typelib",
       "repository": "https://github.com/OptimalCNC/tools-typelib.git",
-      "revision": "20cb127d44dc33f91a67a4c7d7cba7b20e2379eb"
+      "revision": "efcd6fcfee995a3b6bf04764d8366e064cdead83"
     },
     {
       "name": "rtt_typelib",
