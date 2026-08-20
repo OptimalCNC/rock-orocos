@@ -1,6 +1,6 @@
 # Windows MSVC Handoff
 
-This document records the native Windows state validated through 2026-08-19. The
+This document records the native Windows state validated through 2026-08-20. The
 organization-owned source fixes are integrated into the selected maintenance
 fork defaults in both `liufang-robot` and `OptimalCNC`. The remaining
 upstream-only `utilrb` fix is applied from the root workspace.
@@ -158,9 +158,13 @@ flags, and retries clean runtime and development installs through
 `https://prefix.dev/liufang-robot/orocos` while the remote index becomes
 visible.
 
-The workflow and Repository Access mapping have not yet run on GitHub. The
-2026-08-19 result remains a local release-candidate validation, not a record of
-remote publication.
+At canonical synchronization commit
+`4771421f924ceedc71b2253ea4e22427362aea54`, exact-head hosted Repository
+Policy, Native Toolchain Matrix, Windows MSVC Integration, and Windows Conda
+Packages CI passed. The package build job passed and the Prefix publish job was
+skipped as required for the non-release push. GitHub Release publication, the
+Prefix OIDC exchange, an actual Prefix upload, and the channel's Repository
+Access mapping remain unexercised.
 
 The packaged text configuration, environment scripts, CMake metadata, and
 pkg-config metadata contain no workspace, temporary-build, or vcpkg-checkout
@@ -211,7 +215,7 @@ The latest complete pass resolved these source revisions. They are encoded in
 | `rtt_opcua` | `847669186f79dc206313e0f200604581d7031ad8` |
 | OCL | `b80710cd9ba3c1172e355c351d79e6dab016e214` |
 | `utilmm` | `fa212d0d232cf6d841edf9e9d4c43a26d223fedd` |
-| Typelib | `20cb127d44dc33f91a67a4c7d7cba7b20e2379eb` |
+| Typelib | `efcd6fcfee995a3b6bf04764d8366e064cdead83` |
 | `rtt_typelib` | `c5b345a22036019f8ec4ed176299bab3b80aae0a` |
 | `utilrb` | `0028fac920eac5d5f9332c3a3438dcf4b7562953` |
 | `metaruby` | `26d25770fdad163226b5aede3f8f9b8364d22f4c` |

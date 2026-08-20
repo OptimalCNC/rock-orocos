@@ -7,6 +7,7 @@ on:
       - "packaging/**"
       - "tools/build-windows-msvc.ps1"
       - "tools/check-windows-package-ci.rb"
+      - "tools/test-windows-package-ci.rb"
       - "tools/export-windows-env.ps1"
       - "tools/install-ruby-tools.ps1"
       - "tools/prepare-windows-conda-release.ps1"
@@ -28,6 +29,7 @@ on:
       - "packaging/**"
       - "tools/build-windows-msvc.ps1"
       - "tools/check-windows-package-ci.rb"
+      - "tools/test-windows-package-ci.rb"
       - "tools/export-windows-env.ps1"
       - "tools/install-ruby-tools.ps1"
       - "tools/prepare-windows-conda-release.ps1"
@@ -63,15 +65,39 @@ concurrency:
 jobs:
   build-packages:
     name: Build And Test Windows Packages
+    if: >-
+      github.event_name != 'release' ||
+      (github.event.action == 'published' &&
+      github.event.release.prerelease == false &&
+      github.repository == 'liufang-robot/rock-orocos')
     runs-on: windows-2022
     timeout-minutes: 180
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify release commit is reachable from main
+        if: github.event_name == 'release'
+        shell: pwsh
+        run: |
+          $protectedMainRef = "refs/remotes/origin/release-protected-main"
+          & git fetch --no-tags --prune --no-recurse-submodules origin `
+            "refs/heads/main:$protectedMainRef"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch protected main."
+          }
+          & git merge-base --is-ancestor $env:GITHUB_SHA $protectedMainRef
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release commit $env:GITHUB_SHA is not reachable from protected main."
+          }
 
       - name: Set up locked Pixi package environment
-        uses: prefix-dev/setup-pixi@v0.10.1
+        uses: prefix-dev/setup-pixi@f00437f565399d418b0acc85936d12c1fb668347 # v0.10.1
         with:
           pixi-version: v0.76.2
           environments: package
@@ -80,7 +106,7 @@ jobs:
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
 
       - name: Restore vcpkg downloads and binary packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             .cache/vcpkg/archives
@@ -165,7 +191,7 @@ jobs:
             -NoProfile -ExecutionPolicy Bypass `
             -File tools/prepare-windows-conda-release.ps1 `
             -Mode Stage `
-            -RepositoryCommit "${{ github.sha }}" 2>&1 |
+            -RepositoryCommit $env:GITHUB_SHA 2>&1 |
             Tee-Object -FilePath $logPath -Append
           $stageExitCode = $LASTEXITCODE
           $ErrorActionPreference = $savedErrorActionPreference
@@ -185,7 +211,7 @@ jobs:
             -LocalChannelPath packaging/conda/output
 
       - name: Upload verified release bundle
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: orocos-windows-packages-${{ github.sha }}
           path: ${{ env.RELEASE_BUNDLE }}
@@ -195,7 +221,7 @@ jobs:
 
       - name: Upload package build diagnostics
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: orocos-windows-package-logs-${{ github.sha }}
           if-no-files-found: ignore
@@ -222,10 +248,29 @@ jobs:
 
     steps:
       - name: Check out release commit
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify release commit is reachable from main
+        if: github.event_name == 'release'
+        shell: pwsh
+        run: |
+          $protectedMainRef = "refs/remotes/origin/release-protected-main"
+          & git fetch --no-tags --prune --no-recurse-submodules origin `
+            "refs/heads/main:$protectedMainRef"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch protected main."
+          }
+          & git merge-base --is-ancestor $env:GITHUB_SHA $protectedMainRef
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release commit $env:GITHUB_SHA is not reachable from protected main."
+          }
 
       - name: Set up locked Pixi package environment
-        uses: prefix-dev/setup-pixi@v0.10.1
+        uses: prefix-dev/setup-pixi@f00437f565399d418b0acc85936d12c1fb668347 # v0.10.1
         with:
           pixi-version: v0.76.2
           environments: package
@@ -234,20 +279,22 @@ jobs:
           cache-write: false
 
       - name: Download verified release bundle
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: orocos-windows-packages-${{ github.sha }}
           path: ${{ env.RELEASE_BUNDLE }}
 
       - name: Verify release tag, commit, metadata, and checksums
         shell: pwsh
+        env:
+          EXPECTED_RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           pixi run --locked -e package powershell.exe `
             -NoProfile -ExecutionPolicy Bypass `
             -File tools/prepare-windows-conda-release.ps1 `
             -Mode Verify `
-            -ExpectedTag "${{ github.event.release.tag_name }}" `
-            -ExpectedRepositoryCommit "${{ github.sha }}"
+            -ExpectedTag $env:EXPECTED_RELEASE_TAG `
+            -ExpectedRepositoryCommit $env:GITHUB_SHA
 
       - name: Publish immutable packages
         shell: pwsh

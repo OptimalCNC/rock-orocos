@@ -2,6 +2,76 @@
 
 require "yaml"
 
+ACTION_PINS = {
+  "actions/checkout" => "d23441a48e516b6c34aea4fa41551a30e30af803",
+  "prefix-dev/setup-pixi" => "f00437f565399d418b0acc85936d12c1fb668347",
+  "actions/cache" => "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+  "actions/upload-artifact" => "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+  "actions/download-artifact" => "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+}.freeze
+
+ACTION_COUNTS = {
+  "actions/checkout" => 2,
+  "prefix-dev/setup-pixi" => 2,
+  "actions/cache" => 1,
+  "actions/upload-artifact" => 2,
+  "actions/download-artifact" => 1
+}.freeze
+
+ANCESTRY_SCRIPT = <<~'POWERSHELL'
+  $protectedMainRef = "refs/remotes/origin/release-protected-main"
+  & git fetch --no-tags --prune --no-recurse-submodules origin `
+    "refs/heads/main:$protectedMainRef"
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to fetch protected main."
+  }
+  & git merge-base --is-ancestor $env:GITHUB_SHA $protectedMainRef
+  if ($LASTEXITCODE -ne 0) {
+    throw "Release commit $env:GITHUB_SHA is not reachable from protected main."
+  }
+POWERSHELL
+
+def normalize_expression(value)
+  value.to_s.gsub(/\s+/, " ").strip
+end
+
+def normalize_script(value)
+  value.to_s.lines.map(&:rstrip).join("\n").strip
+end
+
+def pinned_action(action)
+  "#{action}@#{ACTION_PINS.fetch(action)}"
+end
+
+def check_release_checkout_and_ancestry(steps, job_name, errors)
+  checkout = steps[0]
+  ancestry = steps[1]
+  unless checkout && checkout["uses"] == pinned_action("actions/checkout")
+    errors << "#{job_name} must start with the pinned checkout action"
+    return
+  end
+  expected_checkout = {
+    "ref" => "${{ github.sha }}",
+    "fetch-depth" => 0,
+    "persist-credentials" => false
+  }
+  unless checkout.fetch("with", {}) == expected_checkout
+    errors << "#{job_name} checkout must use the event SHA, full history, and no persisted credentials"
+  end
+
+  unless ancestry && ancestry["name"] == "Verify release commit is reachable from main"
+    errors << "#{job_name} must check release ancestry immediately after checkout"
+    return
+  end
+  unless normalize_expression(ancestry["if"]) == "github.event_name == 'release'"
+    errors << "#{job_name} ancestry check must run for every release event"
+  end
+  errors << "#{job_name} ancestry check must use PowerShell" unless ancestry["shell"] == "pwsh"
+  unless normalize_script(ancestry["run"]) == normalize_script(ANCESTRY_SCRIPT)
+    errors << "#{job_name} ancestry check must fail closed against freshly fetched protected main"
+  end
+end
+
 root = File.expand_path("..", __dir__)
 workflow_path = File.join(root, ".github", "workflows", "windows-packages.yml")
 recipe_path = File.join(root, "packaging", "conda", "recipe.yaml")
@@ -16,8 +86,15 @@ else
   workflow = YAML.safe_load(contents, aliases: true)
   triggers = workflow["on"] || workflow[true]
   jobs = workflow.fetch("jobs", {})
+  expected_job_names = %w[build-packages publish-packages]
+  unless jobs.keys.sort == expected_job_names.sort
+    errors << "Windows package CI must define exactly the approved jobs"
+  end
   build = jobs.fetch("build-packages", {})
   publish = jobs.fetch("publish-packages", {})
+  workflow_runs = jobs.values.flat_map do |job|
+    Array(job["steps"]).filter_map { |step| step["run"] }
+  end.join("\n")
 
   unless triggers.is_a?(Hash)
     errors << "Windows package CI must define structured workflow triggers"
@@ -40,6 +117,7 @@ else
     packaging/**
     tools/build-windows-msvc.ps1
     tools/check-windows-package-ci.rb
+    tools/test-windows-package-ci.rb
     tools/prepare-windows-conda-release.ps1
     tools/test-windows-conda-consumer.ps1
     tools/test-windows-source-lock.ps1
@@ -73,6 +151,15 @@ else
   build_steps = Array(build["steps"])
   build_runs = build_steps.filter_map { |step| step["run"] }.join("\n")
   build_uses = build_steps.filter_map { |step| step["uses"] }
+  expected_repository_name = "liufang-robot/rock-orocos"
+  expected_release_guard = "github.event.action == 'published' && " \
+                           "github.event.release.prerelease == false && " \
+                           "github.repository == '#{expected_repository_name}'"
+  expected_build_condition = "github.event_name != 'release' || (#{expected_release_guard})"
+  unless normalize_expression(build["if"]) == expected_build_condition
+    errors << "Windows package build must reject unauthorized release events exactly"
+  end
+  check_release_checkout_and_ancestry(build_steps, "Windows package build", errors)
   if build_uses.any? { |action| action.start_with?("ilammy/msvc-dev-cmd@") }
     errors << "Windows package build must not activate MSVC outside the recipe build environment"
   end
@@ -82,16 +169,16 @@ else
   errors << "Windows package build must build and test both packages" unless build_runs.include?("pixi run --locked package-build")
   errors << "Windows package build must prepare a verified release bundle" unless build_runs.include?("tools/prepare-windows-conda-release.ps1") && build_runs.include?("-Mode Stage")
   errors << "Windows package build must test clean local-channel consumers" unless build_runs.include?("tools/test-windows-conda-consumer.ps1") && build_runs.include?("-LocalChannelPath packaging/conda/output")
-  errors << "Windows package build must retain the verified bundle" unless build_uses.include?("actions/upload-artifact@v7") && contents.include?("if-no-files-found: error")
-  errors << "Windows package build must retain failure diagnostics" unless build_steps.any? { |step| step["if"] == "failure()" && step["uses"] == "actions/upload-artifact@v7" }
+  upload_artifact = pinned_action("actions/upload-artifact")
+  errors << "Windows package build must retain the verified bundle" unless build_uses.include?(upload_artifact) && contents.include?("if-no-files-found: error")
+  errors << "Windows package build must retain failure diagnostics" unless build_steps.any? { |step| step["if"] == "failure()" && step["uses"] == upload_artifact }
   errors << "Windows package build must not hide failures" if build["continue-on-error"] == true
 
   publish_condition = publish["if"].to_s
   errors << "Prefix publication must depend on the verified build" unless publish["needs"] == "build-packages"
-  errors << "Prefix publication must be release-only" unless publish_condition.include?("github.event_name == 'release'") && publish_condition.include?("github.event.action == 'published'")
-  errors << "Prefix publication must reject prereleases" unless publish_condition.include?("github.event.release.prerelease == false")
-  unless publish_condition.include?("github.repository == 'liufang-robot/rock-orocos'")
-    errors << "Prefix publication must be limited to the canonical GitHub repository"
+  expected_publish_condition = "github.event_name == 'release' && #{expected_release_guard}"
+  unless normalize_expression(publish_condition) == expected_publish_condition
+    errors << "Prefix publication condition must exactly require the approved release event and repository"
   end
   unless publish.fetch("permissions", {}) == { "contents" => "read", "id-token" => "write" }
     errors << "Prefix publication must grant only contents: read and id-token: write"
@@ -101,10 +188,24 @@ else
   publish_steps = Array(publish["steps"])
   publish_runs = publish_steps.filter_map { |step| step["run"] }.join("\n")
   publish_uses = publish_steps.filter_map { |step| step["uses"] }
-  errors << "Prefix publication must download the verified bundle" unless publish_uses.include?("actions/download-artifact@v8")
+  check_release_checkout_and_ancestry(publish_steps, "Prefix publication", errors)
+  errors << "Prefix publication must download the verified bundle" unless publish_uses.include?(pinned_action("actions/download-artifact"))
+  verify_step = publish_steps.find do |step|
+    step["name"] == "Verify release tag, commit, metadata, and checksums"
+  end
+  unless verify_step && verify_step.fetch("env", {}) == {
+    "EXPECTED_RELEASE_TAG" => "${{ github.event.release.tag_name }}"
+  }
+    errors << "Prefix publication must pass the release tag through EXPECTED_RELEASE_TAG"
+  end
+  if workflow_runs.include?("${{")
+    errors << "Windows package CI must not interpolate GitHub expressions into run scripts"
+  end
+  unless publish_runs.include?("-ExpectedTag $env:EXPECTED_RELEASE_TAG")
+    errors << "Prefix publication must read the release tag from EXPECTED_RELEASE_TAG"
+  end
   unless publish_runs.include?("-Mode Verify") &&
-         publish_runs.include?("github.event.release.tag_name") &&
-         publish_runs.include?("-ExpectedRepositoryCommit")
+         publish_runs.include?("-ExpectedRepositoryCommit $env:GITHUB_SHA")
     errors << "Prefix publication must verify the tag, commit, metadata, and checksums"
   end
   unless publish_runs.include?("rattler-build upload prefix") &&
@@ -121,6 +222,17 @@ else
          publish_runs.include?("-ChannelUrl $env:PUBLIC_CHANNEL_URL") &&
          publish_runs.include?("-Attempts 6")
     errors << "Prefix publication must test clean consumers through the public channel"
+  end
+
+  all_uses = jobs.values.flat_map do |job|
+    Array(job["steps"]).filter_map { |step| step["uses"] }
+  end
+  expected_uses = ACTION_COUNTS.to_h do |action, count|
+    [pinned_action(action), count]
+  end
+  unless all_uses.tally == expected_uses
+    errors << "Windows package CI actions must equal the approved full-SHA selections: " \
+              "expected #{expected_uses.inspect}, got #{all_uses.tally.inspect}"
   end
 end
 

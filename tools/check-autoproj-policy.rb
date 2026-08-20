@@ -3,6 +3,7 @@
 require "yaml"
 require "open3"
 require "pathname"
+require_relative "check-source-provenance"
 
 def setup_package_body(script, package)
   match = script.match(
@@ -76,19 +77,25 @@ source_selection = YAML.safe_load_file(overrides_path)
 version_control = source_selection.fetch("version_control", [])
 overrides = source_selection.fetch("overrides", [])
 errors = []
+errors.concat(OrocosRock::SourceProvenance.validate_autoproj(root))
 
 expected_sources.each do |package, source|
   source_entries = local_source_packages.include?(package) ? version_control : overrides
-  override = source_entries.find { |entry| entry.key?(package) }
+  matching_entries = source_entries.select { |entry| entry.key?(package) }
 
-  if override.nil?
+  if matching_entries.empty?
     errors << "#{package}: missing source selection"
     next
   end
+  if matching_entries.size > 1
+    errors << "#{package}: expected exactly one source selection, got #{matching_entries.size}"
+  end
 
-  source.each do |key, expected|
-    actual = override[key]
-    errors << "#{package}: expected #{key} #{expected}, got #{actual.inspect}" unless actual == expected
+  matching_entries.each do |override|
+    source.each do |key, expected|
+      actual = override[key]
+      errors << "#{package}: expected #{key} #{expected}, got #{actual.inspect}" unless actual == expected
+    end
   end
 end
 
