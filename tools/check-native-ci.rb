@@ -25,6 +25,8 @@ else
   errors << "native CI must not require Ubuntu 26.04 yet" if contents.include?(%("26.04"))
   errors << "native CI must use matrix-selected containers" unless contents.include?("image: ${{ matrix.os.image }}")
   errors << "native CI must export SHELL for Autoproj" unless contents.include?("SHELL: /bin/bash")
+  errors << "native CI must set LANG to C.UTF-8 for Autoproj and dpkg parsing" unless contents.include?("LANG: C.UTF-8")
+  errors << "native CI must set LC_ALL to C.UTF-8 for Autoproj and dpkg parsing" unless contents.include?("LC_ALL: C.UTF-8")
   errors << "native CI must install build-essential for native Ruby gems and package builds" unless contents.include?("build-essential")
   errors << "native CI must install cmake before Autoproj build" unless contents.include?("cmake")
   errors << "native CI must install Boost headers before utilmm configure" unless contents.include?("libboost-dev")
