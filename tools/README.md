@@ -41,6 +41,8 @@ Focused regression tests:
   package builds through clean Pixi caches from a local or public channel
 - `check-windows-package-ci.rb` enforces the GitHub release, OIDC, immutable
   publication, and post-publication test boundaries
+- `test-windows-package-ci.rb` mutation-tests the release guard, protected-main
+  ancestry gate, action pins, and release-tag command boundary
 - `windows-generator-smoke/` is generated and compiled by the Windows Pixi
   build to exercise Typelib, OroGen, standalone Typegen regeneration, typekit,
   transport, and deployer support

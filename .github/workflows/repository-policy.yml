@@ -15,6 +15,7 @@ on:
       - "tools/check-windows-package-ci.rb"
       - "tools/prepare-windows-conda-release.ps1"
       - "tools/test-source-provenance.rb"
+      - "tools/test-windows-package-ci.rb"
       - "tools/test-windows-conda-consumer.ps1"
       - "packaging/**"
       - "pixi.toml"
@@ -35,6 +36,7 @@ on:
       - "tools/check-windows-package-ci.rb"
       - "tools/prepare-windows-conda-release.ps1"
       - "tools/test-source-provenance.rb"
+      - "tools/test-windows-package-ci.rb"
       - "tools/test-windows-conda-consumer.ps1"
       - "packaging/**"
       - "pixi.toml"
@@ -53,6 +55,7 @@ jobs:
       - name: Check repository policy
         run: |
           ruby tools/check-repository-policy.rb
+          ruby tools/test-windows-package-ci.rb
           ruby tools/check-windows-package-ci.rb
 
       - name: Check source provenance

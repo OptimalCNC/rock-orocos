@@ -56,6 +56,16 @@ overrides:
     url: https://github.com/OptimalCNC/utilmm.git
     branch: dev
 
+  - utilrb:
+    type: git
+    url: https://github.com/rock-core/tools-utilrb.git
+    branch: master
+
+  - tools/metaruby:
+    type: git
+    url: https://github.com/rock-core/tools-metaruby.git
+    branch: master
+
   - rtt_typelib:
     type: git
     url: https://github.com/OptimalCNC/tools-rtt_typelib.git
