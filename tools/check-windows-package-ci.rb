@@ -131,6 +131,19 @@ else
   unless recipe.include?(%q{${{ compiler('cxx') }}})
     errors << "Windows package recipe must activate the MSVC x64 build environment"
   end
+  expected_repository = "https://github.com/liufang-robot/rock-orocos"
+  expected_documentation = "#{expected_repository}/tree/main/docs/src"
+  {
+    "homepage" => expected_repository,
+    "repository" => expected_repository,
+    "documentation" => expected_documentation
+  }.each do |field, expected|
+    token = "#{field}: #{expected}"
+    errors << "Windows package recipe must define #{token}" unless recipe.include?(token)
+  end
+  unless recipe.include?("    - liufang-robot")
+    errors << "Windows package recipe must identify liufang-robot as maintainer"
+  end
 end
 
 unless File.file?(staging_path)
@@ -154,6 +167,9 @@ else
   end
   if staging.match?(/\bGet-FileHash\b/)
     errors << "release staging must not depend on the optional Get-FileHash cmdlet"
+  end
+  unless staging.include?('[string]$Channel = "liufang-robot/orocos"')
+    errors << "release staging must use the canonical Prefix channel"
   end
   errors << "release staging must not publish packages" if staging.include?("upload prefix")
 end

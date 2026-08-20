@@ -17,6 +17,26 @@ function Get-OrocosWindowsExpectedSourceNames {
     )
 }
 
+function Get-OrocosWindowsExpectedRepositories {
+    $sourceOrganization = "liufang-robot"
+    @{
+        "farbot" = "https://github.com/$sourceOrganization/farbot.git"
+        "rtlog-cpp" = "https://github.com/$sourceOrganization/rtlog-cpp.git"
+        "rtt" = "https://github.com/$sourceOrganization/rtt.git"
+        "open62541" = "https://github.com/open62541/open62541.git"
+        "open62541pp" = "https://github.com/open62541pp/open62541pp.git"
+        "rtt_opcua" = "https://github.com/$sourceOrganization/rtt_opcua.git"
+        "ocl" = "https://github.com/$sourceOrganization/ocl.git"
+        "utilmm" = "https://github.com/$sourceOrganization/utilmm.git"
+        "typelib" = "https://github.com/$sourceOrganization/tools-typelib.git"
+        "rtt_typelib" = "https://github.com/$sourceOrganization/tools-rtt_typelib.git"
+        "utilrb" = "https://github.com/rock-core/tools-utilrb.git"
+        "metaruby" = "https://github.com/rock-core/tools-metaruby.git"
+        "orogen" = "https://github.com/$sourceOrganization/tools-orogen.git"
+        "vcpkg" = "https://github.com/microsoft/vcpkg.git"
+    }
+}
+
 function Assert-OrocosJsonProperties {
     param(
         [Parameter(Mandatory = $true)]$Value,
@@ -71,6 +91,7 @@ function Import-OrocosWindowsSourceLock {
     }
 
     $expectedNames = @(Get-OrocosWindowsExpectedSourceNames)
+    $expectedRepositories = Get-OrocosWindowsExpectedRepositories
     $sourcesByName = [ordered]@{}
     foreach ($source in @($document.sources)) {
         Assert-OrocosJsonProperties -Value $source `
@@ -89,6 +110,10 @@ function Import-OrocosWindowsSourceLock {
         }
         if ($source.repository -isnot [string] -or [string]::IsNullOrWhiteSpace($source.repository)) {
             throw "Windows source lock source '$name' has an invalid repository."
+        }
+        $expectedRepository = $expectedRepositories[$name]
+        if ($source.repository -cne $expectedRepository) {
+            throw "Windows source lock source '$name' expected repository '$expectedRepository', got '$($source.repository)'."
         }
         if ($source.revision -isnot [string] -or $source.revision -notmatch '^[0-9a-fA-F]{40}$') {
             throw "Windows source lock source '$name' must use a full 40-character Git commit revision."

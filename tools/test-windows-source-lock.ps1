@@ -79,6 +79,12 @@ try {
         -ExpectedMessage "full 40-character Git commit"
 
     $document = Copy-SourceLockDocument
+    $document.sources[0].repository = "https://github.com/wrong-owner/farbot.git"
+    Assert-LockRejected -Name "wrong-repository" `
+        -Contents ($document | ConvertTo-Json -Depth 5) `
+        -ExpectedMessage "expected repository"
+
+    $document = Copy-SourceLockDocument
     $document.sources[0].repository = " "
     Assert-LockRejected -Name "blank-repository" `
         -Contents ($document | ConvertTo-Json -Depth 5) `
@@ -95,4 +101,4 @@ try {
     }
 }
 
-Write-Host "Windows source lock tests passed ($expectedCount sources, 8 rejection cases)."
+Write-Host "Windows source lock tests passed ($expectedCount sources, 9 rejection cases)."
