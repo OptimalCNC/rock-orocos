@@ -1,0 +1,42 @@
+diff --git a/lib/orogen/gen/typekit.rb b/lib/orogen/gen/typekit.rb
+--- a/lib/orogen/gen/typekit.rb
++++ b/lib/orogen/gen/typekit.rb
+@@ -1225,4 +1225,9 @@ module OroGen
+                 # Handle a load that points to a file in this typekit's source tree
+                 def handle_local_load(file)
+-                    rel = Pathname.new(file).relative_path_from(Pathname.new(base_dir))
++                    begin
++                        rel = Pathname.new(file).relative_path_from(Pathname.new(base_dir))
++                    rescue ArgumentError
++                        # Pathname cannot compute relative paths across Windows volumes.
++                        return file
++                    end
+                     return file if rel.each_filename.first == ".."
+@@ -1230,6 +1235,10 @@ module OroGen
+                     local_type_dir = Pathname.new(includes_dir)
+-                    rel_to_type_dir = Pathname.new(file).relative_path_from(local_type_dir)
+-                    if rel_to_type_dir.each_filename.first == ".."
++                    begin
++                        rel_to_type_dir = Pathname.new(file).relative_path_from(local_type_dir)
++                    rescue ArgumentError
++                        rel_to_type_dir = nil
++                    end
++                    if !rel_to_type_dir || rel_to_type_dir.each_filename.first == ".."
+                         # If the type is within a subdirectory called as the
+                         # typekit, remove the duplicate
+                         elements = rel.each_filename.to_a
+diff --git a/lib/orogen/templates/typekit/CMakeLists.txt b/lib/orogen/templates/typekit/CMakeLists.txt
+--- a/lib/orogen/templates/typekit/CMakeLists.txt
++++ b/lib/orogen/templates/typekit/CMakeLists.txt
+@@ -49,7 +49,8 @@
+ ADD_CUSTOM_TARGET(regen
+-    <% ruby_bin   = RbConfig::CONFIG['RUBY_INSTALL_NAME']
+-       typegen_bin = 'typegen' %>
+-   COMMAND <%= typegen_bin %>
++    <% ruby_bin = RbConfig.ruby
++       typegen_bin = Gem.bin_path("orogen", "typegen") %>
++   COMMAND [==[<%= ruby_bin %>]==]
++       [==[<%= typegen_bin %>]==]
+ <% RTT_CPP.command_line_options.each do |option| %>
+        [==[<%= option %>]==]
+ <% end %>

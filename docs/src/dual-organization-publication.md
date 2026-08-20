@@ -17,6 +17,17 @@ Git mirror. Its package selections point to `OptimalCNC` forks, while the
 The official `open62541`, `open62541pp`, and `utilrb` selections remain on
 their upstream repositories in both organizations.
 
+## Prefix Channels
+
+| Root repository | Upload reference | Consumer URL |
+|---|---|---|
+| `liufang-robot/rock-orocos` | `liufang-robot/orocos` | `https://prefix.dev/liufang-robot/orocos` |
+| `OptimalCNC/rock-orocos` | `metanc/orocos` | `https://prefix.dev/metanc/orocos` |
+
+Both roots retain the manually published, non-prerelease GitHub Release gate.
+Each Prefix channel must authorize only its corresponding root repository and
+`windows-packages.yml` through Repository Access.
+
 ## Repository Matrix
 
 | Workspace package | `liufang-robot` repository | `OptimalCNC` repository | Published branch |

@@ -173,6 +173,7 @@ After changing CI policy, run:
 ```bash
 ruby tools/check-native-ci.rb
 ruby tools/check-package-tests-ci.rb
+ruby tools/check-windows-package-ci.rb
 ```
 
 After a real install, run:

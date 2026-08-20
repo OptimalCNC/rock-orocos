@@ -3,6 +3,9 @@ param(
     [string]$Workspace = (Join-Path (Get-Location) "build\windows-msvc"),
     [string]$Prefix = (Join-Path (Get-Location) "install\windows-msvc"),
     [string]$VcpkgRoot = (Join-Path (Get-Location) "vcpkg"),
+    [string]$SourceLockPath,
+    [string]$RubyGemCache,
+    [switch]$RelocatablePrefix,
     [string]$FarbotRepository = "https://github.com/OptimalCNC/farbot.git",
     [string]$RtlogRepository = "https://github.com/OptimalCNC/rtlog-cpp.git",
     [string]$RttRepository = "https://github.com/OptimalCNC/rtt.git",
@@ -35,7 +38,10 @@ param(
     [string]$Generator = "Visual Studio 17 2022"
 )
 
+$BoundParameterNames = @($PSBoundParameters.Keys)
 $ErrorActionPreference = "Stop"
+$RubyExecutable = Get-Command ruby.exe -CommandType Application `
+    -ErrorAction Stop | Select-Object -First 1 -ExpandProperty Source
 
 function Invoke-Step {
     param(
@@ -78,7 +84,7 @@ function Get-NativeOutput {
 }
 
 function Invoke-NativeWithRetry {
-    $Attempts = 3
+    $Attempts = 6
     $DelaySeconds = 5
     $Command = $args
 
@@ -92,7 +98,7 @@ function Invoke-NativeWithRetry {
             }
 
             Write-Warning "Command failed on attempt $attempt/${Attempts}: $($_.Exception.Message)"
-            Start-Sleep -Seconds $DelaySeconds
+            Start-Sleep -Seconds ($DelaySeconds * $attempt)
         }
     }
 }
@@ -198,6 +204,19 @@ function Sync-GitRepository {
     }
 
     Invoke-Native git -C $Path checkout --detach --force FETCH_HEAD
+
+    if ($Ref -match '^[0-9a-fA-F]{40}$') {
+        $checkedOutRevision = (& git -C $Path rev-parse --verify HEAD | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) {
+            throw "git rev-parse --verify HEAD exited with code $LASTEXITCODE"
+        }
+        if (-not [string]::Equals(
+                $checkedOutRevision,
+                $Ref,
+                [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Locked source '$Repository' resolved to '$checkedOutRevision', expected '$Ref'."
+        }
+    }
 }
 
 function Apply-SourcePatch {
@@ -261,6 +280,64 @@ function Write-Open62541PkgConfig {
         [System.Text.UTF8Encoding]::new($false))
 }
 
+$SourceLock = $null
+if (-not [string]::IsNullOrWhiteSpace($SourceLockPath)) {
+    $sourceOverrideParameters = @(
+        "FarbotRepository", "RtlogRepository", "RttRepository",
+        "Open62541Repository", "Open62541ppRepository", "RttOpcuaRepository",
+        "OclRepository", "UtilmmRepository", "TypelibRepository",
+        "RttTypelibRepository", "UtilrbRepository", "MetarubyRepository",
+        "OrogenRepository", "VcpkgRepository", "FarbotRef", "RtlogRef",
+        "RttRef", "Open62541Ref", "Open62541ppRef", "RttOpcuaRef",
+        "OclRef", "UtilmmRef", "TypelibRef", "RttTypelibRef", "UtilrbRef",
+        "MetarubyRef", "OrogenRef", "VcpkgRef"
+    )
+    $conflictingParameters = @(
+        $sourceOverrideParameters | Where-Object { $BoundParameterNames -contains $_ }
+    )
+    if ($conflictingParameters.Count -gt 0) {
+        throw "-SourceLockPath cannot be combined with source override parameter(s): $($conflictingParameters -join ', ')."
+    }
+
+    $SourceLockPath = Convert-ToFullPath $SourceLockPath
+    . (Join-Path $PSScriptRoot "windows-source-lock.ps1")
+    $SourceLock = Import-OrocosWindowsSourceLock -Path $SourceLockPath
+
+    $FarbotRepository = $SourceLock["farbot"].repository
+    $FarbotRef = $SourceLock["farbot"].revision
+    $RtlogRepository = $SourceLock["rtlog-cpp"].repository
+    $RtlogRef = $SourceLock["rtlog-cpp"].revision
+    $RttRepository = $SourceLock["rtt"].repository
+    $RttRef = $SourceLock["rtt"].revision
+    $Open62541Repository = $SourceLock["open62541"].repository
+    $Open62541Ref = $SourceLock["open62541"].revision
+    $Open62541ppRepository = $SourceLock["open62541pp"].repository
+    $Open62541ppRef = $SourceLock["open62541pp"].revision
+    $RttOpcuaRepository = $SourceLock["rtt_opcua"].repository
+    $RttOpcuaRef = $SourceLock["rtt_opcua"].revision
+    $OclRepository = $SourceLock["ocl"].repository
+    $OclRef = $SourceLock["ocl"].revision
+    $UtilmmRepository = $SourceLock["utilmm"].repository
+    $UtilmmRef = $SourceLock["utilmm"].revision
+    $TypelibRepository = $SourceLock["typelib"].repository
+    $TypelibRef = $SourceLock["typelib"].revision
+    $RttTypelibRepository = $SourceLock["rtt_typelib"].repository
+    $RttTypelibRef = $SourceLock["rtt_typelib"].revision
+    $UtilrbRepository = $SourceLock["utilrb"].repository
+    $UtilrbRef = $SourceLock["utilrb"].revision
+    $MetarubyRepository = $SourceLock["metaruby"].repository
+    $MetarubyRef = $SourceLock["metaruby"].revision
+    $OrogenRepository = $SourceLock["orogen"].repository
+    $OrogenRef = $SourceLock["orogen"].revision
+    $VcpkgRepository = $SourceLock["vcpkg"].repository
+    $VcpkgRef = $SourceLock["vcpkg"].revision
+
+    Write-Host "Using Windows source lock: $SourceLockPath"
+    foreach ($source in $SourceLock.Values) {
+        Write-Host ("  {0,-13} {1}" -f $source.name, $source.revision)
+    }
+}
+
 $Workspace = Convert-ToFullPath $Workspace
 $Prefix = Convert-ToFullPath $Prefix
 $VcpkgRoot = Convert-ToFullPath $VcpkgRoot
@@ -280,6 +357,17 @@ $OrogenRepository = Resolve-GitRepository $OrogenRepository
 $VcpkgRepository = Resolve-GitRepository $VcpkgRepository
 $Platform = "x64"
 $VcpkgTriplet = "x64-windows"
+$prefixForCMake = $Prefix -replace "\\", "/"
+$rttDefaultPluginPath = if ($RelocatablePrefix) {
+    "."
+} else {
+    "$prefixForCMake/lib/orocos"
+}
+$typelibDefaultPluginPath = if ($RelocatablePrefix) {
+    "."
+} else {
+    "$prefixForCMake/lib/typelib"
+}
 
 $FarbotSource = Join-Path $Workspace "src\farbot"
 $RtlogSource = Join-Path $Workspace "src\rtlog-cpp"
@@ -315,6 +403,19 @@ New-Item -ItemType Directory -Force -Path $Prefix | Out-Null
 
 $env:OROCOS_TARGET = "win32"
 $env:VCPKG_ROOT = $VcpkgRoot
+foreach ($name in @("VCPKG_DEFAULT_BINARY_CACHE", "VCPKG_DOWNLOADS")) {
+    $configuredPath = [Environment]::GetEnvironmentVariable($name)
+    if ([string]::IsNullOrWhiteSpace($configuredPath)) {
+        continue
+    }
+
+    $resolvedPath = Convert-ToFullPath $configuredPath
+    New-Item -ItemType Directory -Force -Path $resolvedPath | Out-Null
+    [Environment]::SetEnvironmentVariable(
+        $name,
+        $resolvedPath,
+        [EnvironmentVariableTarget]::Process)
+}
 
 Invoke-Step "Check out source repositories" {
     Sync-GitRepository -Repository $FarbotRepository -Ref $FarbotRef -Path $FarbotSource
@@ -334,12 +435,14 @@ Invoke-Step "Check out source repositories" {
 
 Invoke-Step "Apply remaining Windows portability patches" {
     Apply-SourcePatch -Path $UtilrbSource -Patch (Join-Path $PatchRoot "utilrb-windows.patch")
+    Apply-SourcePatch -Path $OrogenSource -Patch (Join-Path $PatchRoot "orogen-cross-volume-paths.patch")
 }
 
 Invoke-Step "Set up vcpkg" {
     Sync-GitRepository -Repository $VcpkgRepository -Ref $VcpkgRef -Path $VcpkgRoot
-    if (-not (Test-Path -LiteralPath (Join-Path $VcpkgRoot "vcpkg.exe"))) {
-        Invoke-Native (Join-Path $VcpkgRoot "bootstrap-vcpkg.bat") -disableMetrics
+    if ($null -ne $SourceLock -or
+        -not (Test-Path -LiteralPath (Join-Path $VcpkgRoot "vcpkg.exe"))) {
+        Invoke-NativeWithRetry (Join-Path $VcpkgRoot "bootstrap-vcpkg.bat") -disableMetrics
     }
 }
 
@@ -348,7 +451,7 @@ $VcpkgInstalled = Join-Path $VcpkgRoot "installed\$VcpkgTriplet"
 $VcpkgBin = Join-Path $VcpkgInstalled "bin"
 
 Invoke-Step "Install vcpkg dependencies" {
-    Invoke-Native (Join-Path $VcpkgRoot "vcpkg.exe") install `
+    Invoke-NativeWithRetry (Join-Path $VcpkgRoot "vcpkg.exe") install `
         "boost-assign:${VcpkgTriplet}" `
         "boost-filesystem:${VcpkgTriplet}" `
         "boost-serialization:${VcpkgTriplet}" `
@@ -400,6 +503,7 @@ Invoke-Step "Configure RTT" {
         -DPLUGINS_ENABLE_TYPEKIT=ON `
         -DPLUGINS_ENABLE_SCRIPTING=ON `
         -DORO_OS_USE_BOOST_THREAD=ON `
+        -DDEFAULT_PLUGIN_PATH="$rttDefaultPluginPath" `
         -DCMAKE_BUILD_TYPE=Release
 }
 
@@ -519,6 +623,7 @@ Invoke-Step "Configure Typelib" {
         -DBUILD_TESTING=OFF `
         -DBUILD_TESTS=OFF `
         -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON `
+        -DTYPELIB_HARDCODED_PLUGIN_PATH="$typelibDefaultPluginPath" `
         -DCMAKE_BUILD_TYPE=Release
 }
 
@@ -544,11 +649,17 @@ Invoke-Step "Install rtt_typelib" {
 }
 
 Invoke-Step "Install Ruby generator tools" {
+    $rubyToolArguments = @{
+        Prefix = $Prefix
+        UtilrbSource = $UtilrbSource
+        MetarubySource = $MetarubySource
+        OrogenSource = $OrogenSource
+    }
+    if (-not [string]::IsNullOrWhiteSpace($RubyGemCache)) {
+        $rubyToolArguments.GemCache = $RubyGemCache
+    }
     & (Join-Path $PSScriptRoot "install-ruby-tools.ps1") `
-        -Prefix $Prefix `
-        -UtilrbSource $UtilrbSource `
-        -MetarubySource $MetarubySource `
-        -OrogenSource $OrogenSource
+        @rubyToolArguments
 }
 
 Invoke-Step "Export Windows environments" {
@@ -569,7 +680,8 @@ Invoke-Step "Generate Windows OroGen smoke project" {
     . (Join-Path $Prefix "dev-env.ps1")
     Push-Location $GeneratorSmokeSource
     try {
-        Invoke-Native (Join-Path $Prefix "toolchain\bin\orogen.bat") `
+        Invoke-Native $RubyExecutable `
+            (Join-Path $Prefix "toolchain\bin\orogen") `
             --target=win32 --transports=typelib windows_smoke.orogen
     } finally {
         Pop-Location
@@ -589,12 +701,23 @@ Invoke-Step "Build Windows OroGen smoke project" {
 
 Invoke-Step "Generate Windows Typegen smoke project" {
     New-Item -ItemType Directory -Force -Path $TypegenSmokeSource | Out-Null
+    $typegenSmokeHeader = Join-Path $TypegenSmokeSource `
+        "WindowsTypegenTypes.hpp"
+    Copy-Item -LiteralPath `
+        (Join-Path $PSScriptRoot "windows-generator-smoke\WindowsTypegenTypes.hpp") `
+        -Destination $typegenSmokeHeader -Force
     . (Join-Path $Prefix "dev-env.ps1")
-    Invoke-Native (Join-Path $Prefix "toolchain\bin\typegen.bat") `
-        --transports=typelib `
-        --output=$TypegenSmokeSource `
-        windows_typegen_smoke `
-        (Join-Path $PSScriptRoot "windows-generator-smoke\WindowsTypegenTypes.hpp")
+    Push-Location $TypegenSmokeSource
+    try {
+        Invoke-Native $RubyExecutable `
+            (Join-Path $Prefix "toolchain\bin\typegen") `
+            --transports=typelib `
+            --output=$TypegenSmokeSource `
+            windows_typegen_smoke `
+            $typegenSmokeHeader
+    } finally {
+        Pop-Location
+    }
 }
 
 Invoke-Step "Build Windows Typegen smoke project" {
@@ -605,8 +728,22 @@ Invoke-Step "Build Windows Typegen smoke project" {
         -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
         -DCMAKE_INSTALL_PREFIX="$Prefix" `
         -DCMAKE_BUILD_TYPE=Release
-    Invoke-Native cmake --build $TypegenSmokeBuild --config Release `
-        --target regen
+    $savedPath = $env:PATH
+    try {
+        $generatorCommandDirectories = @(
+            (Join-Path $Prefix "toolchain\bin"),
+            (Split-Path -Parent $RubyExecutable)
+        )
+        $env:PATH = @(
+            $env:PATH -split ";" | Where-Object {
+                $generatorCommandDirectories -notcontains $_
+            }
+        ) -join ";"
+        Invoke-Native cmake --build $TypegenSmokeBuild --config Release `
+            --target regen
+    } finally {
+        $env:PATH = $savedPath
+    }
     Invoke-Native cmake --build $TypegenSmokeBuild --config Release `
         --target INSTALL --parallel 4
 }
@@ -676,6 +813,9 @@ Invoke-Step "Validate Windows prefix" {
     if (($env:PATH -split ";") -notcontains (Join-Path $Prefix "toolchain\bin")) {
         throw "Windows development environment did not add the generator commands"
     }
+    if (($env:PATH -split ";") -notcontains (Split-Path -Parent $RubyExecutable)) {
+        throw "Windows development environment did not retain the active Ruby runtime"
+    }
     if ($env:GEM_HOME -ne (Join-Path $Prefix "toolchain\gems")) {
         throw "Windows development environment exported the wrong Ruby gem home"
     }
@@ -698,18 +838,20 @@ Invoke-Step "Validate Windows prefix" {
 
     Invoke-Native (Join-Path $RttTypelibBuild "Release\get_marshaller_for_test.exe")
 
-    Invoke-Native ruby `
+    Invoke-Native $RubyExecutable `
         (Join-Path $PSScriptRoot "windows-generator-smoke\validate.rb") `
         (Join-Path $GeneratorSmokeSource "WindowsSmokeTypes.hpp")
 
     $orogenVersionOutput = Get-NativeOutput `
-        (Join-Path $Prefix "toolchain\bin\orogen.bat") --version
+        $RubyExecutable `
+        (Join-Path $Prefix "toolchain\bin\orogen") --version
     if ($orogenVersionOutput -notmatch "orogen") {
         throw "Installed orogen --version did not print the expected output"
     }
 
     $typegenHelpOutput = Get-NativeOutput `
-        (Join-Path $Prefix "toolchain\bin\typegen.bat") --help
+        $RubyExecutable `
+        (Join-Path $Prefix "toolchain\bin\typegen") --help
     if ($typegenHelpOutput -notmatch "Usage:") {
         throw "Installed typegen --help did not print the expected output"
     }

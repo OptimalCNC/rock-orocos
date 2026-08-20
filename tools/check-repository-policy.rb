@@ -14,7 +14,8 @@ errors = []
 
 %w[docs/book docs/superpowers].each do |directory|
   tracked_files, git_status = Open3.capture2(
-    "git", "-C", root, "ls-files", "--", directory
+    "git", "-c", "safe.directory=#{root}",
+    "-C", root, "ls-files", "--", directory
   )
 
   unless git_status.success?
@@ -27,7 +28,8 @@ errors = []
 end
 
 tracked_markdown, markdown_status = Open3.capture2(
-  "git", "-C", root, "ls-files", "-z", "--", "*.md"
+  "git", "-c", "safe.directory=#{root}",
+  "-C", root, "ls-files", "-z", "--", "*.md"
 )
 
 if !markdown_status.success?
@@ -120,14 +122,26 @@ else
     "AGENTS.md"
     "README.md"
     ".github/workflows/repository-policy.yml"
+    ".github/workflows/windows-packages.yml"
     "docs/book/**"
     "docs/src/**"
     "docs/superpowers/**"
     "tools/check-repository-policy.rb"
+    "tools/check-source-provenance.rb"
+    "tools/check-windows-package-ci.rb"
+    "tools/prepare-windows-conda-release.ps1"
+    "tools/test-source-provenance.rb"
+    "tools/test-windows-conda-consumer.ps1"
+    "packaging/**"
+    "pixi.toml"
+    "pixi.lock"
   ].each do |path|
     errors << "repository policy workflow must watch #{path}" unless workflow.include?(path)
   end
   errors << "repository policy workflow must run repository policy check" unless workflow.include?("ruby tools/check-repository-policy.rb")
+  errors << "repository policy workflow must run source provenance test" unless workflow.include?("ruby tools/test-source-provenance.rb")
+  errors << "repository policy workflow must run source provenance check" unless workflow.include?("ruby tools/check-source-provenance.rb")
+  errors << "repository policy workflow must run Windows package CI policy check" unless workflow.include?("ruby tools/check-windows-package-ci.rb")
 end
 
 if !File.file?(summary_path)

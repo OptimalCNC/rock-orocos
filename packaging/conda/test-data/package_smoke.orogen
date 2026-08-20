@@ -1,0 +1,11 @@
+name "package_smoke"
+
+import_types_from "PackageSmokeTypes.hpp"
+
+task_context "Task" do
+    output_port "samples", "/package_smoke/Sample"
+end
+
+deployment "package_smoke_deployer" do
+    task "task", "Task"
+end

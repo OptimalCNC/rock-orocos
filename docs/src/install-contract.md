@@ -152,11 +152,14 @@ exact internal directory layout changes later.
 
 On Windows, `env.ps1` and `dev-env.ps1` provide the corresponding PowerShell
 contracts. Runtime-only use through `env.ps1` does not require an active Pixi
-environment. Development through `dev-env.ps1` does: it exposes the
-prefix-local generator gems, Typelib plugins, and the vcpkg development prefix,
-while Ruby, CastXML, CMake, and the compiler remain Pixi-managed dependencies.
-The `win32` generator defaults to the Typelib transport; CORBA and mqueue are
-not part of the Windows contract.
+environment when using the workspace-built prefix. Development through
+`dev-env.ps1` does: it exposes the prefix-local generator gems, Typelib
+plugins, and bundled dependency SDK, while Ruby, CastXML, CMake, and the
+compiler remain Pixi-managed dependencies. The packaged equivalent is an
+environment containing `orocos-dev`; that package declares those Pixi-managed
+dependencies and installs the exact matching `orocos` runtime. The `win32`
+generator defaults to the Typelib transport; CORBA and mqueue are not part of
+the Windows contract.
 
 ## Validation Expectations
 

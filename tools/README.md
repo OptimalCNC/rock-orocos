@@ -9,7 +9,8 @@ User entrypoints:
   building or installing them
 - `build-windows-msvc.ps1` builds and validates the native Windows RTT/OCL/OPC
   UA and OroGen development prefix; the `windows-build` Pixi task is the normal
-  entrypoint
+  entrypoint. Pass `-SourceLockPath packaging/source-lock.json` to reproduce a
+  release candidate from exact commits; omit it for development ref overrides.
 
 Maintainer building blocks:
 
@@ -23,10 +24,23 @@ Maintainer building blocks:
 - `install-autoproj.sh`
 - `validate-install.sh`
 - `docker-build.sh`
+- `prepare-windows-conda-release.ps1` verifies package metadata, file
+  separation, local channel indexes, source provenance, and checksums before
+  staging the two release artifacts
 
 Focused regression tests:
 
+- `check-source-provenance.rb` validates canonical source repositories across
+  Autoproj, the Windows source lock, and Windows build defaults
+- `test-source-provenance.rb` proves source-provenance rejection behavior with
+  copied policy fixtures
 - `test-update.sh`
+- `test-windows-source-lock.ps1` validates the complete, immutable Windows Git
+  source contract and its rejection behavior
+- `test-windows-conda-consumer.ps1` installs the exact runtime and development
+  package builds through clean Pixi caches from a local or public channel
+- `check-windows-package-ci.rb` enforces the GitHub release, OIDC, immutable
+  publication, and post-publication test boundaries
 - `windows-generator-smoke/` is generated and compiled by the Windows Pixi
   build to exercise Typelib, OroGen, standalone Typegen regeneration, typekit,
   transport, and deployer support

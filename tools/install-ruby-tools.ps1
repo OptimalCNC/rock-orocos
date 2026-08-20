@@ -7,7 +7,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$MetarubySource,
     [Parameter(Mandatory = $true)]
-    [string]$OrogenSource
+    [string]$OrogenSource,
+    [string]$GemCache
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,10 +44,18 @@ function Install-RemoteGem {
         "--bindir", $script:BinDirectory,
         "--no-document"
     )
-    if (-not [string]::IsNullOrWhiteSpace($Version)) {
+    if (-not [string]::IsNullOrWhiteSpace($script:GemCache)) {
+        $gemPath = Join-Path $script:GemCache "$Name-$Version.gem"
+        if (-not (Test-Path -LiteralPath $gemPath -PathType Leaf)) {
+            throw "Missing locked Ruby gem: $gemPath"
+        }
+        $arguments += @("--local", "--ignore-dependencies", $gemPath)
+    } elseif (-not [string]::IsNullOrWhiteSpace($Version)) {
         $arguments += @("--version", $Version)
+        $arguments += $Name
+    } else {
+        $arguments += $Name
     }
-    $arguments += $Name
     Invoke-Native gem @arguments
 }
 
@@ -80,6 +89,12 @@ $Prefix = Convert-ToFullPath $Prefix
 $UtilrbSource = Convert-ToFullPath $UtilrbSource
 $MetarubySource = Convert-ToFullPath $MetarubySource
 $OrogenSource = Convert-ToFullPath $OrogenSource
+if (-not [string]::IsNullOrWhiteSpace($GemCache)) {
+    $GemCache = Convert-ToFullPath $GemCache
+    if (-not (Test-Path -LiteralPath $GemCache -PathType Container)) {
+        throw "Ruby gem cache does not exist: $GemCache"
+    }
+}
 $GemHome = Join-Path $Prefix "toolchain\gems"
 $BinDirectory = Join-Path $Prefix "toolchain\bin"
 $TemporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) `

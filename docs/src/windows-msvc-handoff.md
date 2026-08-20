@@ -1,9 +1,9 @@
 # Windows MSVC Handoff
 
-This document records the native Windows state validated on 2026-08-18. The
+This document records the native Windows state validated through 2026-08-19. The
 organization-owned source fixes are integrated into the selected maintenance
-fork defaults in both `liufang-robot` and `OptimalCNC`. The remaining
-upstream-only `utilrb` fix is applied from the root workspace.
+fork defaults in `OptimalCNC`. The remaining upstream-only `utilrb` fix is
+applied from the root workspace.
 
 ## Outcome
 
@@ -30,12 +30,13 @@ built, installed, and imported through the deployer.
 | Build or rebuild the prefix | Required | Pixi supplies the locked CMake, Ruby, CastXML, pkg-config, Git, and compiler environment. Visual Studio 2022 C++ Build Tools must also be installed. |
 | Develop or generate components | Required | Enter `pixi shell --locked`, then dot-source `dev-env.ps1`. |
 | Run installed RTT/OCL tools in this workspace | Not required | Dot-source `env.ps1`; it supplies the installed runtime and vcpkg DLL paths. |
-| Copy the prefix to another machine as an application | Not supported yet | The environment scripts contain absolute workspace and vcpkg paths, and dependency DLLs are not all bundled into the prefix. |
+| Install the relocatable SDK | Required | Add `orocos-dev` to a downstream Pixi workspace, then dot-source `$env:CONDA_PREFIX\Library\dev-env.ps1`. |
+| Install the relocatable runtime | Required for installation | Add `orocos`; its installed `env.ps1` uses only package-relative paths. |
 
 Pixi is therefore the supported Windows build and development entrypoint. It
-is not a runtime container or an application installer. The root Pixi
-workspace intentionally declares only `win-64`; the existing Linux build
-continues to use Autoproj through `tools/setup.sh`.
+also installs the packaged runtime and SDK into downstream environments. The
+root Pixi workspace intentionally declares only `win-64`; the existing Linux
+build continues to use Autoproj through `tools/setup.sh`.
 
 ## Reproduce the Build
 
@@ -74,6 +75,106 @@ deployer-opcua-win32.exe --check --no-consolelog
 maintenance fork. A local repository is fetched into the disposable source
 tree; the original checkout is not modified.
 
+For a reproducible release-candidate build, use the complete source lock:
+
+```powershell
+pixi run --locked windows-build -- `
+  -SourceLockPath packaging/source-lock.json
+```
+
+The lock mode rejects repository/ref overrides and verifies that every
+checkout's final `HEAD` is the requested full commit. Omit the source lock for
+ordinary development or integration testing against moving branch refs.
+
+## Build The Packages
+
+The package build uses the same source lock and produces two relocatable
+`win-64` artifacts:
+
+- `orocos` contains runtime executables, DLLs, plugins, typekits, OPC UA, and
+  `env.ps1`.
+- `orocos-dev` contains headers, import libraries, CMake/pkg-config metadata,
+  the bundled dependency SDK, OroGen, Typegen, and `dev-env.ps1`. It requires
+  the exact matching `orocos` build.
+
+Build and test both from the repository root:
+
+```powershell
+pixi install --locked -e package
+pixi run --locked package-render
+pixi run --locked package-build
+```
+
+The 2026-08-19 local release-candidate build produced and tested
+`orocos-0.1.0-h9490d1a_0.conda` and
+`orocos-dev-0.1.0-h04e904a_0.conda`. Rattler Build tested each package in an
+isolated environment. The development test generated and compiled fresh
+OroGen and Typegen projects. Separate clean runtime and development Pixi
+workspaces then installed from the local `file://` channel: the runtime check
+ran the RTT/OCL/OPC UA tools without development files, while the development
+check generated and compiled both downstream projects again.
+
+`package-build` force-reindexes the local channel after its native tests pass.
+This is required during local iteration because rebuilding an unchanged
+version and build number replaces the artifact filename.
+
+After publication, a downstream workspace consumes the packages with:
+
+```powershell
+pixi workspace channel add https://prefix.dev/metanc/orocos
+pixi workspace channel add conda-forge
+pixi add orocos-dev==0.1.0
+pixi shell
+. "$env:CONDA_PREFIX\Library\dev-env.ps1"
+```
+
+Package construction and local-channel checks are detailed in
+`packaging/README.md`. Upload is a separate release action and was not part of
+the local validation recorded here.
+
+## Package CI And Release
+
+`.github/workflows/windows-packages.yml` now encodes the release path. Pull
+requests, `main` pushes, and manual dispatches build the source-locked packages,
+stage only the two verified `.conda` artifacts, record their checksums and
+source lock, and install both exact builds through a fresh local-channel Pixi
+cache. No event other than a published, non-prerelease GitHub Release can enter
+the upload job.
+
+The OptimalCNC publication channel has three distinct forms:
+
+- Upload: `metanc/orocos`
+- Consumer: `https://prefix.dev/metanc/orocos`
+- Website: `https://prefix.dev/channels/@metanc/orocos`
+
+The upload job has two additional boundaries:
+
+- `github.repository` must be `OptimalCNC/rock-orocos`, so no other repository
+  can publish these package names; and
+- only that job receives `id-token: write`, allowing Prefix Repository Access
+  to authenticate it without a stored API key.
+
+Before the first release, register `OptimalCNC/rock-orocos` and the exact
+workflow filename `windows-packages.yml` in the `metanc/orocos` channel's
+Repository Access settings. Grant package upload access without delete or
+lifecycle permissions. Then let the package workflow pass on `main` and publish
+release tag `v0.1.0` from the same commit. A published, non-prerelease release
+in `OptimalCNC/rock-orocos` is the only publication trigger. The job verifies
+the tag against the package metadata, uploads both manifest-selected artifacts
+without overwrite flags, and retries clean runtime and development installs
+through `https://prefix.dev/metanc/orocos` while the remote index becomes
+visible.
+
+The workflow and Repository Access mapping have not yet run on GitHub. The
+2026-08-19 result remains a local release-candidate validation, not a record of
+remote publication.
+
+The packaged text configuration, environment scripts, CMake metadata, and
+pkg-config metadata contain no workspace, temporary-build, or vcpkg-checkout
+paths. Some MSVC and cached vcpkg binaries retain non-functional source/PDB
+path strings. Those debug records do not participate in runtime lookup or
+downstream build discovery and are not a relocation dependency.
+
 ## Validation Evidence
 
 The complete `pixi run windows-build` acceptance passed twice consecutively
@@ -81,8 +182,10 @@ during initial implementation, including an idempotent rebuild. After this
 review guarded the non-MSVC `utilmm` path and fixed already-integrated patch
 detection, a fresh complete acceptance run also passed. Another complete run
 passed after adding the standalone Typegen acceptance. A complete run against
-the integrated maintenance-fork commits also passed. The validated behavior
-includes:
+the integrated maintenance-fork commits also passed. After adding the source
+lock, two complete locked runs passed; the second also refreshed vcpkg's
+untracked executable from the pinned commit's tool metadata. The validated
+behavior includes:
 
 - all expected runtime, development, pkg-config, and CMake artifacts installed
 - RTT, OCL, OPC UA, Typelib, and generated component libraries discoverable
@@ -101,8 +204,9 @@ the `OS_RT_MALLOC` facility that owns that type. `rtt_opcua` now registers
 `RtString` only when `OS_RT_MALLOC` is available. Linux retains its existing
 `RtString` registration.
 
-The latest complete pass resolved these source revisions and applied the
-remaining tracked `utilrb` patch:
+The latest complete pass resolved these source revisions. They are encoded in
+`packaging/source-lock.json`; the build also applies the remaining tracked
+`utilrb` patch:
 
 | Source | Revision |
 |---|---|
@@ -118,11 +222,13 @@ remaining tracked `utilrb` patch:
 | `rtt_typelib` | `c5b345a22036019f8ec4ed176299bab3b80aae0a` |
 | `utilrb` | `0028fac920eac5d5f9332c3a3438dcf4b7562953` |
 | `metaruby` | `26d25770fdad163226b5aede3f8f9b8364d22f4c` |
-| OroGen | `dfa81b727f002dafb2f9b6b82e3205d375c77a66` |
+| OroGen | `3346b6ac682ad772b57d07b2386cdaef47e4abbe` |
 | vcpkg | `c5a15727ee70fddf0296f0d8aafc3f58916fefac` |
 
-`.github/workflows/windows-msvc.yml` runs this locked Pixi task on
-`windows-2022`. Its YAML and local command path are validated.
+`.github/workflows/windows-msvc.yml` runs on `windows-2022`, installs the
+locked Pixi dependency graph, validates the source-lock contract, and builds
+the requested integration refs. Release reproduction separately passes
+`-SourceLockPath` as shown above.
 
 ## Console And OPC UA Notes
 
@@ -180,9 +286,11 @@ transport tests therefore remain follow-up OroGen maintenance work.
 
 ## Known Gaps
 
-- The installed prefix is not relocatable and is not an application package.
-- vcpkg and most source refs use moving branches; Pixi dependencies are locked,
-  but the entire source graph is not yet pinned to immutable commits.
+- The direct `windows-build` workspace prefix is not relocatable. Use the
+  `orocos` and `orocos-dev` packages when the installation must move between
+  machines or prefixes.
+- Ordinary development builds still default to moving integration refs. The
+  package recipe uses `packaging/source-lock.json` and rejects moving refs.
 - The `win32` target supports the Typelib transport. CORBA and mqueue are not
   part of the Windows contract.
 - The Windows build currently disables most upstream unit-test suites and
@@ -191,7 +299,7 @@ transport tests therefore remain follow-up OroGen maintenance work.
 - Readline is GPL-2.0; distributed TaskBrowser-linked binaries must use
   GPL-compatible terms.
 
-Before publishing an application, pin all source revisions, copy required
-runtime DLLs into a relocatable prefix, generate a clean-machine package, and
-test install, activation, component loading, console editing, and OPC UA from
-that package.
+Before publishing, review the bundled licenses and the GitHub release bundle.
+Increase the recipe build number if an already-published filename must be
+corrected. Never replace an existing channel artifact with `--force` or mask a
+different-byte collision with `--skip-existing`.
