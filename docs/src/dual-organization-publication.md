@@ -24,9 +24,10 @@ their upstream repositories in both organizations.
 | `liufang-robot/rock-orocos` | `liufang-robot/orocos` | `https://prefix.dev/liufang-robot/orocos` |
 | `OptimalCNC/rock-orocos` | `metanc/orocos` | `https://prefix.dev/metanc/orocos` |
 
-Both roots retain the manually published, non-prerelease GitHub Release gate.
-Each Prefix channel must authorize only its corresponding root repository and
-`windows-packages.yml` through Repository Access.
+Each channel authorizes only its corresponding root repository and the exact
+`linux-packages.yml` and `windows-packages.yml` workflow files through
+Repository Access. The `OptimalCNC` root publishes only to `metanc/orocos`;
+the canonical root independently publishes only to `liufang-robot/orocos`.
 
 ## Repository Matrix
 
@@ -77,12 +78,26 @@ The root repositories intentionally differ by one organization policy lineage.
 The `liufang-robot/main` version selects `liufang-robot` for every maintained
 fork. The `OptimalCNC/main` version selects `OptimalCNC` for the same packages.
 
-The organization-specific root change updates these live policy surfaces
+The organization-specific root change updates these live policy groups
 together:
 
-- `autoproj/overrides.yml`, which controls the sources used by Autoproj;
-- `tools/check-autoproj-policy.rb`, which enforces those source selections;
-- `docs/src/package-policy.md`, which names the active organization source.
+- source selection and enforcement in `autoproj/overrides.yml`,
+  `tools/build-windows-msvc.ps1`, `tools/check-source-provenance.rb`, and
+  `tools/check-autoproj-policy.rb`;
+- locked repository identities in `packaging/source-lock.json` and
+  `tools/windows-source-lock.ps1`, while keeping the selected revisions equal
+  across organizations;
+- release repository guards and Prefix channel defaults in both package
+  workflows, both release staging tools, and
+  `tools/check-{linux,windows}-package-ci.rb`;
+- repository metadata and maintainers in both Conda recipes; and
+- consumer channels and repository links in the root and packaging READMEs,
+  the Pixi example, mdBook configuration and package/release chapters, plus
+  their documentation, activation, and release-manifest checks.
+
+The organization-facing package policy and Xenomai playbook must name the
+active fork set. This publication page must describe the behavior of the root
+variant in which it appears.
 
 Canonical changes are merged into the OptimalCNC lineage without removing its
 organization policy commit. The OptimalCNC policy checks must pass after every
@@ -96,6 +111,9 @@ Before publishing:
 - generated build directories and TaskBrowser history must remain untracked;
 - package tests and root repository policy checks must pass;
 - both root policy variants must pass `tools/check-autoproj-policy.rb`;
+- the merged `OptimalCNC` tree must be compared directly with `liufang/main`,
+  and every remaining file difference must belong to an organization policy
+  group listed above;
 - `git diff --check` must pass for every commit being published.
 
 After publishing, query every remote default branch and compare its commit ID

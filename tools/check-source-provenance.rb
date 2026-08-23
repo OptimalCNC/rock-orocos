@@ -26,6 +26,7 @@ module OrocosRock
       "open62541pp" => "https://github.com/open62541pp/open62541pp.git",
       "utilrb" => "https://github.com/rock-core/tools-utilrb.git",
       "metaruby" => "https://github.com/rock-core/tools-metaruby.git",
+      "rock-package-set" => "https://github.com/rock-core/package_set.git",
       "vcpkg" => "https://github.com/microsoft/vcpkg.git"
     }.freeze
 
@@ -83,7 +84,11 @@ module OrocosRock
           "rtlog-cpp" => { "type" => "git", "url" => repositories.fetch("rtlog-cpp"), "branch" => "main" },
           "open62541" => { "type" => "git", "url" => repositories.fetch("open62541"), "tag" => "v1.4.15" },
           "open62541pp" => { "type" => "git", "url" => repositories.fetch("open62541pp"), "tag" => "v0.21.2" },
-          "rtt_opcua" => { "type" => "git", "url" => repositories.fetch("rtt_opcua"), "branch" => "dev" }
+          "rtt_opcua" => {
+            "type" => "git",
+            "url" => repositories.fetch("rtt_opcua"),
+            "branch" => "dev"
+          }
         },
         "overrides" => {
           "rtt" => { "type" => "git", "url" => repositories.fetch("rtt"), "branch" => "dev" },

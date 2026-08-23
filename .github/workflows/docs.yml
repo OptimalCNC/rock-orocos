@@ -1,0 +1,61 @@
+name: Documentation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/docs.yml"
+      - "README.md"
+      - "packaging/README.md"
+      - "docs/**"
+      - "examples/pixi-consumer/**"
+      - "tools/check-docs.rb"
+      - "pixi.toml"
+      - "pixi.lock"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/docs.yml"
+      - "README.md"
+      - "packaging/README.md"
+      - "docs/**"
+      - "examples/pixi-consumer/**"
+      - "tools/check-docs.rb"
+      - "pixi.toml"
+      - "pixi.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # GitHub Pages publication is intentionally disabled. Keep this workflow
+  # build-only until the repository's Pages configuration is ready.
+  build:
+    name: Build Documentation
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up locked documentation environment
+        uses: prefix-dev/setup-pixi@f00437f565399d418b0acc85936d12c1fb668347 # v0.10.1
+        with:
+          pixi-version: v0.77.0
+          environments: docs
+          locked: true
+          cache: true
+
+      - name: Validate and build the manual
+        run: pixi run --locked -e docs docs-build
+
+      - name: Validate Pixi consumer activation example
+        run: >-
+          pixi workspace activation list
+          --manifest-path examples/pixi-consumer/pixi.toml

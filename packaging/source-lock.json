@@ -29,7 +29,7 @@
     {
       "name": "rtt_opcua",
       "repository": "https://github.com/OptimalCNC/rtt_opcua.git",
-      "revision": "847669186f79dc206313e0f200604581d7031ad8"
+      "revision": "4b2609564defb185887ca22ce8ae8db2503e7da0"
     },
     {
       "name": "ocl",
@@ -65,6 +65,11 @@
       "name": "orogen",
       "repository": "https://github.com/OptimalCNC/tools-orogen.git",
       "revision": "3346b6ac682ad772b57d07b2386cdaef47e4abbe"
+    },
+    {
+      "name": "rock-package-set",
+      "repository": "https://github.com/rock-core/package_set.git",
+      "revision": "fbe56c735fd11dabe028301d0325630fb27a6939"
     },
     {
       "name": "vcpkg",
