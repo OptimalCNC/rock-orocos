@@ -4,6 +4,18 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $script:BatchStandardOutput = ""
+$script:BatchStandardError = ""
+$script:BatchActivationOutput = ""
+$script:BatchActivationElapsed = [TimeSpan]::Zero
+$script:ManagedHookVariables = @(
+    "OROCOS_PREFIX",
+    "OROCOS_TARGET",
+    "RTT_COMPONENT_PATH",
+    "PKG_CONFIG_LIBDIR",
+    "PKG_CONFIG_PATH",
+    "TYPELIB_PLUGIN_PATH",
+    "CMAKE_PREFIX_PATH"
+)
 
 function Get-BatchEnvironment {
     param(
@@ -20,16 +32,27 @@ function Get-BatchEnvironment {
     $startInfo.CreateNoWindow = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
+    foreach ($name in @($startInfo.EnvironmentVariables.Keys)) {
+        if (([string]$name) -like "__OROCOS_ROCK_*") {
+            $startInfo.EnvironmentVariables.Remove([string]$name)
+        }
+    }
+    foreach ($name in $script:ManagedHookVariables) {
+        $startInfo.EnvironmentVariables.Remove($name)
+    }
     $startInfo.EnvironmentVariables["PATH"] = $InitialPath
 
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
+    $stopwatch = [Diagnostics.Stopwatch]::StartNew()
     try {
         [void]$process.Start()
         $standardOutput = $process.StandardOutput.ReadToEnd()
         $standardError = $process.StandardError.ReadToEnd()
         $process.WaitForExit()
+        $stopwatch.Stop()
         $script:BatchStandardOutput = $standardOutput
+        $script:BatchStandardError = $standardError
         if ($process.ExitCode -ne 0) {
             throw @"
 Batch activation failed with code $($process.ExitCode).
@@ -40,12 +63,34 @@ $standardError
 "@
         }
     } finally {
+        if ($stopwatch.IsRunning) {
+            $stopwatch.Stop()
+        }
         $process.Dispose()
     }
 
+    $captureMarker = "OROCOS_TEST_ENVIRONMENT_CAPTURE_BEGIN"
+    $outputLines = @($standardOutput -split "`r?`n")
+    $captureIndex = [Array]::IndexOf($outputLines, $captureMarker)
+    if ($captureIndex -lt 0) {
+        throw "Batch activation did not emit the environment capture marker."
+    }
+    $activationLines = if ($captureIndex -eq 0) {
+        @()
+    } else {
+        @($outputLines[0..($captureIndex - 1)])
+    }
+    $environmentLines = if ($captureIndex -ge ($outputLines.Count - 1)) {
+        @()
+    } else {
+        @($outputLines[($captureIndex + 1)..($outputLines.Count - 1)])
+    }
+    $script:BatchActivationOutput = $activationLines -join "`n"
+    $script:BatchActivationElapsed = $stopwatch.Elapsed
+
     $environment = [Collections.Generic.Dictionary[string, string]]::new(
         [StringComparer]::OrdinalIgnoreCase)
-    foreach ($line in $standardOutput -split "`r?`n") {
+    foreach ($line in $environmentLines) {
         $separator = $line.IndexOf("=")
         if ($separator -gt 0) {
             $environment[$line.Substring(0, $separator)] =
@@ -77,6 +122,17 @@ $script:BatchStandardOutput
     }
 }
 
+function Assert-EnvironmentAbsent {
+    param(
+        [Collections.Generic.IDictionary[string, string]]$Environment,
+        [string]$Name
+    )
+
+    if ($Environment.ContainsKey($Name)) {
+        throw "$Name remained set to '$($Environment[$Name])'."
+    }
+}
+
 function Assert-PathEntryCount {
     param(
         [Collections.Generic.IDictionary[string, string]]$Environment,
@@ -102,10 +158,12 @@ function Assert-PathEntryCount {
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) `
     ("orocos-windows-env-batch-" + [guid]::NewGuid().ToString("N"))
-$condaPrefix = Join-Path $testRoot "conda"
+$condaPrefix = Join-Path $testRoot "_temp\conda"
 $libraryPrefix = Join-Path $condaPrefix "Library"
-$hookDirectory = Join-Path $condaPrefix "etc\conda\activate.d"
-$hookPath = Join-Path $hookDirectory "orocos-activate.bat"
+$activationHookDirectory = Join-Path $condaPrefix "etc\conda\activate.d"
+$activationHookPath = Join-Path $activationHookDirectory "orocos-activate.bat"
+$deactivationHookDirectory = Join-Path $condaPrefix "etc\conda\deactivate.d"
+$deactivationHookPath = Join-Path $deactivationHookDirectory "orocos-deactivate.bat"
 $fakeBin = Join-Path $testRoot "fake-bin"
 $fakeRuby = Join-Path $fakeBin "ruby.cmd"
 $callerPath = Join-Path $testRoot "capture-environment.bat"
@@ -119,7 +177,8 @@ $originalPath = $env:PATH
 try {
     foreach ($directory in @(
             (Join-Path $libraryPrefix "vcpkg"),
-            $hookDirectory,
+            $activationHookDirectory,
+            $deactivationHookDirectory,
             $fakeBin,
             $preservedPath,
             $runtimePluginPath,
@@ -139,17 +198,37 @@ try {
         -BundledDependencies
     Copy-Item `
         -LiteralPath (Join-Path $repositoryRoot "packaging\conda\orocos-activate.bat") `
-        -Destination $hookPath
+        -Destination $activationHookPath
+    Copy-Item `
+        -LiteralPath (Join-Path $repositoryRoot "packaging\conda\orocos-deactivate.bat") `
+        -Destination $deactivationHookPath
 
     $callerLines = @(
-        '@echo __OROCOS_TEST_BEFORE_FIRST=1',
-        ('@call "{0}"' -f $hookPath),
+        '@echo on',
+        '@set "__OROCOS_TEST_BEFORE_FIRST=1"',
+        ('call "{0}"' -f $activationHookPath),
         '@if errorlevel 1 exit /b %ERRORLEVEL%',
-        '@echo __OROCOS_TEST_AFTER_FIRST=1',
-        ('@call "{0}"' -f $hookPath),
+        '@set "__OROCOS_TEST_AFTER_FIRST=1"',
+        ('call "{0}"' -f $activationHookPath),
         '@if errorlevel 1 exit /b %ERRORLEVEL%',
-        '@echo __OROCOS_TEST_AFTER_SECOND=1',
-        '@set'
+        '@set "__OROCOS_TEST_AFTER_SECOND=1"',
+        '@set "__OROCOS_TEST_ACTIVE_PREFIX=%OROCOS_PREFIX%"',
+        '@set "__OROCOS_TEST_ACTIVE_TARGET=%OROCOS_TARGET%"',
+        '@set "__OROCOS_TEST_ACTIVE_PATH=%PATH%"',
+        '@set "__OROCOS_TEST_ACTIVE_COMPONENT_PATH=%RTT_COMPONENT_PATH%"',
+        '@set "__OROCOS_TEST_ACTIVE_PKG_CONFIG_PATH=%PKG_CONFIG_PATH%"',
+        '@set "__OROCOS_TEST_ACTIVE_TYPELIB_PATH=%TYPELIB_PLUGIN_PATH%"',
+        '@set "__OROCOS_TEST_ACTIVE_CMAKE_PATH=%CMAKE_PREFIX_PATH%"',
+        ('call "{0}"' -f $deactivationHookPath),
+        '@if errorlevel 1 exit /b %ERRORLEVEL%',
+        '@set "__OROCOS_TEST_AFTER_DEACTIVATION=1"',
+        ('call "{0}"' -f $deactivationHookPath),
+        '@if errorlevel 1 exit /b %ERRORLEVEL%',
+        '@set "__OROCOS_TEST_AFTER_SECOND_DEACTIVATION=1"',
+        '@echo off',
+        '@echo OROCOS_TEST_ENVIRONMENT_CAPTURE_BEGIN',
+        '@set',
+        '@exit /b 0'
     )
     [IO.File]::WriteAllText(
         $callerPath,
@@ -161,9 +240,29 @@ try {
             "C:\rattler-build\host_env_placehold_placehold_placehold\Library\bin\$_"
         }
     ) -join ";"
+    if ($rattlerPath.Length -lt 6500 -or $rattlerPath.Length -gt 7600) {
+        throw "Rattler-length PATH fixture has unexpected length $($rattlerPath.Length)."
+    }
     $environment = Get-BatchEnvironment `
         -CallerPath $callerPath `
         -InitialPath $rattlerPath
+
+    if (-not [string]::IsNullOrWhiteSpace($script:BatchStandardError)) {
+        throw "Batch lifecycle wrote to stderr:`n$script:BatchStandardError"
+    }
+    $activationConsoleLines = @(
+        $script:BatchActivationOutput -split "`r?`n" |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+    if ($script:BatchActivationOutput -match "__OROCOS_ROCK_PATH_") {
+        throw "Batch activation echoed internal PATH implementation commands."
+    }
+    if ($activationConsoleLines.Count -gt 16) {
+        throw "Batch lifecycle emitted $($activationConsoleLines.Count) console lines; expected at most 16."
+    }
+    if ($script:BatchActivationElapsed.TotalSeconds -gt 30) {
+        throw "Batch lifecycle took $($script:BatchActivationElapsed.TotalSeconds) seconds; expected at most 30."
+    }
 
     Assert-EnvironmentValue `
         -Environment $environment -Name "__OROCOS_TEST_BEFORE_FIRST" -Expected "1"
@@ -172,29 +271,39 @@ try {
     Assert-EnvironmentValue `
         -Environment $environment -Name "__OROCOS_TEST_AFTER_SECOND" -Expected "1"
     Assert-EnvironmentValue `
-        -Environment $environment -Name "OROCOS_PREFIX" -Expected $libraryPrefix
+        -Environment $environment -Name "__OROCOS_TEST_AFTER_DEACTIVATION" -Expected "1"
     Assert-EnvironmentValue `
-        -Environment $environment -Name "OROCOS_TARGET" -Expected "win32"
-    $expectedPath = "$runtimePluginPath;$rattlerPath"
-    if ($environment["PATH"] -cne $expectedPath) {
-        throw "Package activation did not prepend only the runtime loader path."
-    }
+        -Environment $environment -Name "__OROCOS_TEST_AFTER_SECOND_DEACTIVATION" -Expected "1"
+    Assert-EnvironmentValue `
+        -Environment $environment -Name "__OROCOS_TEST_ACTIVE_PREFIX" -Expected $libraryPrefix
+    Assert-EnvironmentValue `
+        -Environment $environment -Name "__OROCOS_TEST_ACTIVE_TARGET" -Expected "win32"
     Assert-PathEntryCount `
         -Environment $environment `
-        -Name "PATH" `
+        -Name "__OROCOS_TEST_ACTIVE_PATH" `
         -ExpectedPath $runtimePluginPath `
         -ExpectedCount 1
+    $expectedPath = "$runtimePluginPath;$rattlerPath"
+    if ($environment["__OROCOS_TEST_ACTIVE_PATH"] -cne $expectedPath) {
+        throw "Package activation did not prepend only the runtime loader path."
+    }
     foreach ($entry in @(
-            [PSCustomObject]@{ Name = "RTT_COMPONENT_PATH"; Path = $componentPath },
-            [PSCustomObject]@{ Name = "PKG_CONFIG_PATH"; Path = $pkgConfigPath },
-            [PSCustomObject]@{ Name = "TYPELIB_PLUGIN_PATH"; Path = $typelibPath },
-            [PSCustomObject]@{ Name = "CMAKE_PREFIX_PATH"; Path = $libraryPrefix }
+            [PSCustomObject]@{ Name = "__OROCOS_TEST_ACTIVE_COMPONENT_PATH"; Path = $componentPath },
+            [PSCustomObject]@{ Name = "__OROCOS_TEST_ACTIVE_PKG_CONFIG_PATH"; Path = $pkgConfigPath },
+            [PSCustomObject]@{ Name = "__OROCOS_TEST_ACTIVE_TYPELIB_PATH"; Path = $typelibPath },
+            [PSCustomObject]@{ Name = "__OROCOS_TEST_ACTIVE_CMAKE_PATH"; Path = $libraryPrefix }
         )) {
         Assert-PathEntryCount `
             -Environment $environment `
             -Name $entry.Name `
             -ExpectedPath $entry.Path `
             -ExpectedCount 1
+    }
+    if ($environment["PATH"] -cne $rattlerPath) {
+        throw "Package deactivation did not restore the inherited PATH exactly."
+    }
+    foreach ($name in $script:ManagedHookVariables) {
+        Assert-EnvironmentAbsent -Environment $environment -Name $name
     }
     $leakedHelpers = @(
         $environment.Keys |

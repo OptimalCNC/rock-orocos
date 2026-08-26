@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  version: "0.1.2"
+  version: "0.1.3"
   build_number: 0
 
 recipe:
@@ -17,6 +17,7 @@ source:
         - packaging/source-lock.json
         - packaging/conda/build.ps1
         - packaging/conda/orocos-activate.bat
+        - packaging/conda/orocos-deactivate.bat
         - packaging/conda/stage-runtime-hook.ps1
         - packaging/conda/prepare-prefix.ps1
         - tools/build-windows-msvc.ps1
@@ -55,12 +56,17 @@ outputs:
         - castxml >=0.7,<0.8
         - cmake >=3.28,<4
         - git >=2.45,<3
+        - ninja >=1.12,<2
         - pkg-config >=0.29,<1
         - ruby >=3.4,<3.5
         - zstd >=1.5,<2
     build:
       script:
         file: build.ps1
+        env:
+          OROCOS_VCPKG_ROOT: ${{ env.get("OROCOS_VCPKG_ROOT", default="") }}
+          VCPKG_DEFAULT_BINARY_CACHE: ${{ env.get("VCPKG_DEFAULT_BINARY_CACHE", default="") }}
+          VCPKG_DOWNLOADS: ${{ env.get("VCPKG_DOWNLOADS", default="") }}
 
   - package:
       name: orocos
@@ -81,6 +87,7 @@ outputs:
           - Library/env.ps1
           - Library/share/licenses/orocos/**
           - etc/conda/activate.d/orocos-activate.bat
+          - etc/conda/deactivate.d/orocos-deactivate.bat
     requirements:
       run:
         - vc14_runtime >=14.44,<15
@@ -93,6 +100,7 @@ outputs:
               - Library/env.bat
               - Library/env.ps1
               - etc/conda/activate.d/orocos-activate.bat
+              - etc/conda/deactivate.d/orocos-deactivate.bat
               - Library/share/licenses/orocos/LICENSES.md
               - Library/share/licenses/orocos/manifest.json
               - Library/lib/orocos/win32/types/rtt-typekit-win32.dll
@@ -162,6 +170,7 @@ outputs:
               - Library/env.bat
               - Library/env.ps1
               - etc/conda/activate.d/orocos-activate.bat
+              - etc/conda/deactivate.d/orocos-deactivate.bat
               - Library/share/licenses/orocos/LICENSES.md
       - script: test-dev.ps1
         files:
