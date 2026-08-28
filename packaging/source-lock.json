@@ -14,7 +14,7 @@
     {
       "name": "rtt",
       "repository": "https://github.com/OptimalCNC/rtt.git",
-      "revision": "14e237f2c49fa2830f055b71b09f6921c3a07bee"
+      "revision": "08f600861af0d59163806b3caece8180883a0789"
     },
     {
       "name": "open62541",
