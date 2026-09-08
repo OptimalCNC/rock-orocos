@@ -19,6 +19,11 @@ foreach(target http-fixture-types http-fixture-components)
   target_compile_options(${target} PRIVATE ${OROCOS-RTT_DEFINITIONS})
   target_link_libraries(${target} PRIVATE ${OROCOS-RTT_LIBRARIES} ${OROCOS-RTT_TYPEKIT_LIBRARIES})
 endforeach()
+if(MSVC)
+  # The shared component fixture instantiates enough RTT templates to exceed
+  # the ordinary COFF object-file section limit.
+  target_compile_options(http-fixture-components PRIVATE /bigobj)
+endif()
 
 add_library(http-fixture-transport MODULE fixture_http_transport.cpp)
 target_include_directories(http-fixture-transport PRIVATE ${FIXTURE_SOURCE})
