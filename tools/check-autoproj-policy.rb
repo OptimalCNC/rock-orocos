@@ -68,7 +68,7 @@ expected_sources = {
   "cpp-httplib" => {
     "url" => "https://github.com/liufang-robot/cpp-httplib.git",
     "branch" => "rtt-maintenance",
-    "commit" => "ff2caa809b907ab59815725fbb0bb757475e2229"
+    "commit" => "6303872c8f419f6dda9b40bd3027c0116fdb3cc7"
   },
   "rtt_http" => { "url" => "https://github.com/liufang-robot/rtt_http.git", "branch" => "dev" },
   "orogen" => {

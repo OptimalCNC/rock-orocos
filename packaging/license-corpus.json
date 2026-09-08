@@ -88,7 +88,7 @@
     {
       "name": "cpp-httplib",
       "source_lock_name": "cpp-httplib",
-      "revision": "ff2caa809b907ab59815725fbb0bb757475e2229",
+      "revision": "6303872c8f419f6dda9b40bd3027c0116fdb3cc7",
       "license": "MIT",
       "checkouts": {
         "linux": "toolchain/cpp-httplib",
@@ -176,7 +176,7 @@
     {
       "name": "ocl",
       "source_lock_name": "ocl",
-      "revision": "43beffdd157fbbd859dc09c6c3dad9b10efe46f4",
+      "revision": "008a93faa0d95dade922367aefda8d5a75028b52",
       "license": "GPL-2.0-or-later AND LGPL-2.1-or-later AND LicenseRef-OCL-GPL-2.0-Linking-Exception",
       "checkouts": {
         "linux": "toolchain/tools/ocl",
@@ -356,7 +356,7 @@
     {
       "name": "rtt",
       "source_lock_name": "rtt",
-      "revision": "44ea4aadcbc7be7de92002953d8e4aedb647e0a0",
+      "revision": "966fbcf0cf79c8c86b229200e5cfa34562462303",
       "license": "LicenseRef-Orocos-RTT-GPL-2.0-Linking-Exception AND LicenseRef-Orocos-RTT-TLSF-Linking-Exception",
       "checkouts": {
         "linux": "toolchain/tools/rtt",

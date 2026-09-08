@@ -97,7 +97,7 @@ module OrocosRock
             "type" => "git",
             "url" => repositories.fetch("cpp-httplib"),
             "branch" => "rtt-maintenance",
-            "commit" => "ff2caa809b907ab59815725fbb0bb757475e2229"
+            "commit" => "6303872c8f419f6dda9b40bd3027c0116fdb3cc7"
           },
           "rtt_http" => {
             "type" => "git",

@@ -30,7 +30,7 @@ param(
     [string]$Open62541Ref = "v1.4.15",
     [string]$Open62541ppRef = "v0.21.2",
     [string]$RttOpcuaRef = "dev",
-    [string]$HttplibRef = "ff2caa809b907ab59815725fbb0bb757475e2229",
+    [string]$HttplibRef = "6303872c8f419f6dda9b40bd3027c0116fdb3cc7",
     [string]$RttHttpRef = "dev",
     [string]$OclRef = "dev",
     [string]$UtilmmRef = "dev",
