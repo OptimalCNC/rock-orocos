@@ -14,7 +14,7 @@
     {
       "name": "rtt",
       "repository": "https://github.com/OptimalCNC/rtt.git",
-      "revision": "08f600861af0d59163806b3caece8180883a0789"
+      "revision": "966fbcf0cf79c8c86b229200e5cfa34562462303"
     },
     {
       "name": "open62541",
@@ -34,7 +34,17 @@
     {
       "name": "ocl",
       "repository": "https://github.com/OptimalCNC/ocl.git",
-      "revision": "c3289cb2aa01a76be2863898a811790671b7e0f2"
+      "revision": "008a93faa0d95dade922367aefda8d5a75028b52"
+    },
+    {
+      "name": "cpp-httplib",
+      "repository": "https://github.com/OptimalCNC/cpp-httplib.git",
+      "revision": "6303872c8f419f6dda9b40bd3027c0116fdb3cc7"
+    },
+    {
+      "name": "rtt_http",
+      "repository": "https://github.com/OptimalCNC/rtt_http.git",
+      "revision": "12f82044af9f8c98191e9fc44cef410b74feb468"
     },
     {
       "name": "utilmm",

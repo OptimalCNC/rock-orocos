@@ -69,6 +69,19 @@ $externalWarningArguments = @(
         -DependencyInclude (Join-Path $bundledVcpkg "include")
 )
 
+$httpFixtureSource = Join-Path (Get-Location) "tests/http-custom-datatypes"
+$httpFixtureBuild = Join-Path ([IO.Path]::GetTempPath()) ("orocos-http-sdk-" + [guid]::NewGuid())
+try {
+    Invoke-Native cmake -S $httpFixtureSource -B $httpFixtureBuild -G Ninja `
+        @externalWarningArguments -DCMAKE_BUILD_TYPE=Release
+    Invoke-Native cmake --build $httpFixtureBuild --parallel 2
+    Invoke-Native ctest --test-dir $httpFixtureBuild --output-on-failure --no-tests=error
+} finally {
+    if (Test-Path -LiteralPath $httpFixtureBuild -PathType Container) {
+        Remove-Item -LiteralPath $httpFixtureBuild -Recurse -Force
+    }
+}
+
 $orogen = (Get-Command "orogen" -ErrorAction Stop).Source
 $typegen = (Get-Command "typegen" -ErrorAction Stop).Source
 Invoke-Native $orogen --version

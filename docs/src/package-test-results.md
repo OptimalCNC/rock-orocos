@@ -5,9 +5,9 @@ surface. It is a repeatable contract, not a record of one local run.
 
 The package-test workflow covers Ubuntu 22.04, Ubuntu 24.04, and Debian
 13/Trixie. Package steps return their real exit status even while a workflow is
-configured as non-required. OPC UA jobs do not allow failures and additionally
-run installed-prefix acceptance for both deployment entry paths; the other
-package jobs remain experimental.
+configured as non-required. OPC UA and HTTP jobs do not allow failures and
+additionally run installed-prefix acceptance; the other package jobs remain
+experimental.
 
 ## Package Gates
 
@@ -22,6 +22,7 @@ The package entries use the public maintenance branches selected in
 | `rtt-core` | `main-test`, `list-test`, `core-test`, `task-test`, `mqueue-test`, and `mqueue_archive_test` | Maintained selected subset |
 | `rtt-opcua` | Target-correct maintained Xenomai subsets of `rtt_opcua_*_test`, split `ocl_opcua_deployment_*`, and TaskBrowser argument cases; OPC UA deployer/browser targets; `rtt_opcua-xenomai` plus installed OCL pkg-config metadata; and installed-prefix selective-publication acceptance | Xenomai maintained gate; GNU/Linux `rtt_opcua_*_test`, `rtt_opcua-gnulinux` metadata, and installed-prefix LAN verification pending |
 | `ocl-basic` | `timer` and `taskb` | Cross-distribution package workflow |
+| `rtt-http` | JSON/REST and HTTP/TLS SDK contracts; combined OCL HTTP/OPC UA deployment; installed service stop/restart; separately built custom JSON codec | Required cross-distribution package workflow; native Windows SDK and service CI |
 | `ocl-integration` | `deploy`, `testlogging`, `report`, `tcpreport`, and optional `ncreport` | Cross-distribution package workflow |
 
 The optional NetCDF reporting case runs only when NetCDF is available. The
@@ -46,6 +47,13 @@ An installed-prefix acceptance run must:
 - verify wildcard IPv4 listening, socket closure after shutdown, and no CORBA
   or home-prefix contamination; and
 - configure a downstream Orocos package.
+
+HTTP acceptance loads `rtt_http` and the `http` service through the ordinary
+deployer alongside OPC UA, then stops and restarts HTTP. The SDK check builds
+an ordinary RTT typekit/component and a separate JSON transport against the
+installed prefix. It verifies composite assignment and retained output reads
+without an OPC UA codec dependency. Runtime packages contain the HTTP libraries
+and plugins; development packages supply the public headers and build metadata.
 
 The GNU/Linux mqueue acceptance requires
 `toolchain/lib/orocos/gnulinux/types/librtt-transport-mqueue-gnulinux.so` with

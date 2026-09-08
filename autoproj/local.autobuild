@@ -30,3 +30,21 @@ cmake_package "rtt_opcua" do |pkg|
 end
 
 move_package "rtt_opcua", "tools"
+
+# Header-only private dependency; rtt_http compiles its own listener with the
+# required ownership, signal-policy, and raw-routing switches.
+import_package "cpp-httplib"
+
+cmake_package "rtt_http" do |pkg|
+  pkg.depends_on "rtt"
+  pkg.depends_on "cpp-httplib"
+  pkg.depends_on "boost"
+  pkg.depends_on "openssl"
+  pkg.define "BUILD_TESTING", "OFF"
+  pkg.define "RTT_HTTP_TLS", "ON"
+  pkg.post_import do
+    pkg.define "RTT_HTTP_HTTPLIB_INCLUDE_DIR", Autobuild::Package["cpp-httplib"].srcdir
+  end
+end
+
+move_package "rtt_http", "tools"

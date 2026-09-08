@@ -97,6 +97,7 @@ test "${OROCOS_PREFIX:-}" = "$CONDA_PREFIX"
 test "${OROCOS_TARGET:-}" = "gnulinux"
 test "$(command -v deployer-opcua-gnulinux)" = "$CONDA_PREFIX/toolchain/bin/deployer-opcua-gnulinux"
 test ! -e "$CONDA_PREFIX/toolchain/include/orocos/rtt/RTT.hpp"
+test ! -e "$CONDA_PREFIX/toolchain/include/orocos/rtt/http/server.hpp"
 test -f "$CONDA_PREFIX/toolchain/lib/orocos/gnulinux/types/librtt-transport-mqueue-gnulinux.so"
 case ":$TYPELIB_PLUGIN_PATH:" in
     *:"$CONDA_PREFIX/toolchain/lib/typelib":*) ;;
@@ -105,6 +106,7 @@ esac
 deployer_output="$(deployer-opcua-gnulinux --version 2>&1 || true)"
 grep -q "OROCOS Toolchain version" <<<"$deployer_output"
 ctaskbrowser-opcua-gnulinux --version >/dev/null
+deployer-gnulinux --check "$OROCOS_HTTP_RUNTIME_SCRIPT"
 COMMAND
 )"
 
@@ -123,6 +125,9 @@ case ":$TYPELIB_PLUGIN_PATH:" in
     *) exit 1 ;;
 esac
 test -f "$CONDA_PREFIX/toolchain/include/orocos/rtt/RTT.hpp"
+test -f "$CONDA_PREFIX/toolchain/include/orocos/rtt/http/server.hpp"
+test -f "$CONDA_PREFIX/toolchain/lib/cmake/rtt_http/rtt_httpConfig.cmake"
+pkg-config --exists rtt_http-gnulinux
 ruby -e 'require "typelib"; require "orogen"'
 ruby "$OROCOS_GLIBC_CHECKER" \
     --prefix "$CONDA_PREFIX/toolchain" \
@@ -146,6 +151,7 @@ for ((attempt = 1; attempt <= attempts; attempt += 1)); do
            -u OROCOS_PREFIX \
            -u OROCOS_TARGET \
            -u TYPELIB_PLUGIN_PATH \
+           OROCOS_HTTP_RUNTIME_SCRIPT="$repository_root/tests/http-service/runtime.ops" \
            pixi exec --force-reinstall --platform linux-64 \
            --spec "${package_specs[0]}" \
            --channel "$channel" --channel conda-forge \
