@@ -12,6 +12,8 @@ module OrocosRock
       "rtlog-cpp" => "rtlog-cpp",
       "rtt" => "rtt",
       "rtt_opcua" => "rtt_opcua",
+      "cpp-httplib" => "cpp-httplib",
+      "rtt_http" => "rtt_http",
       "ocl" => "ocl",
       "utilmm" => "utilmm",
       "typelib" => "tools-typelib",
@@ -37,6 +39,8 @@ module OrocosRock
       "open62541" => "Open62541Repository",
       "open62541pp" => "Open62541ppRepository",
       "rtt_opcua" => "RttOpcuaRepository",
+      "cpp-httplib" => "HttplibRepository",
+      "rtt_http" => "RttHttpRepository",
       "ocl" => "OclRepository",
       "utilmm" => "UtilmmRepository",
       "typelib" => "TypelibRepository",
@@ -87,6 +91,17 @@ module OrocosRock
           "rtt_opcua" => {
             "type" => "git",
             "url" => repositories.fetch("rtt_opcua"),
+            "branch" => "dev"
+          },
+          "cpp-httplib" => {
+            "type" => "git",
+            "url" => repositories.fetch("cpp-httplib"),
+            "branch" => "rtt-maintenance",
+            "commit" => "ff2caa809b907ab59815725fbb0bb757475e2229"
+          },
+          "rtt_http" => {
+            "type" => "git",
+            "url" => repositories.fetch("rtt_http"),
             "branch" => "dev"
           }
         },

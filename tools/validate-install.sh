@@ -54,6 +54,9 @@ MQUEUE_TRANSPORT="$PREFIX/toolchain/lib/orocos/$TARGET/types/librtt-transport-mq
 orocos_rock_require_file "$PREFIX/env.sh"
 orocos_rock_require_file "$PREFIX/dev-env.sh"
 orocos_rock_require_file "$MQUEUE_TRANSPORT"
+orocos_rock_require_file "$PREFIX/toolchain/lib/orocos/$TARGET/rtt_http/types/librtt-transport-http-$TARGET.so"
+orocos_rock_require_file "$PREFIX/toolchain/lib/orocos/$TARGET/ocl/plugins/libhttp-$TARGET.so"
+orocos_rock_require_file "$PREFIX/toolchain/lib/cmake/rtt_http/rtt_httpConfig.cmake"
 
 (
     # shellcheck disable=SC1090
@@ -73,7 +76,9 @@ orocos_rock_require_file "$MQUEUE_TRANSPORT"
     "$OPCUA_BROWSER" --version >/dev/null
     orocos_rock_require_command pkg-config
     pkg-config --exists "rtt_opcua-$TARGET"
+    pkg-config --exists "rtt_http-$TARGET"
     pkg-config --exists "ocl-deployment-$TARGET"
+    "$DEPLOYER" --check "$SCRIPT_DIR/../tests/http-service/runtime.ops"
     case ":${TYPELIB_PLUGIN_PATH:-}:" in
         *:"$OROCOS_PREFIX/toolchain/lib/typelib":*) ;;
         *) orocos_rock_die "env.sh did not expose installed Typelib plugins" ;;

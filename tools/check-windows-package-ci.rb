@@ -437,7 +437,8 @@ else
   unless recipe.include?(%q{${{ compiler('cxx') }}})
     errors << "Windows package recipe must activate the MSVC x64 build environment"
   end
-  unless recipe.match?(/^\s+- ninja >=1\.12,<2\s*$/)
+  # A test-only Ninja dependency does not provision the toolchain build.
+  unless recipe.match?(/^        - ninja >=1\.12,<2\s*$/)
     errors << "Windows package recipe must provide the locked Ninja build tool"
   end
   [
@@ -543,7 +544,7 @@ else
   unless development_test.include?('Join-Path $bundledVcpkg "include"') &&
          development_test.include?("Microsoft Visual Studio|Windows Kits") &&
          development_test.include?("/external:W0") &&
-         development_test.scan("@externalWarningArguments").size == 2
+         development_test.scan("@externalWarningArguments").size == 3
     errors << "Windows development package test must suppress only dependency and SDK warnings"
   end
   unless development_test.include?('$cxxFlags = (@("/EHsc") + $externalOptions) -join " "') &&

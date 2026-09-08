@@ -19,6 +19,7 @@ Package tests:
   rtt-typelib Build rtt_typelib transport plugin and check pkg-config metadata
   rtt-core    Build and run stable RTT core/task CTest cases
   rtt-opcua   Build and run the native RTT/OCL OPC UA integration tests
+  rtt-http    Build and run HTTP SDK, OCL coexistence, and installed codec checks
   opcua-custom-datatypes
               Rebuild the OPC UA stack and run the installed external fixture
   ocl-basic   Build and run OCL timer/taskbrowser CTest cases
@@ -203,6 +204,28 @@ case "$PACKAGE_TEST" in
         orocos_rock_info "Checking installed OPC UA pkg-config metadata"
         pkg-config --exists "rtt_opcua-$TARGET"
         pkg-config --exists "ocl-deployment-$TARGET"
+        ;;
+    rtt-http)
+        orocos_rock_info "Configuring native HTTP SDK contracts"
+        reconfigure toolchain/tools/rtt_http toolchain/tools/rtt_http/build \
+            -DBUILD_TESTING=ON
+        cmake --build toolchain/tools/rtt_http/build --parallel "$BUILD_PARALLEL"
+        ctest --test-dir toolchain/tools/rtt_http/build \
+            --output-on-failure --no-tests=error
+        orocos_rock_info "Checking OCL HTTP/OPC UA coexistence"
+        reconfigure toolchain/tools/ocl toolchain/tools/ocl/build \
+            -DBUILD_TESTING=ON -DBUILD_HTTP=ON -DBUILD_OPCUA=ON \
+            -DOCL_HTTP_TEST_HTTPLIB_INCLUDE_DIR="$OROCOS_ROCK_ROOT/toolchain/cpp-httplib"
+        build_targets toolchain/tools/ocl/build ocl_http_deployment_test
+        ctest --test-dir toolchain/tools/ocl/build -R '^ocl_http_deployment$' \
+            --output-on-failure --no-tests=error
+        orocos_rock_info "Checking the installed HTTP runtime and external codec SDK"
+        pkg-config --exists "rtt_http-$TARGET"
+        "deployer-$TARGET" --check "$OROCOS_ROCK_ROOT/tests/http-service/runtime.ops"
+        cmake -S tests/http-custom-datatypes -B build/http-custom-datatypes \
+            -DCMAKE_BUILD_TYPE=Release
+        cmake --build build/http-custom-datatypes --parallel "$BUILD_PARALLEL"
+        ctest --test-dir build/http-custom-datatypes --output-on-failure --no-tests=error
         ;;
     ocl-basic)
         orocos_rock_info "Configuring OCL basic tests"

@@ -119,3 +119,4 @@ grep -q "OROCOS Toolchain version" <<<"$deployer_output"
 opcua_output="$(deployer-opcua-gnulinux --version 2>&1 || true)"
 grep -q "OROCOS Toolchain version" <<<"$opcua_output"
 ctaskbrowser-opcua-gnulinux --version >/dev/null
+deployer-gnulinux --check tests/http-service/runtime.ops

@@ -20,5 +20,7 @@ end
 
 setup_package "ocl" do |pkg|
   pkg.depends_on "rtt_opcua"
+  pkg.depends_on "rtt_http"
   pkg.define "BUILD_OPCUA", "ON"
+  pkg.define "BUILD_HTTP", "ON"
 end

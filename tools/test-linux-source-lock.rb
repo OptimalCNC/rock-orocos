@@ -17,6 +17,8 @@ CHECKOUT_PATHS = {
   "open62541" => "toolchain/open62541",
   "open62541pp" => "toolchain/open62541pp",
   "rtt_opcua" => "toolchain/tools/rtt_opcua",
+  "cpp-httplib" => "toolchain/cpp-httplib",
+  "rtt_http" => "toolchain/tools/rtt_http",
   "ocl" => "toolchain/tools/ocl",
   "utilmm" => "toolchain/tools/utilmm",
   "typelib" => "toolchain/tools/typelib",
@@ -90,7 +92,7 @@ end
 
 output, status = run_validation(SOURCE_LOCK)
 raise "canonical source lock failed validation: #{output}" unless status.success?
-unless output.include?("Validated 14 locked Linux build sources.")
+unless output.include?("Validated 16 locked Linux build sources.")
   raise "canonical source lock reported an unexpected source count: #{output.inspect}"
 end
 
@@ -146,7 +148,7 @@ with_workspace do |root, lock_path|
   File.write(File.join(nodeset_cache, "nodeset.cpython-314.pyc"), "generated\n")
   output, status = run_lock("verify", lock_path, root)
   raise "canonical checkout layout failed verification: #{output}" unless status.success?
-  unless output.include?("Verified 14 locked Linux build sources.")
+  unless output.include?("Verified 16 locked Linux build sources.")
     raise "checkout verification reported an unexpected source count: #{output.inspect}"
   end
 end

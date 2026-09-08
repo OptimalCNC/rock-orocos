@@ -65,6 +65,12 @@ expected_sources = {
     "branch" => "dev"
   },
   "ocl" => { "url" => "https://github.com/liufang-robot/ocl.git", "branch" => "dev" },
+  "cpp-httplib" => {
+    "url" => "https://github.com/liufang-robot/cpp-httplib.git",
+    "branch" => "rtt-maintenance",
+    "commit" => "ff2caa809b907ab59815725fbb0bb757475e2229"
+  },
+  "rtt_http" => { "url" => "https://github.com/liufang-robot/rtt_http.git", "branch" => "dev" },
   "orogen" => {
     "url" => "https://github.com/liufang-robot/tools-orogen.git",
     "branch" => "dev",
@@ -74,7 +80,7 @@ expected_sources = {
   "utilmm" => { "url" => "https://github.com/liufang-robot/utilmm.git", "branch" => "dev" },
   "rtt_typelib" => { "url" => "https://github.com/liufang-robot/tools-rtt_typelib.git", "branch" => "dev" }
 }
-local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua]
+local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua cpp-httplib rtt_http]
 
 manifest = File.read(manifest_path)
 source_selection = YAML.safe_load_file(overrides_path)

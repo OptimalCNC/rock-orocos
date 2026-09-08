@@ -86,6 +86,42 @@
   ],
   "sources": [
     {
+      "name": "cpp-httplib",
+      "source_lock_name": "cpp-httplib",
+      "revision": "ff2caa809b907ab59815725fbb0bb757475e2229",
+      "license": "MIT",
+      "checkouts": {
+        "linux": "toolchain/cpp-httplib",
+        "windows": "src/cpp-httplib"
+      },
+      "notices": [
+        {
+          "path": "LICENSE",
+          "sha256": "4b45cbe16d7b71b89ae6127e26e0d90a029198ca5e958ad8e3d0b8bbed364d8b"
+        }
+      ]
+    },
+    {
+      "name": "rtt_http",
+      "source_lock_name": "rtt_http",
+      "revision": "12f82044af9f8c98191e9fc44cef410b74feb468",
+      "license": "LGPL-2.1-or-later",
+      "checkouts": {
+        "linux": "toolchain/tools/rtt_http",
+        "windows": "src/rtt_http"
+      },
+      "notices": [
+        {
+          "path": "LICENSE",
+          "sha256": "7c6699c75f87b52bdc542db26d6b1b92892577cda46e20eceb79e2790a1c291b"
+        },
+        {
+          "path": "package.xml",
+          "sha256": "d78a1daa426ce5db6a5ae25ffede429f393226e3f51e6a8e27f955ceea72abf3"
+        }
+      ]
+    },
+    {
       "name": "farbot",
       "source_lock_name": "farbot",
       "revision": "09fd406eef4778511e85b569e3e75cad3d5cf608",
@@ -140,7 +176,7 @@
     {
       "name": "ocl",
       "source_lock_name": "ocl",
-      "revision": "c3289cb2aa01a76be2863898a811790671b7e0f2",
+      "revision": "43beffdd157fbbd859dc09c6c3dad9b10efe46f4",
       "license": "GPL-2.0-or-later AND LGPL-2.1-or-later AND LicenseRef-OCL-GPL-2.0-Linking-Exception",
       "checkouts": {
         "linux": "toolchain/tools/ocl",
@@ -149,7 +185,7 @@
       "notices": [
         {
           "path": "deployment/DeploymentComponent.cpp",
-          "sha256": "fd19bba59b0cb54b6d43dd7d6068123991d247a362d52ef74521b5801eccb604"
+          "sha256": "37562d85716f56991d1311e78821f97443487633cfd8bad5171ac20c285e3c55"
         },
         {
           "path": "manifest.xml",

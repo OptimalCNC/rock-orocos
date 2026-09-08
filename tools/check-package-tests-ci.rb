@@ -132,8 +132,8 @@ else
   begin
     workflow = YAML.safe_load(contents, aliases: true)
     package_test_job = workflow.fetch("jobs").fetch("package-test")
-    unless package_test_job["continue-on-error"] == "${{ matrix.package-test != 'rtt-opcua' }}"
-      errors << "OPC UA tests must return failures while other package suites remain experimental"
+    unless package_test_job["continue-on-error"] == "${{ matrix.package-test != 'rtt-opcua' && matrix.package-test != 'rtt-http' }}"
+      errors << "OPC UA and HTTP tests must return failures while other package suites remain experimental"
     end
     acceptance_step = package_test_job.fetch("steps").find do |step|
       step["if"] == "matrix.package-test == 'rtt-opcua'" &&

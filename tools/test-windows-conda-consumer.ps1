@@ -91,6 +91,8 @@ $runtimeCommand = @'
     }
     deployer-opcua-win32.exe --check --no-consolelog
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    deployer-win32.exe --check --no-consolelog $env:OROCOS_HTTP_RUNTIME_SCRIPT
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 '@
 
@@ -102,6 +104,14 @@ $developmentCommand = @'
     $developmentHeader = Join-Path $env:CONDA_PREFIX 'Library\include\orocos\rtt\RTT.hpp'
     if (-not (Test-Path -LiteralPath $developmentHeader -PathType Leaf)) {
         throw 'The development environment is missing the RTT headers.'
+    }
+    foreach ($httpSdkFile in @(
+            'Library/include/orocos/rtt/http/server.hpp',
+            'Library/lib/cmake/rtt_http/rtt_httpConfig.cmake',
+            'Library/lib/pkgconfig/rtt_http-win32.pc')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $env:CONDA_PREFIX $httpSdkFile) -PathType Leaf)) {
+            throw "The installed HTTP SDK is missing $httpSdkFile"
+        }
     }
     orogen --version
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -155,8 +165,12 @@ $previousActivationProbe = [Environment]::GetEnvironmentVariable(
     "OROCOS_CONDA_ACTIVATION_PROBE",
     "Process"
 )
+$previousHttpRuntimeScript = $env:OROCOS_HTTP_RUNTIME_SCRIPT
 
 try {
+    $env:OROCOS_HTTP_RUNTIME_SCRIPT = (
+        Resolve-Path (Join-Path $PSScriptRoot '../tests/http-service/runtime.ops')
+    ).Path
     for ($attempt = 1; $attempt -le $Attempts; $attempt += 1) {
         try {
             $env:PIXI_CACHE_DIR = Join-Path $cacheRoot "attempt-$attempt"
@@ -187,6 +201,7 @@ try {
     }
 }
 finally {
+    $env:OROCOS_HTTP_RUNTIME_SCRIPT = $previousHttpRuntimeScript
     if ($null -eq $previousCache) {
         Remove-Item Env:PIXI_CACHE_DIR -ErrorAction SilentlyContinue
     }

@@ -10,6 +10,8 @@ layout:
     - open62541
     - open62541pp
     - rtt_opcua
+    - cpp-httplib
+    - rtt_http
     - ocl
     - orogen
     - typelib
