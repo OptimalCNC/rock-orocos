@@ -24,6 +24,8 @@ Everything else starts excluded unless a concrete toolchain need appears.
 | `open62541` | OPC UA C stack used by the native RTT transport | Upstream tag `v1.4.15` |
 | `open62541pp` | C++ API used by `rtt_opcua` | Upstream tag `v0.21.2` |
 | `rtt_opcua` | Generic native OPC UA server, RTT object model, proxy, and port transport | `liufang-robot` upstream |
+| `cpp-httplib` | Private HTTP/TLS listener dependency | `liufang-robot` maintenance fork with owned sockets, signal policy, and exact request routing |
+| `rtt_http` | Independent REST object model, JSON codec SDK, and operation executor | `liufang-robot` upstream |
 | `ocl` | deployer and OCL compatibility | Public maintenance fork |
 | `orogen` | component and typekit generation | Public maintenance fork while generator fixes are needed |
 | `typelib` | generator type support | Public maintenance fork while compatibility fixes are needed |
@@ -72,6 +74,8 @@ Initial public maintenance source set:
 - `rtlog-cpp`
 - `rtt`
 - `rtt_opcua`
+- `cpp-httplib`
+- `rtt_http`
 - `ocl`
 - `orogen`
 - `typelib`
@@ -103,6 +107,17 @@ The workspace consumes the selected official `open62541` and `open62541pp`
 tags unchanged. Their dependency tests are disabled in the workspace build;
 maintained integration tests prove the behavior used by this toolchain.
 Experimental local dependency branches are neither selected nor published.
+
+HTTP uses Boost.JSON from the dependency SDK and optional OpenSSL for HTTPS.
+Native Linux source builds provision the pinned official Boost 1.84 source
+archive from `packaging/native-boost.json` into the toolchain prefix. All
+packages use this common SDK; this also supports Ubuntu 22.04, whose default
+Boost has no JSON library. Conda builds retain their selected Boost 1.84
+dependency package, and Windows retains its locked vcpkg baseline.
+The cpp-httplib source lock must include the reviewed ownership, SIGPIPE, and
+raw-routing capabilities. An unpatched upstream header cannot satisfy service
+shutdown and failure isolation. HTTP does not link to `rtt_opcua`; ordinary
+application components and typekits remain independent of both transports.
 
 ## Source Of Truth
 

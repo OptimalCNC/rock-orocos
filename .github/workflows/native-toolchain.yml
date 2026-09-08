@@ -6,6 +6,8 @@ on:
       - ".github/workflows/native-toolchain.yml"
       - ".github/workflows/package-tests.yml"
       - "autoproj/**"
+      - "packaging/native-boost.json"
+      - "tests/http-service/**"
       - "tools/**"
   push:
     branches:
@@ -14,6 +16,8 @@ on:
       - ".github/workflows/native-toolchain.yml"
       - ".github/workflows/package-tests.yml"
       - "autoproj/**"
+      - "packaging/native-boost.json"
+      - "tests/http-service/**"
       - "tools/**"
   workflow_dispatch:
 
@@ -70,6 +74,7 @@ jobs:
             libboost-thread-dev \
             libffi-dev \
             libncurses5-dev \
+            libssl-dev \
             libxml2-dev \
             libxml-xpath-perl \
             lsb-release \

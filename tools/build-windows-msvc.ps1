@@ -14,6 +14,8 @@ param(
     [string]$Open62541Repository = "https://github.com/open62541/open62541.git",
     [string]$Open62541ppRepository = "https://github.com/open62541pp/open62541pp.git",
     [string]$RttOpcuaRepository = "https://github.com/liufang-robot/rtt_opcua.git",
+    [string]$HttplibRepository = "https://github.com/liufang-robot/cpp-httplib.git",
+    [string]$RttHttpRepository = "https://github.com/liufang-robot/rtt_http.git",
     [string]$OclRepository = "https://github.com/liufang-robot/ocl.git",
     [string]$UtilmmRepository = "https://github.com/liufang-robot/utilmm.git",
     [string]$TypelibRepository = "https://github.com/liufang-robot/tools-typelib.git",
@@ -28,6 +30,8 @@ param(
     [string]$Open62541Ref = "v1.4.15",
     [string]$Open62541ppRef = "v0.21.2",
     [string]$RttOpcuaRef = "dev",
+    [string]$HttplibRef = "6303872c8f419f6dda9b40bd3027c0116fdb3cc7",
+    [string]$RttHttpRef = "dev",
     [string]$OclRef = "dev",
     [string]$UtilmmRef = "dev",
     [string]$TypelibRef = "dev",
@@ -328,6 +332,7 @@ if (-not [string]::IsNullOrWhiteSpace($SourceLockPath)) {
     $sourceOverrideParameters = @(
         "FarbotRepository", "RtlogRepository", "RttRepository",
         "Open62541Repository", "Open62541ppRepository", "RttOpcuaRepository",
+        "HttplibRepository", "RttHttpRepository", "HttplibRef", "RttHttpRef",
         "OclRepository", "UtilmmRepository", "TypelibRepository",
         "RttTypelibRepository", "UtilrbRepository", "MetarubyRepository",
         "OrogenRepository", "VcpkgRepository", "FarbotRef", "RtlogRef",
@@ -358,6 +363,10 @@ if (-not [string]::IsNullOrWhiteSpace($SourceLockPath)) {
     $Open62541ppRef = $SourceLock["open62541pp"].revision
     $RttOpcuaRepository = $SourceLock["rtt_opcua"].repository
     $RttOpcuaRef = $SourceLock["rtt_opcua"].revision
+    $HttplibRepository = $SourceLock["cpp-httplib"].repository
+    $HttplibRef = $SourceLock["cpp-httplib"].revision
+    $RttHttpRepository = $SourceLock["rtt_http"].repository
+    $RttHttpRef = $SourceLock["rtt_http"].revision
     $OclRepository = $SourceLock["ocl"].repository
     $OclRef = $SourceLock["ocl"].revision
     $UtilmmRepository = $SourceLock["utilmm"].repository
@@ -390,6 +399,8 @@ $RttRepository = Resolve-GitRepository $RttRepository
 $Open62541Repository = Resolve-GitRepository $Open62541Repository
 $Open62541ppRepository = Resolve-GitRepository $Open62541ppRepository
 $RttOpcuaRepository = Resolve-GitRepository $RttOpcuaRepository
+$HttplibRepository = Resolve-GitRepository $HttplibRepository
+$RttHttpRepository = Resolve-GitRepository $RttHttpRepository
 $OclRepository = Resolve-GitRepository $OclRepository
 $UtilmmRepository = Resolve-GitRepository $UtilmmRepository
 $TypelibRepository = Resolve-GitRepository $TypelibRepository
@@ -433,6 +444,8 @@ $RttSource = Join-Path $Workspace "src\rtt"
 $Open62541Source = Join-Path $Workspace "src\open62541"
 $Open62541ppSource = Join-Path $Workspace "src\open62541pp"
 $RttOpcuaSource = Join-Path $Workspace "src\rtt_opcua"
+$HttplibSource = Join-Path $Workspace "src\cpp-httplib"
+$RttHttpSource = Join-Path $Workspace "src\rtt_http"
 $OclSource = Join-Path $Workspace "src\ocl"
 $UtilmmSource = Join-Path $Workspace "src\utilmm"
 $TypelibSource = Join-Path $Workspace "src\typelib"
@@ -446,6 +459,7 @@ $RttBuild = Join-Path $Workspace "build\rtt"
 $Open62541Build = Join-Path $Workspace "build\open62541"
 $Open62541ppBuild = Join-Path $Workspace "build\open62541pp"
 $RttOpcuaBuild = Join-Path $Workspace "build\rtt_opcua"
+$RttHttpBuild = Join-Path $Workspace "build\rtt_http"
 $OclBuild = Join-Path $Workspace "build\ocl"
 $UtilmmBuild = Join-Path $Workspace "build\utilmm"
 $TypelibBuild = Join-Path $Workspace "build\typelib"
@@ -487,6 +501,8 @@ Invoke-Step "Check out source repositories" {
     Sync-GitRepository -Repository $Open62541Repository -Ref $Open62541Ref -Path $Open62541Source
     Sync-GitRepository -Repository $Open62541ppRepository -Ref $Open62541ppRef -Path $Open62541ppSource
     Sync-GitRepository -Repository $RttOpcuaRepository -Ref $RttOpcuaRef -Path $RttOpcuaSource
+    Sync-GitRepository -Repository $HttplibRepository -Ref $HttplibRef -Path $HttplibSource
+    Sync-GitRepository -Repository $RttHttpRepository -Ref $RttHttpRef -Path $RttHttpSource
     Sync-GitRepository -Repository $OclRepository -Ref $OclRef -Path $OclSource
     Sync-GitRepository -Repository $UtilmmRepository -Ref $UtilmmRef -Path $UtilmmSource
     Sync-GitRepository -Repository $TypelibRepository -Ref $TypelibRef -Path $TypelibSource
@@ -528,10 +544,12 @@ Invoke-Step "Install vcpkg dependencies" {
         "boost-thread:${VcpkgTriplet}" `
         "boost-uuid:${VcpkgTriplet}" `
         "boost-graph:${VcpkgTriplet}" `
+        "boost-json:${VcpkgTriplet}" `
         "boost-program-options:${VcpkgTriplet}" `
         "boost-regex:${VcpkgTriplet}" `
         "boost-test:${VcpkgTriplet}" `
         "libxml2:${VcpkgTriplet}" `
+        "openssl:${VcpkgTriplet}" `
         "readline:${VcpkgTriplet}"
 }
 
@@ -642,6 +660,24 @@ Invoke-Step "Install rtt_opcua" {
         --target $CMakeInstallTarget --parallel 4
 }
 
+Invoke-Step "Configure rtt_http" {
+    Invoke-Native cmake -S $RttHttpSource -B $RttHttpBuild @CMakeGeneratorArguments `
+        @CMakeCompilerFlagArguments `
+        -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
+        -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
+        -DCMAKE_INSTALL_PREFIX="$Prefix" `
+        -DOROCOS_TARGET=win32 `
+        -DBUILD_TESTING=OFF `
+        -DRTT_HTTP_TLS=ON `
+        -DRTT_HTTP_HTTPLIB_INCLUDE_DIR="$HttplibSource" `
+        -DCMAKE_BUILD_TYPE=Release
+}
+
+Invoke-Step "Install rtt_http" {
+    Invoke-Native cmake --build $RttHttpBuild --config Release `
+        --target $CMakeInstallTarget --parallel 4
+}
+
 Invoke-Step "Configure OCL" {
     $env:PKG_CONFIG_PATH = Join-Path $Prefix "lib\pkgconfig"
     $env:PKG_CONFIG_LIBDIR = $env:PKG_CONFIG_PATH
@@ -652,6 +688,7 @@ Invoke-Step "Configure OCL" {
         -DCMAKE_INSTALL_PREFIX="$Prefix" `
         -DOROCOS_TARGET=win32 `
         -DBUILD_OPCUA=ON `
+        -DBUILD_HTTP=ON `
         -DENABLE_CORBA=OFF `
         -DBUILD_TESTING=OFF `
         -DBUILD_TESTS=OFF `
@@ -1025,4 +1062,15 @@ Invoke-Step "Validate Windows prefix" {
         $opcuaServiceOutput -match "\[\s*ERROR\s*\]") {
         throw "OPC UA service plugin smoke check failed:`n$opcuaServiceOutput"
     }
+    Invoke-Native (Join-Path $Prefix "bin/deployer-win32.exe") --check `
+        (Join-Path $PSScriptRoot "../tests/http-service/runtime.ops")
+    $httpFixtureBuild = Join-Path $Workspace "smoke/http-sdk"
+    Invoke-Native cmake -S (Join-Path $PSScriptRoot "../tests/http-custom-datatypes") `
+        -B $httpFixtureBuild @CMakeGeneratorArguments @CMakeCompilerFlagArguments `
+        -DCMAKE_TOOLCHAIN_FILE="$VcpkgToolchain" `
+        -DCMAKE_PREFIX_PATH="$Prefix;$VcpkgInstalled" `
+        -DOROCOS_TARGET=win32 -DCMAKE_BUILD_TYPE=Release
+    Invoke-Native cmake --build $httpFixtureBuild --config Release --parallel 2
+    Invoke-Native ctest --test-dir $httpFixtureBuild -C Release `
+        --output-on-failure --no-tests=error
 }

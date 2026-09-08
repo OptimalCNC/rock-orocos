@@ -230,7 +230,8 @@ configure_build_install \
     -DBUILD_TESTS=ON \
     -DBUILD_DEPLOYMENT=ON \
     -DBUILD_TASKBROWSER=ON \
-    -DBUILD_OPCUA=ON
+    -DBUILD_OPCUA=ON \
+    -DBUILD_HTTP=OFF
 if [ "$TARGET" = xenomai ]; then
     cmake --build "$TEST_ROOT/ocl-build" --parallel "$BUILD_PARALLEL" \
         --target ocl_opcua_deployment_test deployer deployer-opcua ctaskbrowser-opcua

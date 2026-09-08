@@ -29,7 +29,7 @@ TARGET="$OROCOS_ROCK_DEFAULT_TARGET"
 EXPORT_ENV=1
 INSTALL_OSDEPS=1
 BUILD_ARGS=()
-SOURCE_PACKAGES=(farbot rtlog-cpp rtt open62541 open62541pp rtt_opcua ocl orogen typelib utilmm rtt_typelib)
+SOURCE_PACKAGES=(farbot rtlog-cpp rtt open62541 open62541pp rtt_opcua cpp-httplib rtt_http ocl orogen typelib utilmm rtt_typelib)
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -94,6 +94,9 @@ if [ "$INSTALL_OSDEPS" -eq 1 ]; then
     orocos_rock_run_preserving_install_env "$PREFIX" \
         orocos_rock_autoproj osdeps --no-interactive
 fi
+
+orocos_rock_info "Preparing the native Boost/JSON dependency SDK"
+ruby "$SCRIPT_DIR/install-native-boost.rb" "$PREFIX"
 
 orocos_rock_info "Building Autoproj layout"
 orocos_rock_run_preserving_install_env "$PREFIX" \

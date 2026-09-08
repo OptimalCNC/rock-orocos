@@ -13,7 +13,7 @@ INVENTORY = File.join(ROOT, "packaging", "license-corpus.json")
 SOURCE_LOCK = File.join(ROOT, "packaging", "source-lock.json")
 
 EXPECTED_SOURCES = %w[
-  farbot metaruby ocl open62541 open62541pp orogen rtlog-cpp rtt rtt_opcua
+  cpp-httplib farbot metaruby ocl open62541 open62541pp orogen rtlog-cpp rtt rtt_http rtt_opcua
   rtt_typelib typelib utilmm utilrb
 ].freeze
 EXPECTED_REMOTE_GEMS = {
@@ -48,7 +48,9 @@ EXPECTED_COMPONENT_LICENSES = {
   "open62541" =>
     "MPL-2.0 AND CC0-1.0 AND Apache-2.0 AND BSL-1.0 AND MIT AND " \
     "BSD-3-Clause AND LicenseRef-open62541-base64-BSD",
-  "rtt_opcua" => "LGPL-2.1-or-later"
+  "rtt_opcua" => "LGPL-2.1-or-later",
+  "rtt_http" => "LGPL-2.1-or-later",
+  "cpp-httplib" => "MIT"
 }.freeze
 EXPECTED_SOURCE_NOTICES = {
   "ocl" => %w[
@@ -80,7 +82,9 @@ EXPECTED_SOURCE_NOTICES = {
     deps/ziptree.c
     deps/ziptree.h
   ],
-  "rtt_opcua" => %w[LICENSE manifest.xml package.xml]
+  "rtt_opcua" => %w[LICENSE manifest.xml package.xml],
+  "rtt_http" => %w[LICENSE package.xml],
+  "cpp-httplib" => %w[LICENSE]
 }.freeze
 EXPECTED_LICENSE_REF_EVIDENCE = {
   "LicenseRef-OCL-GPL-2.0-Linking-Exception" =>

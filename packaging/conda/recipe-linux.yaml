@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  version: "0.1.5"
+  version: "0.1.6"
   build_number: 0
 
 recipe:
@@ -14,6 +14,10 @@ source:
     filter:
       include:
         - autoproj/**
+        - packaging/native-boost.json
+        - tests/http-service/**
+        - tests/http-custom-datatypes/**
+        - tests/opcua-custom-datatypes/**
         - packaging/license-corpus.json
         - packaging/source-lock.json
         - packaging/conda/build-linux.sh
@@ -137,6 +141,7 @@ outputs:
         - ruby >=3.4,<3.5
       host:
         - boost-cpp >=1.84,<1.85
+        - openssl >=3,<4
         - castxml >=0.7,<0.8
         - libffi >=3.4,<4
         - libxml2-devel >=2.12,<3
@@ -173,12 +178,14 @@ outputs:
           - toolchain/lib/orocos/**
           - toolchain/lib/typelib/**
           - toolchain/share/orocos/**
+          - toolchain/share/rtt_http/**
         exclude:
           - toolchain/lib/ruby/**
     requirements:
       run:
         - __glibc >=2.17
         - libboost >=1.84,<1.85
+        - openssl >=3,<4
         - libffi >=3.4,<4
         - libgcc >=14
         - libstdcxx >=14
@@ -198,12 +205,18 @@ outputs:
               - share/licenses/orocos/manifest.json
               - toolchain/bin/deployer-opcua-gnulinux
               - toolchain/lib/orocos/gnulinux/types/librtt-transport-mqueue-gnulinux.so
+              - toolchain/lib/liborocos-rtt-http-gnulinux.so
+              - toolchain/lib/orocos/gnulinux/rtt_http/types/librtt-transport-http-gnulinux.so
+              - toolchain/lib/orocos/gnulinux/ocl/plugins/libhttp-gnulinux.so
             not_exists:
               - dev-env.sh
               - share/licenses/orocos-dev/LICENSES.md
               - toolchain/include/orocos/rtt/RTT.hpp
               - toolchain/lib/ruby/3.4.0/x86_64-linux/typelib_ruby.so
       - script: test-runtime-linux.sh
+        files:
+          source:
+            - tests/http-service/runtime.ops
     about:
       homepage: https://github.com/liufang-robot/rock-orocos
       repository: https://github.com/liufang-robot/rock-orocos
@@ -211,11 +224,12 @@ outputs:
       license: MIT AND BSD-2-Clause AND BSD-3-Clause AND LicenseRef-rtlog-cpp-Bundled-License-Exceptions AND LicenseRef-Orocos-RTT-GPL-2.0-Linking-Exception AND LicenseRef-Orocos-RTT-TLSF-Linking-Exception AND MPL-2.0 AND CC0-1.0 AND Apache-2.0 AND BSL-1.0 AND LicenseRef-open62541-base64-BSD AND GPL-2.0-or-later AND LGPL-2.1-or-later AND LicenseRef-OCL-GPL-2.0-Linking-Exception AND CECILL-B AND LicenseRef-MetaRuby-Conflicting-BSD-LGPLv3-Declarations AND LicenseRef-MetaRuby-Bundled-jQuery-Notices AND Ruby AND LicenseRef-Ruby-base64-Mixed-Legal-Notices AND LicenseRef-Ruby-facets-Mixed-Bundled-Notices
       license_file:
         - ${{ PREFIX }}/share/licenses/orocos/**
-      summary: Orocos RTT runtime with OCL, scripting, and native OPC UA tools
+      summary: Orocos RTT runtime with OCL, OPC UA tools, and HTTP REST services
       description: |
         A relocatable Linux Orocos runtime containing RTT, OCL deployers,
-        scripting support, type transports, and the native OPC UA server and
-        TaskBrowser client. Install orocos-dev for headers and generators.
+        scripting support, type transports, the native OPC UA server and
+        TaskBrowser client, and an independent HTTP/HTTPS REST service.
+        Install orocos-dev for headers and generators.
 
   - package:
       name: orocos-dev
@@ -242,6 +256,7 @@ outputs:
           - toolchain/bin/deployer*
           - toolchain/bin/rtt*
           - toolchain/share/orocos/**
+          - toolchain/share/rtt_http/**
     requirements:
       run:
         - ${{ pin_subpackage('orocos', exact=True) }}
@@ -267,6 +282,9 @@ outputs:
               - toolchain/bin/typegen
               - toolchain/include/orocos/rtt/RTT.hpp
               - toolchain/lib/cmake/orocos-rtt/orocos-rtt-config.cmake
+              - toolchain/include/orocos/rtt/http/server.hpp
+              - toolchain/lib/cmake/rtt_http/rtt_httpConfig.cmake
+              - toolchain/lib/pkgconfig/rtt_http-gnulinux.pc
             not_exists:
               - env.sh
               - etc/conda/activate.d/orocos-activate.sh
@@ -274,6 +292,10 @@ outputs:
               - share/licenses/orocos/LICENSES.md
               - toolchain/bin/deployer-opcua-gnulinux
       - script: test-dev-linux.sh
+        files:
+          source:
+            - tests/http-custom-datatypes/**
+            - tests/opcua-custom-datatypes/**
     about:
       homepage: https://github.com/liufang-robot/rock-orocos
       repository: https://github.com/liufang-robot/rock-orocos

@@ -29,6 +29,17 @@ version_control:
     url: https://github.com/liufang-robot/rtt_opcua.git
     branch: dev
 
+  - cpp-httplib:
+    type: git
+    url: https://github.com/liufang-robot/cpp-httplib.git
+    branch: rtt-maintenance
+    commit: 6303872c8f419f6dda9b40bd3027c0116fdb3cc7
+
+  - rtt_http:
+    type: git
+    url: https://github.com/liufang-robot/rtt_http.git
+    branch: dev
+
 overrides:
   - rtt:
     type: git

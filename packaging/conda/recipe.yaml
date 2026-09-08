@@ -1,7 +1,7 @@
 schema_version: 1
 
 context:
-  version: "0.1.5"
+  version: "0.1.6"
   build_number: 0
 
 recipe:
@@ -14,6 +14,9 @@ source:
     filter:
       include:
         - packaging/license-corpus.json
+        - tests/http-service/**
+        - tests/http-custom-datatypes/**
+        - tests/opcua-custom-datatypes/**
         - packaging/source-lock.json
         - packaging/conda/build.ps1
         - packaging/conda/orocos-activate.bat
@@ -88,6 +91,7 @@ outputs:
           - Library/env.bat
           - Library/env.ps1
           - Library/share/licenses/orocos/**
+          - Library/share/rtt_http/**
           - etc/conda/activate.d/orocos-activate.bat
           - etc/conda/deactivate.d/orocos-deactivate.bat
     requirements:
@@ -106,11 +110,17 @@ outputs:
               - Library/share/licenses/orocos/LICENSES.md
               - Library/share/licenses/orocos/manifest.json
               - Library/lib/orocos/win32/types/rtt-typekit-win32.dll
+              - Library/bin/orocos-rtt-http-win32.dll
+              - Library/lib/orocos/win32/rtt_http/types/rtt-transport-http-win32.dll
+              - Library/lib/orocos/win32/ocl/plugins/http-win32.dll
             not_exists:
               - Library/dev-env.ps1
               - Library/include/orocos/rtt/RTT.hpp
               - Library/share/licenses/orocos-dev/LICENSES.md
       - script: test-runtime.ps1
+        files:
+          source:
+            - tests/http-service/runtime.ops
     about:
       homepage: https://github.com/liufang-robot/rock-orocos
       repository: https://github.com/liufang-robot/rock-orocos
@@ -118,11 +128,12 @@ outputs:
       license: (MIT AND BSD-2-Clause AND BSD-3-Clause AND LicenseRef-rtlog-cpp-Bundled-License-Exceptions AND LicenseRef-Orocos-RTT-GPL-2.0-Linking-Exception AND LicenseRef-Orocos-RTT-TLSF-Linking-Exception AND MPL-2.0 AND CC0-1.0 AND Apache-2.0 AND BSL-1.0 AND LicenseRef-open62541-base64-BSD AND GPL-2.0-or-later AND LGPL-2.1-or-later AND LicenseRef-OCL-GPL-2.0-Linking-Exception AND CECILL-B AND LicenseRef-MetaRuby-Conflicting-BSD-LGPLv3-Declarations AND LicenseRef-MetaRuby-Bundled-jQuery-Notices AND Ruby AND LicenseRef-Ruby-base64-Mixed-Legal-Notices AND LicenseRef-Ruby-facets-Mixed-Bundled-Notices) AND LicenseRef-Windows-vcpkg-Bundled-Dependencies
       license_file:
         - ${{ PREFIX }}/Library/share/licenses/orocos/**
-      summary: Orocos RTT runtime with OCL and native OPC UA tools for Windows
+      summary: Orocos RTT runtime with OCL, OPC UA, and HTTP REST for Windows
       description: |
         A relocatable Windows Orocos runtime containing RTT, OCL deployers,
-        scripting support, type transports, and the native OPC UA server and
-        TaskBrowser client. Install orocos-dev for headers and generators.
+        scripting support, type transports, the native OPC UA server and
+        TaskBrowser client, and an independent HTTP/HTTPS REST service.
+        Install orocos-dev for headers and generators.
 
   - package:
       name: orocos-dev
@@ -146,6 +157,7 @@ outputs:
           - Library/vcpkg/**
         exclude:
           - Library/share/licenses/orocos/**
+          - Library/share/rtt_http/**
     requirements:
       run:
         - ${{ pin_subpackage('orocos', exact=True) }}
@@ -162,6 +174,9 @@ outputs:
               - Library/dev-env.ps1
               - Library/include/orocos/rtt/RTT.hpp
               - Library/lib/cmake/orocos-rtt/orocos-rtt-config.cmake
+              - Library/include/orocos/rtt/http/server.hpp
+              - Library/lib/cmake/rtt_http/rtt_httpConfig.cmake
+              - Library/lib/pkgconfig/rtt_http-win32.pc
               - Library/share/licenses/orocos-dev/LICENSES.md
               - Library/share/licenses/orocos-dev/manifest.json
               - Library/toolchain/bin/orogen.bat
@@ -175,9 +190,15 @@ outputs:
               - etc/conda/deactivate.d/orocos-deactivate.bat
               - Library/share/licenses/orocos/LICENSES.md
       - script: test-dev.ps1
+        requirements:
+          run:
+            - ninja >=1.12,<2
         files:
           recipe:
             - test-data/**
+          source:
+            - tests/http-custom-datatypes/**
+            - tests/opcua-custom-datatypes/**
     about:
       homepage: https://github.com/liufang-robot/rock-orocos
       repository: https://github.com/liufang-robot/rock-orocos

@@ -99,6 +99,8 @@ foreach(
   fixture-server
   fixture-client
 )
+  # Keep strict warnings on fixture code, including with a custom Boost prefix.
+  target_include_directories(${target} SYSTEM PRIVATE ${OROCOS-RTT_INCLUDE_DIRS})
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(
       ${target}
