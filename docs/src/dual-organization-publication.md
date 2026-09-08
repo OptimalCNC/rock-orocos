@@ -38,6 +38,8 @@ the canonical root independently publishes only to `liufang-robot/orocos`.
 | `rtlog-cpp` | `rtlog-cpp` | `rtlog-cpp` | `main` |
 | `rtt` | `rtt` | `rtt` | `dev` |
 | `rtt_opcua` | `rtt_opcua` | `rtt_opcua` | `dev` |
+| `cpp-httplib` | `cpp-httplib` | `cpp-httplib` | `rtt-maintenance` |
+| `rtt_http` | `rtt_http` | `rtt_http` | `dev` |
 | `ocl` | `ocl` | `ocl` | `dev` |
 | `orogen` | `tools-orogen` | `tools-orogen` | `dev` |
 | `typelib` | `tools-typelib` | `tools-typelib` | `dev` |

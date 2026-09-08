@@ -5,8 +5,11 @@ on:
     paths:
       - ".github/workflows/package-tests.yml"
       - "autoproj/**"
+      - "packaging/native-boost.json"
       - "tools/**"
       - "tests/opcua-custom-datatypes/**"
+      - "tests/http-custom-datatypes/**"
+      - "tests/http-service/**"
   workflow_dispatch:
 
 jobs:
@@ -15,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: ${{ matrix.os.image }}
-    continue-on-error: ${{ matrix.package-test != 'rtt-opcua' }}
+    continue-on-error: ${{ matrix.package-test != 'rtt-opcua' && matrix.package-test != 'rtt-http' }}
 
     strategy:
       fail-fast: false
@@ -42,6 +45,7 @@ jobs:
           - rtt-typelib
           - rtt-core
           - rtt-opcua
+          - rtt-http
           - ocl-basic
           - ocl-integration
 
@@ -84,6 +88,7 @@ jobs:
             libncurses5-dev \
             libnetcdf-dev \
             libreadline-dev \
+            libssl-dev \
             libxml2-dev \
             libxml-xpath-perl \
             lsb-release \

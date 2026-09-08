@@ -34,6 +34,8 @@ The installed prefix must provide:
 - OCL deployer support
 - native RTT OPC UA libraries, type transport, deployer, and TaskBrowser client
 - the OCL component-owned `opcua` service plugin for the ordinary deployer
+- the independent HTTP runtime, JSON type transport, and OCL component-owned
+  `http` service plugin
 - the target-specific RTT mqueue transport for Linux targets
 - RTT scripting support
 - generator tools needed for typekit and component development
@@ -135,6 +137,14 @@ The same rule applies to Ruby tooling: downstream users may rely on the
 presence of generator commands after sourcing `dev-env.sh`, but should not
 depend on how gems are staged inside the prefix.
 
+The HTTP runtime belongs to `orocos`. Public `rtt/http` headers, the
+`rtt_http::rtt_http` CMake target, and `rtt_http-${OROCOS_TARGET}` pkg-config
+metadata belong to `orocos-dev`. The canonical JSON transport installs under
+`lib/orocos/${OROCOS_TARGET}/rtt_http/types`; OCL's `http` service plugin installs
+under its existing `ocl/plugins` directory. `import("rtt_http")` must work from
+the installed environment. cpp-httplib headers are private implementation
+dependencies; custom codecs consume RTT and Boost.JSON through the public SDK.
+
 `env.sh` exports the selected target through `OROCOS_TARGET`. Downstream
 projects should treat this as a property of the installed prefix, not as a
 workspace-internal setting.
@@ -152,7 +162,7 @@ environment. At minimum, the script must:
 - expose the installed Ruby generator stack through `GEM_HOME`, `GEM_PATH`, or
   equivalent `RUBYLIB` setup
 - expose CMake config packages for installed internal toolchain dependencies,
-  including `farbot` and `rtlog-cpp`, so downstream configure checks can use
+  including `farbot`, `rtlog-cpp`, and `rtt_http`, so downstream configure checks can use
   the same prefix contract
 
 Those variables are part of the behavior contract of `dev-env.sh`, even if the

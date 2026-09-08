@@ -15,3 +15,6 @@ libncurses:
 
 libncurses-dev:
   debian,ubuntu: libncurses-dev
+
+openssl:
+  debian,ubuntu: libssl-dev

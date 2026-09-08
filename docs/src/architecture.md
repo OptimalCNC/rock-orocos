@@ -48,6 +48,7 @@ flowchart LR
 - keep `ocl` enabled
 - keep RTT scripting enabled
 - build the generic `rtt_opcua` transport and OCL OPC UA tools
+- build the independent `rtt_http` REST/JSON SDK and OCL `http` service plugin
 - keep RTT CORBA disabled in the selected build
 - provide `orogen`, `typegen`, and related generator tooling
 - install a usable runtime prefix
@@ -88,6 +89,12 @@ Rock is not used here as:
 OPC UA is a non-realtime remote management and data transport. It does not
 move application semantics into this repository and does not replace local RTT
 execution.
+
+HTTP provides a separate browser/Electron interface through
+`loadService("Deployer", "http")`. It owns its listener, JSON codecs, publication,
+and operation capacity. Both services can run under one Deployer. Network and
+JSON work execute outside deterministic control activities; application
+operations retain RTT's execution policy. See the [HTTP reference](http-reference.md).
 
 ## Interface Contract
 

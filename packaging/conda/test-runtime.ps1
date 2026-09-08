@@ -604,6 +604,10 @@ foreach ($command in @(
 }
 
 $taskBrowser = (Get-Command "ctaskbrowser-opcua-win32.exe" -ErrorAction Stop).Source
+& deployer-win32.exe --check (Join-Path (Get-Location) "tests/http-service/runtime.ops")
+if ($LASTEXITCODE -ne 0) {
+    throw "The installed HTTP/OPC UA service plugin validation failed."
+}
 $savedErrorActionPreference = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
 try {

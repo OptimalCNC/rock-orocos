@@ -18,6 +18,7 @@ esac
 [ -f "$PREFIX/toolchain/include/orocos/rtt/RTT.hpp" ]
 [ -f "$PREFIX/toolchain/lib/cmake/orocos-rtt/orocos-rtt-config.cmake" ]
 pkg-config --exists rtt_opcua-gnulinux
+pkg-config --exists rtt_http-gnulinux
 pkg-config --exists ocl-deployment-gnulinux
 ruby -e 'require "typelib"; require "orogen"'
 orogen --help >/dev/null
@@ -43,3 +44,11 @@ generated_h="${status_code_output}.h"
 [ -s "$generated_h" ]
 grep -q "UA_StatusCode_name" "$generated_c"
 grep -q "UA_STATUSCODE_BADUNEXPECTEDERROR" "$generated_h"
+
+# Prefer the environment's compatible C++ runtime when it is newer than the
+# compiler's private libstdc++ copy, as required by the installed RTT SDK.
+export LDFLAGS="-L$PREFIX/lib ${LDFLAGS:-}"
+cmake -S tests/http-custom-datatypes -B "$temporary_directory/http-sdk" \
+    -DCMAKE_BUILD_TYPE=Release
+cmake --build "$temporary_directory/http-sdk" --parallel 2
+ctest --test-dir "$temporary_directory/http-sdk" --output-on-failure --no-tests=error

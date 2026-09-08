@@ -60,8 +60,17 @@ expected_sources = {
   "open62541" => { "url" => "https://github.com/open62541/open62541.git", "tag" => "v1.4.15" },
   "open62541pp" => { "url" => "https://github.com/open62541pp/open62541pp.git", "tag" => "v0.21.2" },
   "rtt" => { "url" => "https://github.com/OptimalCNC/rtt.git", "branch" => "dev" },
-  "rtt_opcua" => { "url" => "https://github.com/OptimalCNC/rtt_opcua.git", "branch" => "dev" },
+  "rtt_opcua" => {
+    "url" => "https://github.com/OptimalCNC/rtt_opcua.git",
+    "branch" => "dev"
+  },
   "ocl" => { "url" => "https://github.com/OptimalCNC/ocl.git", "branch" => "dev" },
+  "cpp-httplib" => {
+    "url" => "https://github.com/OptimalCNC/cpp-httplib.git",
+    "branch" => "rtt-maintenance",
+    "commit" => "6303872c8f419f6dda9b40bd3027c0116fdb3cc7"
+  },
+  "rtt_http" => { "url" => "https://github.com/OptimalCNC/rtt_http.git", "branch" => "dev" },
   "orogen" => {
     "url" => "https://github.com/OptimalCNC/tools-orogen.git",
     "branch" => "dev",
@@ -71,7 +80,7 @@ expected_sources = {
   "utilmm" => { "url" => "https://github.com/OptimalCNC/utilmm.git", "branch" => "dev" },
   "rtt_typelib" => { "url" => "https://github.com/OptimalCNC/tools-rtt_typelib.git", "branch" => "dev" }
 }
-local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua]
+local_source_packages = %w[farbot rtlog-cpp open62541 open62541pp rtt_opcua cpp-httplib rtt_http]
 
 manifest = File.read(manifest_path)
 source_selection = YAML.safe_load_file(overrides_path)
