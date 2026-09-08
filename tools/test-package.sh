@@ -195,7 +195,8 @@ case "$PACKAGE_TEST" in
             -DBUILD_TESTS=ON \
             -DBUILD_DEPLOYMENT=ON \
             -DBUILD_TASKBROWSER=ON \
-            -DBUILD_OPCUA=ON
+            -DBUILD_OPCUA=ON \
+            -DOCL_HTTP_TEST_HTTPLIB_INCLUDE_DIR="$OROCOS_ROCK_ROOT/toolchain/cpp-httplib"
         orocos_rock_info "Building OCL OPC UA integration targets"
         build_targets toolchain/tools/ocl/build ocl_opcua_deployment_test deployer-opcua ctaskbrowser-opcua
         orocos_rock_info "Running OCL OPC UA integration tests"
