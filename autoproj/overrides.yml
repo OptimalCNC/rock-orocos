@@ -4,6 +4,12 @@
 # Packages imported from remote package sets use overrides.
 #
 version_control:
+  - eigen_typekit:
+    type: git
+    url: https://github.com/OptimalCNC/rtt_geometry.git
+    branch: dev
+    commit: 58358c994025f8082e804694333c38fbd31f9f90
+
   - farbot:
     type: git
     url: https://github.com/OptimalCNC/farbot.git
