@@ -14,12 +14,12 @@
     {
       "name": "rtt",
       "repository": "https://github.com/OptimalCNC/rtt.git",
-      "revision": "966fbcf0cf79c8c86b229200e5cfa34562462303"
+      "revision": "dec5e384028b8b682c0a2add3215344a4c53ab1b"
     },
     {
       "name": "eigen_typekit",
       "repository": "https://github.com/OptimalCNC/rtt_geometry.git",
-      "revision": "923714a4fd31ffa26488bf86a4bafef91be8bc01"
+      "revision": "054e864c2454ae96c036d370e22406e81a367a85"
     },
     {
       "name": "open62541",

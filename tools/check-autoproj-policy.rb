@@ -58,7 +58,7 @@ expected_sources = {
   "eigen_typekit" => {
     "url" => "https://github.com/OptimalCNC/rtt_geometry.git",
     "branch" => "dev",
-    "commit" => "923714a4fd31ffa26488bf86a4bafef91be8bc01"
+    "commit" => "054e864c2454ae96c036d370e22406e81a367a85"
   },
   "farbot" => { "url" => "https://github.com/OptimalCNC/farbot.git", "branch" => "master" },
   "rtlog-cpp" => { "url" => "https://github.com/OptimalCNC/rtlog-cpp.git", "branch" => "main" },

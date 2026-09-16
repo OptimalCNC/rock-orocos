@@ -90,7 +90,7 @@ module OrocosRock
             "type" => "git",
             "url" => repositories.fetch("eigen_typekit"),
             "branch" => "dev",
-            "commit" => "923714a4fd31ffa26488bf86a4bafef91be8bc01"
+            "commit" => "054e864c2454ae96c036d370e22406e81a367a85"
           },
           "farbot" => { "type" => "git", "url" => repositories.fetch("farbot"), "branch" => "master" },
           "rtlog-cpp" => { "type" => "git", "url" => repositories.fetch("rtlog-cpp"), "branch" => "main" },
