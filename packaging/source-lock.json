@@ -19,7 +19,7 @@
     {
       "name": "eigen_typekit",
       "repository": "https://github.com/OptimalCNC/rtt_geometry.git",
-      "revision": "58358c994025f8082e804694333c38fbd31f9f90"
+      "revision": "923714a4fd31ffa26488bf86a4bafef91be8bc01"
     },
     {
       "name": "open62541",
