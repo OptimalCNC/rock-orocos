@@ -67,7 +67,7 @@ jobs:
               raise SystemExit(f"Expected {expected}, running {identity['imageId']}")
           print(json.dumps(identity, indent=2))
           PY
-      - name: Record CPU topology and baseline latency
+      - name: Record CPU topology and baseline latency with housekeeping load
         run: |
           mkdir -p execution/.local/xenomai
           {
@@ -93,12 +93,12 @@ jobs:
             wait "${workers[@]}" 2>/dev/null || true
           }
           trap cleanup EXIT
-          for cpu in 0 1 2; do
+          for cpu in 0 2; do
             taskset -c "$cpu" sha256sum /dev/zero >/dev/null &
             workers+=("$!")
           done
           timeout 90s /usr/xenomai/bin/latency -c 3 -p 1000 -P 80 -T 60 -q -s \
-            2>&1 | tee execution/.local/xenomai/latency-baseline-loaded.log
+            2>&1 | tee execution/.local/xenomai/latency-baseline-loaded-hk.log
       - name: Upload image identity and runtime evidence
         if: always()
         uses: actions/upload-artifact@v7.0.1
