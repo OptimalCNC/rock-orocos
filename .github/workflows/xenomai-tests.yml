@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   xenomai:
-    if: github.repository == 'OptimalCNC/rock-orocos'
+    if: github.repository == 'OptimalCNC/rock-orocos' && github.ref == 'refs/heads/main'
     runs-on:
       - runs-on=${{ github.run_id }}-${{ github.run_attempt }}
       - family=m7i.xlarge
@@ -37,7 +37,7 @@ jobs:
       - env=${{ inputs.environment }}
       - region=${{ inputs.region }}
       - image=rock-orocos-xenomai
-    timeout-minutes: 15
+    timeout-minutes: 50
     defaults:
       run:
         shell: bash
@@ -67,31 +67,21 @@ jobs:
               raise SystemExit(f"Expected {expected}, running {identity['imageId']}")
           print(json.dumps(identity, indent=2))
           PY
-      - name: Diagnose clock adjustment interference
+      - name: Validate Cobalt and rebuild and test Orocos
+        env:
+          IMAGE_REVISION: ${{ inputs.image_revision || github.sha }}
         run: |
-          mkdir -p execution/.local/xenomai
-          {
-            printf '[DEBUG-clock] time synchronization state\n'
-            timedatectl
-            systemctl list-units --type=service --all --no-pager | rg -i 'chrony|ntp|timesync' || true
-            printf '[DEBUG-clock] clocksource\n'
-            cat /sys/devices/system/clocksource/clocksource0/current_clocksource
-            cat /proc/xenomai/clock || true
-            run_clock() {
-              for trial in 1 2 3; do
-                printf '[DEBUG-clock] %s trial=%s\n' "$1" "$trial"
-                sudo -n timeout 180s /usr/xenomai/bin/smokey --vm --verbose=2 --run=posix_clock || true
-              done
-            }
-            run_clock baseline
-            printf '[DEBUG-clock] time-service journal\n'
-            sudo -n journalctl --boot --no-pager -u systemd-timesyncd -u chrony -u chronyd -u ntp -u ntpsec --lines=40
-            printf '[DEBUG-clock] disable time synchronization temporarily\n'
-            sudo -n timedatectl set-ntp false
-            timedatectl
-            run_clock ntp-disabled
-            sudo -n timedatectl set-ntp true
-          } 2>&1 | tee execution/.local/xenomai/clock-diagnostic.log
+          # Smokey deliberately steps CLOCK_REALTIME. Keep the image's time
+          # service from immediately correcting those test adjustments.
+          time_sync_state=$(systemctl is-active systemd-timesyncd.service || true)
+          restore_time_sync() {
+            if [[ "$time_sync_state" == active ]]; then
+              sudo -n systemctl start systemd-timesyncd.service
+            fi
+          }
+          trap restore_time_sync EXIT
+          sudo -n systemctl stop systemd-timesyncd.service
+          bash execution/xenomai/test.sh "$IMAGE_REVISION"
       - name: Upload image identity and runtime evidence
         if: always()
         uses: actions/upload-artifact@v7.0.1

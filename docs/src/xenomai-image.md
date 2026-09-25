@@ -214,6 +214,11 @@ environment is `production` in `us-east-1`; this differs from the
 `image-publish` GitHub environment used for AWS publication credentials.
 
 Acceptance runs the shared command above, including a clean source rebuild.
+The RunsOn wrapper pauses `systemd-timesyncd` while testing because Smokey
+intentionally moves `CLOCK_REALTIME`; concurrent NTP corrections invalidate
+its timer assertions. The wrapper restores the service on exit if it was
+active, including when a test fails. The image keeps normal time
+synchronization enabled for ordinary use.
 The `xenomai-acceptance-<run-id>-<attempt>` artifact retains the instance
 identity, manifest, Smokey results, build log and package test logs for 30
 days. Keep its run URL and successful result with the AMI publication record
