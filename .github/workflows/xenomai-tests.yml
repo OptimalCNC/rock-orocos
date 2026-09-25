@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   xenomai:
-    if: github.repository == 'OptimalCNC/rock-orocos' && github.ref == 'refs/heads/main'
+    if: github.repository == 'OptimalCNC/rock-orocos' && github.ref == 'refs/heads/diagnose/runson-cpu-topology'
     runs-on:
       - runs-on=${{ github.run_id }}-${{ github.run_attempt }}
       - family=m7i.xlarge
@@ -67,21 +67,38 @@ jobs:
               raise SystemExit(f"Expected {expected}, running {identity['imageId']}")
           print(json.dumps(identity, indent=2))
           PY
-      - name: Validate Cobalt and rebuild and test Orocos
-        env:
-          IMAGE_REVISION: ${{ inputs.image_revision || github.sha }}
+      - name: Record CPU topology and baseline latency
         run: |
-          # Smokey deliberately steps CLOCK_REALTIME. Keep the image's time
-          # service from immediately correcting those test adjustments.
-          time_sync_state=$(systemctl is-active systemd-timesyncd.service || true)
-          restore_time_sync() {
-            if [[ "$time_sync_state" == active ]]; then
-              sudo -n systemctl start systemd-timesyncd.service
-            fi
+          mkdir -p execution/.local/xenomai
+          {
+            uname -a
+            lscpu
+            lscpu -e=CPU,CORE,SOCKET,NODE,ONLINE
+            cat /proc/cmdline
+            getent group xenomai
+            for cpu in /sys/devices/system/cpu/cpu[0-9]*; do
+              printf '%s siblings=' "$cpu"
+              cat "$cpu/topology/thread_siblings_list"
+            done
+            cat /sys/devices/system/cpu/isolated
+            cat /sys/devices/system/cpu/nohz_full
+            cat /sys/module/xenomai/parameters/supported_cpus
+            cat /proc/xenomai/sched/threads
+          } 2>&1 | tee execution/.local/xenomai/topology.log
+          timeout 90s /usr/xenomai/bin/latency -c 3 -p 1000 -P 80 -T 60 -q -s \
+            2>&1 | tee execution/.local/xenomai/latency-baseline-idle.log
+          workers=()
+          cleanup() {
+            kill "${workers[@]}" 2>/dev/null || true
+            wait "${workers[@]}" 2>/dev/null || true
           }
-          trap restore_time_sync EXIT
-          sudo -n systemctl stop systemd-timesyncd.service
-          bash execution/xenomai/test.sh "$IMAGE_REVISION"
+          trap cleanup EXIT
+          for cpu in 0 1 2; do
+            taskset -c "$cpu" sha256sum /dev/zero >/dev/null &
+            workers+=("$!")
+          done
+          timeout 90s /usr/xenomai/bin/latency -c 3 -p 1000 -P 80 -T 60 -q -s \
+            2>&1 | tee execution/.local/xenomai/latency-baseline-loaded.log
       - name: Upload image identity and runtime evidence
         if: always()
         uses: actions/upload-artifact@v7.0.1
