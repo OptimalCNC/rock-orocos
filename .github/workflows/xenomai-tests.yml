@@ -70,7 +70,18 @@ jobs:
       - name: Validate Cobalt and rebuild and test Orocos
         env:
           IMAGE_REVISION: ${{ inputs.image_revision || github.sha }}
-        run: bash execution/xenomai/test.sh "$IMAGE_REVISION"
+        run: |
+          # Smokey deliberately steps CLOCK_REALTIME. Keep the image's time
+          # service from immediately correcting those test adjustments.
+          time_sync_state=$(systemctl is-active systemd-timesyncd.service || true)
+          restore_time_sync() {
+            if [[ "$time_sync_state" == active ]]; then
+              sudo -n systemctl start systemd-timesyncd.service
+            fi
+          }
+          trap restore_time_sync EXIT
+          sudo -n systemctl stop systemd-timesyncd.service
+          bash execution/xenomai/test.sh "$IMAGE_REVISION"
       - name: Upload image identity and runtime evidence
         if: always()
         uses: actions/upload-artifact@v7.0.1
