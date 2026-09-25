@@ -1,0 +1,9 @@
+self-hosted-runner:
+  labels:
+    - family=m7i.xlarge
+    - cpu=4
+    - volume=64gb:gp3:125mbs:3000iops
+    - spot=false
+    - retry=false
+    - private=false
+    - image=rock-orocos-xenomai

@@ -1,0 +1,86 @@
+name: Xenomai Runtime Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: RunsOn environment
+        required: true
+        default: production
+        type: string
+      region:
+        description: AWS region containing the image and RunsOn deployment
+        required: true
+        default: us-east-1
+        type: string
+      expected_ami_id:
+        description: Expected published AMI ID (optional)
+        type: string
+      image_revision:
+        description: Expected image source revision (defaults to this checkout)
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  xenomai:
+    if: github.repository == 'OptimalCNC/rock-orocos' && github.ref == 'refs/heads/main'
+    runs-on:
+      - runs-on=${{ github.run_id }}-${{ github.run_attempt }}
+      - family=m7i.xlarge
+      - cpu=4
+      - volume=64gb:gp3:125mbs:3000iops
+      - spot=false
+      - retry=false
+      - private=false
+      - env=${{ inputs.environment }}
+      - region=${{ inputs.region }}
+      - image=rock-orocos-xenomai
+    timeout-minutes: 50
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Record and verify the running image
+        env:
+          EXPECTED_AMI_ID: ${{ inputs.expected_ami_id }}
+        run: |
+          mkdir -p execution/.local/identity
+          cp /usr/local/share/rock-orocos-image/manifest.json \
+            execution/.local/identity/image-manifest.json
+          metadata_token=$(curl --fail --silent --show-error --max-time 10 \
+            --request PUT http://169.254.169.254/latest/api/token \
+            --header 'X-aws-ec2-metadata-token-ttl-seconds: 60')
+          curl --fail --silent --show-error --max-time 10 \
+            --header "X-aws-ec2-metadata-token: $metadata_token" \
+            http://169.254.169.254/latest/dynamic/instance-identity/document \
+            > execution/.local/identity/instance.json
+          python3 - <<'PY'
+          import json, os, pathlib
+          identity = json.loads(pathlib.Path('execution/.local/identity/instance.json').read_text())
+          expected = os.environ['EXPECTED_AMI_ID']
+          if expected and identity['imageId'] != expected:
+              raise SystemExit(f"Expected {expected}, running {identity['imageId']}")
+          print(json.dumps(identity, indent=2))
+          PY
+      - name: Validate Cobalt and rebuild and test Orocos
+        env:
+          IMAGE_REVISION: ${{ inputs.image_revision || github.sha }}
+        run: bash execution/xenomai/test.sh "$IMAGE_REVISION"
+      - name: Upload image identity and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: xenomai-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            execution/.local/identity/*.json
+            execution/.local/xenomai/*.log
+            execution/.local/xenomai/installed/*.log
+            toolchain/**/build/Testing/Temporary/LastTest.log
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30
