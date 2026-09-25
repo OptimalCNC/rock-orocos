@@ -1,0 +1,6 @@
+images:
+  rock-orocos-xenomai:
+    platform: linux
+    arch: x64
+    owner: self
+    name: "rock-orocos-xenomai-*"
